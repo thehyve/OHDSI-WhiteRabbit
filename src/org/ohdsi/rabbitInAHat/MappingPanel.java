@@ -105,6 +105,7 @@ public class MappingPanel extends JPanel implements MouseListener, MouseMotionLi
 		// Add keybindings to delete arrows
 		this.getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0, false), "del pressed");
 		this.getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0, false), "del pressed");
+		this.getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0, false), "b pressed");
 		this.getActionMap().put("del pressed", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -114,7 +115,21 @@ public class MappingPanel extends JPanel implements MouseListener, MouseMotionLi
 			}
 		});
 
+		this.getActionMap().put("b pressed", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (lastSelectedRectangle != null) {
+					duplicate(lastSelectedRectangle.getItem());
+				}
+			}
+		});
+
 		renderModel();
+	}
+
+	private void duplicate(MappableItem item) {
+		// Works, but mappings to the duplicates are discarded upon saving....
+		cdmComponents.add(new LabeledRectangle(0, 400, ITEM_WIDTH, ITEM_HEIGHT, item, new Color(160, 0, 160)));
 	}
 
 	public String getLastSourceFilter() {
