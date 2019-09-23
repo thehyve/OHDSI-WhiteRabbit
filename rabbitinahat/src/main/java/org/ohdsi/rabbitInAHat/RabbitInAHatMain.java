@@ -32,6 +32,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -207,6 +208,21 @@ public class RabbitInAHatMain implements ResizeListener {
 		icons.add(loadIcon("RabbitInAHat128.png", f));
 		icons.add(loadIcon("RabbitInAHat256.png", f));
 		f.setIconImages(icons);
+
+		// Dock icon for osx
+		try {
+			Image image = loadIcon("RabbitInAHat64.png", f);
+			String className = "com.apple.eawt.Application";
+			Class<?> cls = Class.forName(className);
+			Object application = cls.newInstance().getClass().getMethod("getApplication").invoke(null);
+			application.getClass().getMethod("setDockIconImage", java.awt.Image.class).invoke(application, image);
+		}
+		catch (ClassNotFoundException | IllegalAccessException | IllegalArgumentException
+				| InvocationTargetException | NoSuchMethodException | SecurityException
+				| InstantiationException e) {
+			e.printStackTrace();
+		}
+
 	}
 
 	private Image loadIcon(String name, JFrame f) {
