@@ -105,6 +105,8 @@ public class MappingPanel extends JPanel implements MouseListener, MouseMotionLi
 		this.getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0, false), "del pressed");
 		this.getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0, false), "del pressed");
 		this.getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0, false), "b pressed");
+		this.getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_U, 0, false), "u pressed");
+
 		this.getActionMap().put("del pressed", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -123,12 +125,28 @@ public class MappingPanel extends JPanel implements MouseListener, MouseMotionLi
 			}
 		});
 
+		this.getActionMap().put("u pressed", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (lastSelectedRectangle != null) {
+					moveToTop(lastSelectedRectangle);
+				}
+			}
+		});
+
 		renderModel();
 	}
 
 	private void duplicate(MappableItem item) {
 		// Works, but mappings to the duplicates are discarded upon saving....
 		cdmComponents.add(new LabeledRectangle(0, 400, ITEM_WIDTH, ITEM_HEIGHT, item, new Color(160, 0, 160)));
+	}
+
+	private void moveToTop(LabeledRectangle component) {
+		component.setLocation(0, 0);
+		Collections.sort(sourceComponents, new YComparator());
+		mapping.setSourceItems(getItemsList(sourceComponents));
+		renderModel();
 	}
 
 	public String getLastSourceFilter() {
