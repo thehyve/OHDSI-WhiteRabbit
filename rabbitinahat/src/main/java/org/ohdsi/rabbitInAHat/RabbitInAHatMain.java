@@ -678,14 +678,20 @@ public class RabbitInAHatMain implements ResizeListener, ActionListener {
 	private void doOpenScanReport(String filename) {
 		if (filename != null) {
 			boolean replace = true;
+			boolean add = false;
 			if (ObjectExchange.etl.getSourceDatabase().getTables().size() != 0) {
-				Object[] options = { "Replace current data", "Load data on field values only" };
+				Object[] options = { "Replace current data", "Load data on field values only", "Load data on new tables, fields and values"};
 				int result = JOptionPane.showOptionDialog(frame, "You already have source data loaded. Do you want to", "Replace source data?",
 						JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+				// TODO: this can be nicer
 				if (result == -1)
 					return;
 				if (result == 1)
 					replace = false;
+				if (result == 2) {
+					add = true;
+					replace = false;
+				}
 			}
 			frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 			if (replace) {
@@ -705,31 +711,29 @@ public class RabbitInAHatMain implements ResizeListener, ActionListener {
 					Database newData = Database.generateModelFromScanReport(filename);
 					Database oldData = ObjectExchange.etl.getSourceDatabase();
 					for (Table newTable : newData.getTables()) {
-						Table oldTable = (Table) findByName(newTable.getName(), oldData.getTables());
+						Table oldTable = oldData.getTableByName(newTable.getName());
 						if (oldTable != null) {
 							for (Field newField : newTable.getFields()) {
-								Field oldField = (Field) findByName(newField.getName(), oldTable.getFields());
+								Field oldField = oldTable.getFieldByName(newField.getName());
 								if (oldField != null) {
 									oldField.setValueCounts(newField.getValueCounts());
+								} else if (add) {
+									oldTable.addField(newField);
 								}
 							}
+						} else if (add) {
+							newTable.setDb(oldData);
+							oldData.addTable(newTable);
 						}
 					}
+					tableMappingPanel.setMapping(ObjectExchange.etl.getTableToTableMapping()); // Needed to render the model
 				} catch (Exception e) {
 					e.printStackTrace();
 					JOptionPane.showMessageDialog(null, "Invalid File Format", "Error", JOptionPane.ERROR_MESSAGE);
 				}
-
 			}
 			frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 		}
-	}
-
-	private MappableItem findByName(String name, List<? extends MappableItem> list) {
-		for (MappableItem item : list)
-			if (item.getName().toLowerCase().equals(name.toLowerCase()))
-				return item;
-		return null;
 	}
 
 	private void doGenerateEtlWordDoc(String filename) {
