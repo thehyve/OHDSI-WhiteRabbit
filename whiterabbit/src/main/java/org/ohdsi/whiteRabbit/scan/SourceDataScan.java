@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.apache.poi.hssf.usermodel.HSSFCellStyle;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Row;
@@ -192,6 +193,7 @@ public class SourceDataScan {
 				}
 				// Save some memory by derefencing tables already included in the report:
 				tableToFieldInfos.remove(tableName);
+				borderUp(workbook, valueSheet);
 			}
 		}
 
@@ -513,6 +515,20 @@ public class SourceDataScan {
 			Cell cell = row.getCell(i);
 			if (cell != null)
 				cell.setCellStyle(style);
+		}
+	}
+
+	private void borderUp(SXSSFWorkbook workbook, Sheet sheet) {
+		CellStyle style = workbook.createCellStyle();
+		style.setBorderRight(HSSFCellStyle.BORDER_MEDIUM);
+		for (int j = 0; j < sheet.getPhysicalNumberOfRows(); j++) {
+			Row row = sheet.getRow(j);
+			for (int i = 1; i < row.getPhysicalNumberOfCells(); i+=2) {
+				Cell cell = row.getCell(i);
+				if (cell != null) {
+					cell.setCellStyle(style);
+				}
+			}
 		}
 	}
 }
