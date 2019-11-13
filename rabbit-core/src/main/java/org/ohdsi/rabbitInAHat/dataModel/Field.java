@@ -29,6 +29,8 @@ public class Field implements MappableItem {
 	private String				description			= "";
 	private int					maxLength;
 	private boolean				isStem;
+	private boolean				isFilter;
+	private List<ConceptsMap.Concept> conceptIdHints;
 
 	public Field(String name, Table table) {
 		this.table = table;
@@ -125,5 +127,21 @@ public class Field implements MappableItem {
 
 	public void setStem(boolean isStem) {
 		this.isStem = isStem;
+	}
+
+	public List<ConceptsMap.Concept> getConceptIdHints() {
+		return conceptIdHints;
+	}
+
+	public void setConceptIdHints(List<ConceptsMap.Concept> conceptIdHints) {
+		this.conceptIdHints = conceptIdHints;
+	}
+
+	public boolean isFilter() {
+		return isFilter;
+	}
+
+	public void setFilter(boolean filter) {
+		isFilter = filter;
 	}
 }
