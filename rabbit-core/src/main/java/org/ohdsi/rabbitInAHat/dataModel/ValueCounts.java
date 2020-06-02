@@ -66,7 +66,7 @@ public class ValueCounts {
         return null;
     }
 
-    public int getTotalFrequency() {
+    public int getSummedFrequency() {
         return totalFrequency;
     }
 

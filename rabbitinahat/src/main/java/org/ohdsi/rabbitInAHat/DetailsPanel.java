@@ -434,22 +434,29 @@ public class DetailsPanel extends JPanel implements DetailsListener {
 		public void createValueList(Field field) {
 			valueTable.clear();
 
+			ValueCounts valueCounts = field.getValueCounts();
 			int rowsCheckedCount = field.getRowsCheckedCount();
-			for (ValueCounts.ValueCount valueCount : field.getValueCounts().getAll()) {
-				double valueCountPercent = valueCount.getFrequency() / (double) rowsCheckedCount;
-				String valuePercent;
-				if (valueCountPercent < 0.001) {
-					valuePercent = "<" + percentageFormat.format(0.001);
-				} else if (valueCountPercent > 0.99) {
-					valuePercent = ">" + percentageFormat.format(0.99);
-				} else {
-					valuePercent = percentageFormat.format(valueCountPercent);
+			// Typically in a word count column, the sum of frequencies exceeds total row count
+			boolean isWordCount = valueCounts.getSummedFrequency() > rowsCheckedCount;
+			for (ValueCounts.ValueCount valueCount : valueCounts.getAll()) {
+				String valuePercent = "";
+				int frequency = valueCount.getFrequency();
+				if (!isWordCount) {
+					double valueCountPercent = frequency / (double) rowsCheckedCount;
+					if (valueCountPercent < 0.001) {
+						valuePercent = "<" + percentageFormat.format(0.001);
+					} else if (valueCountPercent > 0.99) {
+						valuePercent = ">" + percentageFormat.format(0.99);
+					} else {
+						valuePercent = percentageFormat.format(valueCountPercent);
+					}
 				}
-				String valueNumber = numberFormat.format(valueCount.getFrequency());
+				String valueNumber = numberFormat.format(frequency);
 				valueTable.add(valueCount.getValue(), valueNumber, valuePercent);
 			}
 
-			if (rowsCheckedCount != field.getValueCounts().getTotalFrequency()) {
+			// If more rows checked than frequencies, some value frequencies are in the scan report (max unique values or small cell count)
+			if (rowsCheckedCount > valueCounts.getSummedFrequency()) {
 				valueTable.add("Truncated...", "", "");
 			}
 		}
