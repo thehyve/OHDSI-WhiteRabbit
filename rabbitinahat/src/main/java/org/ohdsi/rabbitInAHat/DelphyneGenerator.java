@@ -53,7 +53,6 @@ public class DelphyneGenerator {
             // Boilerplate
             this.write(0,"from __future__ import annotations\n\n" +
                     "from typing import List, TYPE_CHECKING\n\n" +
-                    "from src.main.python.util import get_datetime\n\n" +
                     "if TYPE_CHECKING:\n" +
                     "    from src.main.python.wrapper import Wrapper\n\n\n");
 
@@ -62,7 +61,8 @@ public class DelphyneGenerator {
                     sourceTable.getName().replace(".csv", "") + "_to_" + targetTable.getName() +
                     "(wrapper: Wrapper) -> List[Wrapper.cdm." + targetTableClassName + "]:", true);
             this.write(1, "source = wrapper.source_data.get_source_file('" +
-                    sourceTable.getName() + "')", true);
+                    sourceTable.getName().replace(".csv", ".tsv") + "')", true);
+            this.write(1, "df = source.get_csv_as_df(apply_dtypes=True)");
 
             // Table specific comments
             this.write(1, createBlockComment(sourceTable.getComment()), true);
@@ -71,7 +71,7 @@ public class DelphyneGenerator {
             this.write(1, createBlockComment(tableToTableMap.getLogic()), true);
 
             // Comment
-            this.write(1, "for row in source:", true);
+            this.write(1, "for _, row in df.iterrows():", true);
             this.write(2, "yield wrapper.cdm." + targetTableClassName + "(", true);
 
             int n_mappings = mappings.size();
@@ -121,9 +121,9 @@ public class DelphyneGenerator {
 
                 if (i == n_mappings-1) {
                     this.write(2,")");
+                    this.writeNewLine();
                 }
             }
-
         } catch (IOException e) {
             e.printStackTrace();
         }
