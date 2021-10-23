@@ -60,15 +60,17 @@ public class DelphyneGenerator {
             this.write(0,"def " +
                     sourceTable.getName().replace(".csv", "") + "_to_" + targetTable.getName() +
                     "(wrapper: Wrapper) -> List[Wrapper.cdm." + targetTableClassName + "]:", true);
-            this.write(1, "source = wrapper.source_data.get_source_file('" +
-                    sourceTable.getName().replace(".csv", ".tsv") + "')", true);
-            this.write(1, "df = source.get_csv_as_df(apply_dtypes=True)");
 
             // Table specific comments
             this.write(1, createBlockComment(sourceTable.getComment()), true);
             this.write(1, createBlockComment(targetTable.getComment()), true);
             this.write(1, createBlockComment(tableToTableMap.getComment()), true);
             this.write(1, createBlockComment(tableToTableMap.getLogic()), true);
+
+            // Source file
+            this.write(1, "source = wrapper.source_data.get_source_file('" +
+                    sourceTable.getName().replace(".csv", ".tsv") + "')", true);
+            this.write(1, "df = source.get_csv_as_df(apply_dtypes=True)", true);
 
             // Comment
             this.write(1, "for _, row in df.iterrows():", true);
