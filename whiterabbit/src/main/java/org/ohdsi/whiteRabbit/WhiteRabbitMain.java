@@ -17,16 +17,7 @@
  ******************************************************************************/
 package org.ohdsi.whiteRabbit;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Desktop;
-import java.awt.Dimension;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.GridLayout;
-import java.awt.Image;
-import java.awt.MediaTracker;
-import java.awt.Toolkit;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
@@ -735,26 +726,23 @@ public class WhiteRabbitMain implements ActionListener {
 	}
 
 	private void pickFolder() {
-		JFileChooser fileChooser = new JFileChooser(new File(folderField.getText()));
-		fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-		int returnVal = fileChooser.showDialog(frame, "Select folder");
-		if (returnVal == JFileChooser.APPROVE_OPTION) {
-			File selectedDirectory = fileChooser.getSelectedFile();
-			if (!selectedDirectory.exists()) {
-				// When no directory is selected when approving, FileChooser incorrectly appends the current directory to the path.
-				// Take the opened directory instead.
-				selectedDirectory = fileChooser.getCurrentDirectory();
-			}
-			folderField.setText(selectedDirectory.getAbsolutePath());
+		FileDialog fileDialog = new FileDialog(frame, "Select file in target working folder");
+		fileDialog.setVisible(true);
+
+		System.out.println(fileDialog.getFile());
+		if (fileDialog.getDirectory() != null) {
+			folderField.setText(fileDialog.getDirectory());
 		}
 	}
 
 	private void pickScanReportFile() {
-		JFileChooser fileChooser = new JFileChooser(new File(folderField.getText()));
-		fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-		int returnVal = fileChooser.showDialog(frame, "Select scan report file");
-		if (returnVal == JFileChooser.APPROVE_OPTION)
-			scanReportFileField.setText(fileChooser.getSelectedFile().getAbsolutePath());
+		FileDialog fileDialog = new FileDialog(frame, "Select scan report file");
+		fileDialog.setFilenameFilter((File dir, String name) -> name.endsWith(".xlsx"));
+		fileDialog.setVisible(true);
+
+		if (fileDialog.getFile () != null) {
+			scanReportFileField.setText(fileDialog.getDirectory() + fileDialog.getFile());
+		}
 	}
 
 	private void removeTables() {
@@ -792,15 +780,17 @@ public class WhiteRabbitMain implements ActionListener {
 					fileChooser.setFileFilter(new FileNameExtensionFilter("SAS Data Files", "sas7bdat"));
 				}
 
-				int returnVal = fileChooser.showDialog(frame, "Select tables");
-				if (returnVal == JFileChooser.APPROVE_OPTION) {
-					for (File table : fileChooser.getSelectedFiles()) {
+				FileDialog fileDialog = new FileDialog(frame, "Select tables");
+				fileDialog.setFilenameFilter((File dir, String name) -> name.endsWith(".csv") || name.endsWith(".txt"));
+				fileDialog.setMultipleMode(true);
+				fileDialog.setVisible(true);
+				if (fileDialog.getFile () != null) {
+					for (File table : fileDialog.getFiles()) {
 						String tableName = DirectoryUtilities.getRelativePath(new File(folderField.getText()), table);
 						if (!tables.contains(tableName))
 							tables.add(tableName);
 						tableList.setListData(tables);
 					}
-
 				}
 			} else if (sourceDbSettings.sourceType == DbSettings.SourceType.DATABASE) {
 				RichConnection connection = new RichConnection(sourceDbSettings.server, sourceDbSettings.domain, sourceDbSettings.user,

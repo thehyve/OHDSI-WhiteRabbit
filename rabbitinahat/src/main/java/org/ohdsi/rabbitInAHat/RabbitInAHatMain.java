@@ -17,13 +17,7 @@
  ******************************************************************************/
 package org.ohdsi.rabbitInAHat;
 
-import java.awt.Color;
-import java.awt.Cursor;
-import java.awt.Desktop;
-import java.awt.Dimension;
-import java.awt.Image;
-import java.awt.MediaTracker;
-import java.awt.Toolkit;
+import java.awt.*;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
@@ -374,20 +368,22 @@ public class RabbitInAHatMain implements ResizeListener {
 		chooser.resetChoosableFileFilters();
 
 		if (directoryMode) {
-			chooser.setDialogTitle("Select Folder");
+			chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 			chooser.setAcceptAllFileFilterUsed(false);
-		} else {
-			chooser.setDialogTitle("Select File");
-			chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-			chooser.setFileFilter(primaryFileFilter);
-			for (int i = 1; i < filter.length; i++) {
-				chooser.addChoosableFileFilter(filter[i]);
+			int dialogResult = saveMode ? chooser.showSaveDialog(frame) : chooser.showOpenDialog(frame);
+			if (dialogResult == JFileChooser.APPROVE_OPTION) {
+				return chooser.getCurrentDirectory().getAbsolutePath();
 			}
-		}
+		} else {
+			FileDialog fileDialog = new FileDialog(frame, "Select file");
+			if (saveMode)
+				fileDialog.setMode(FileDialog.SAVE);
 
-		int dialogResult = saveMode ? chooser.showSaveDialog(frame) : chooser.showOpenDialog(frame);
-		if (dialogResult == JFileChooser.APPROVE_OPTION) {
-			return chooser.getSelectedFile().getAbsolutePath();
+			fileDialog.setVisible(true);
+
+			if (fileDialog.getFile() != null) {
+				return fileDialog.getDirectory() + fileDialog.getFile();
+			}
 		}
 
 		return null;
