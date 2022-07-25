@@ -26,6 +26,7 @@ import java.util.*;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.ohdsi.utilities.ScanFieldName;
+import org.ohdsi.utilities.ScanSheetName;
 import org.ohdsi.utilities.files.QuickAndDirtyXlsxReader;
 import org.ohdsi.utilities.files.QuickAndDirtyXlsxReader.Sheet;
 
@@ -33,15 +34,12 @@ public class Database implements Serializable {
 
 	public enum CDMVersion {
 		  CDMV4("CDMV4.csv")
-		, CDMV5("CDMV5.csv")
-		, CDMV501("CDMV5.0.1.csv")
-		, CDMV510("CDMV5.1.0.csv")
-		, CDMV520("CDMV5.2.0.csv")
-		, CDMV530("CDMV5.3.0.csv")
-		, CDMV531("CDMV5.3.1.csv")
-		, CDMV531_O("CDMV5.3.1_Oncology.csv")
+		, CDMV50("CDMV5.0.csv")
+		, CDMV51("CDMV5.1.csv")
+		, CDMV52("CDMV5.2.csv")
+		, CDMV53("CDMV5.3.csv")
+		, CDMV54("CDMV5.4.csv")
 		, CDMV60("CDMV6.0.csv")
-		, CDMV60_O("CDMV6.0_Oncology.csv")
 		;
 
 		private final String fileName;
@@ -54,7 +52,8 @@ public class Database implements Serializable {
 	private List<Table>			tables				= new ArrayList<Table>();
 	private static final long	serialVersionUID	= -3912166654601191039L;
 	private String				dbName				= "";
-	private static String		CONCEPT_ID_HINTS_FILE_NAME = "CDMConceptIDHints_v5.0_02-OCT-19.csv";
+	private static final String	CONCEPT_ID_HINTS_FILE_NAME = "CDMConceptIDHints.csv";
+	public String 				conceptIdHintsVocabularyVersion;
 
 	public List<Table> getTables() {
 		return tables;
@@ -62,13 +61,17 @@ public class Database implements Serializable {
 
 	public Table getTableByName(String name) {
 		for (Table table : tables)
-			if (table.getName().toLowerCase().equals(name.toLowerCase()))
+			if (table.getName().equalsIgnoreCase(name))
 				return table;
 		return null;
 	}
 
 	public void setTables(List<Table> tables) {
 		this.tables = tables;
+	}
+
+	public void addTable(Table table) {
+		this.tables.add(table);
 	}
 
 	public String getDbName() {
@@ -86,7 +89,8 @@ public class Database implements Serializable {
 
 		Map<String, Table> nameToTable = new HashMap<>();
 		try {
-			ConceptsMap conceptsMap = new ConceptsMap(CONCEPT_ID_HINTS_FILE_NAME);
+			ConceptsMap conceptIdHintsMap = new ConceptsMap(CONCEPT_ID_HINTS_FILE_NAME);
+			database.conceptIdHintsVocabularyVersion = conceptIdHintsMap.vocabularyVersion;
 
 			for (CSVRecord row : CSVFormat.RFC4180.withHeader().parse(new InputStreamReader(stream))) {
 				String tableNameColumn;
@@ -123,7 +127,7 @@ public class Database implements Serializable {
 				field.setNullable(row.get(isNullableColumn).equals(nullableValue));
 				field.setType(row.get(dataTypeColumn));
 				field.setDescription(row.get(descriptionColumn));
-				field.setConceptIdHints(conceptsMap.get(table.getName(), field.getName()));
+				field.setConceptIdHints(conceptIdHintsMap.get(table.getName(), field.getName()));
 
 				table.getFields().add(field);
 			}
@@ -135,34 +139,47 @@ public class Database implements Serializable {
 
 	public static Database generateModelFromScanReport(String filename) {
 		Database database = new Database();
-		Map<String, Table> nameToTable = new HashMap<>();
 		QuickAndDirtyXlsxReader workbook = new QuickAndDirtyXlsxReader(filename);
-		Sheet sheet = workbook.get(0);
-		Iterator<org.ohdsi.utilities.files.QuickAndDirtyXlsxReader.Row> iterator = sheet.iterator();
 
-		iterator.next();  // Skip header
-		while (iterator.hasNext()) {
-			org.ohdsi.utilities.files.QuickAndDirtyXlsxReader.Row row = iterator.next();
+		// Create table lookup from tables overview, if it exists
+		Map<String, Table> nameToTable = createTablesFromTableOverview(workbook, database);
+
+		// Field overview is the first sheet
+		Sheet overviewSheet = workbook.getByName(ScanSheetName.FIELD_OVERVIEW);
+		if (overviewSheet == null) {
+			overviewSheet = workbook.get(0);
+		}
+		Iterator<QuickAndDirtyXlsxReader.Row> overviewRows = overviewSheet.iterator();
+
+		overviewRows.next();  // Skip header
+		while (overviewRows.hasNext()) {
+			QuickAndDirtyXlsxReader.Row row = overviewRows.next();
 			String tableName = row.getStringByHeaderName(ScanFieldName.TABLE);
 			if (tableName.length() != 0) {
+				// Get table created from table overview or created before
 				Table table = nameToTable.get(tableName);
+
+				// If not exists, create table from field overview sheet
 				if (table == null) {
-					table = new Table();
-					table.setName(tableName.toLowerCase());
-					Integer nRows =  row.getIntByHeaderName(ScanFieldName.N_ROWS);
-					Integer nRowChecked =  row.getIntByHeaderName(ScanFieldName.N_ROWS_CHECKED);
-					table.setRowCount((nRows == null || nRows == -1) ? nRowChecked : nRows);
+					table = createTable(
+							tableName,
+							"",
+							row.getIntByHeaderName(ScanFieldName.N_ROWS),
+							row.getIntByHeaderName(ScanFieldName.N_ROWS_CHECKED)
+					);
 					nameToTable.put(tableName, table);
 					database.tables.add(table);
 				}
+
 				String fieldName = row.getStringByHeaderName(ScanFieldName.FIELD);
 				Field field = new Field(fieldName.toLowerCase(), table);
 
-				String fractionEmpty = row.getByHeaderName(ScanFieldName.FRACTION_EMPTY);
-				field.setNullable(fractionEmpty == null || !fractionEmpty.equals("0"));
 				field.setType(row.getByHeaderName(ScanFieldName.TYPE));
 				field.setMaxLength(row.getIntByHeaderName(ScanFieldName.MAX_LENGTH));
 				field.setDescription(row.getStringByHeaderName(ScanFieldName.DESCRIPTION));
+				field.setFractionEmpty(row.getDoubleByHeaderName(ScanFieldName.FRACTION_EMPTY));
+				field.setUniqueCount(row.getIntByHeaderName(ScanFieldName.UNIQUE_COUNT));
+				field.setFractionUnique(row.getDoubleByHeaderName(ScanFieldName.FRACTION_UNIQUE));
 				field.setValueCounts(getValueCounts(workbook, tableName, fieldName));
 
 				table.getFields().add(field);
@@ -172,15 +189,46 @@ public class Database implements Serializable {
 		return database;
 	}
 
-	private static ValueCounts getValueCounts(QuickAndDirtyXlsxReader workbook, String tableName, String fieldName) {
-		Sheet tableSheet = null;
-		String targetSheetName = Table.createSheetNameFromTableName(tableName);
-		for (Sheet sheet : workbook) {
-			if (sheet.getName().equals(targetSheetName)) {
-				tableSheet = sheet;
-				break;
-			}
+	public static Table createTable(String name, String description, Integer nRows, Integer nRowsChecked) {
+		Table table = new Table();
+		table.setName(name.toLowerCase());
+		table.setDescription(description);
+		table.setRowCount(nRows == null ? -1 : nRows);
+		table.setRowsCheckedCount(nRowsChecked == null ? -1 : nRowsChecked);
+		return table;
+	}
+
+	public static Map<String, Table> createTablesFromTableOverview(QuickAndDirtyXlsxReader workbook, Database database) {
+		Sheet tableOverviewSheet = workbook.getByName(ScanSheetName.TABLE_OVERVIEW);
+
+		if (tableOverviewSheet == null) { // No table overview sheet, empty nameToTable
+			return new HashMap<>();
 		}
+
+		Map<String, Table> nameToTable = new HashMap<>();
+
+		Iterator<org.ohdsi.utilities.files.QuickAndDirtyXlsxReader.Row> tableRows = tableOverviewSheet.iterator();
+		tableRows.next();  // Skip header
+		while (tableRows.hasNext()) {
+			org.ohdsi.utilities.files.QuickAndDirtyXlsxReader.Row row = tableRows.next();
+			String tableName = row.getByHeaderName(ScanFieldName.TABLE);
+			Table table = createTable(
+					tableName,
+					row.getByHeaderName(ScanFieldName.DESCRIPTION),
+					row.getIntByHeaderName(ScanFieldName.N_ROWS),
+					row.getIntByHeaderName(ScanFieldName.N_ROWS_CHECKED)
+			);
+			// Add to lookup and database
+			nameToTable.put(tableName, table);
+			database.tables.add(table);
+		}
+
+		return nameToTable;
+	}
+
+	private static ValueCounts getValueCounts(QuickAndDirtyXlsxReader workbook, String tableName, String fieldName) {
+		String targetSheetName = Table.createSheetNameFromTableName(tableName);
+		Sheet tableSheet = workbook.getByName(targetSheetName);
 
 		// Sheet not found for table, return empty
 		if (tableSheet == null) {
@@ -211,9 +259,9 @@ public class Database implements Serializable {
 
 					// If the count is not a number, ignore this row
 					try {
-						valueCounts.add(value, (int) (Double.parseDouble(count)));
+						valueCounts.add(value, (int) Double.parseDouble(count));
 					} catch (NumberFormatException e) {
-//						 System.out.println("Count could not be parsed for value: " + value);
+						// Skip if count could not be parsed. In most cases this is for empty count at 'List Truncated...'
 					}
 				}
 			}

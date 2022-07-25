@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import org.ohdsi.rabbitInAHat.dataModel.*;
 import org.ohdsi.rabbitInAHat.dataModel.ETL.FileFormat;
 
+// TODO: use templating to generate the R code (e.g. Jinja/Apache FreeMarker/Mustache). At least put static R code in separate (.R) files.
 public class ETLTestFrameWorkGenerator {
 
 	private static int DEFAULT = 0;
@@ -116,10 +117,11 @@ public class ETLTestFrameWorkGenerator {
 				for (Field field : table.getFields()) {
 					String rFieldName = convertToRName(field.getName());
 					String defaultValue = field.getValueCounts().getMostFrequentValue();
-					if (defaultValue != null)
+					if (defaultValue != null) {
 						writer.println("  defaults$" + rFieldName + " <- '" + defaultValue + "'");
-					else
+					} else {
 						writer.println("  defaults$" + rFieldName + " <- ''");
+					}
 				}
 				writer.println("  assign('" + rTableName + "', defaults, envir = frameworkContext$defaultValues)");
 			}
@@ -259,7 +261,7 @@ public class ETLTestFrameWorkGenerator {
 					writer.println("    frameworkContext$sourceFieldsTested <- c(frameworkContext$sourceFieldsTested, '" + convertFieldToFullName(field) + "')");
 					writer.println("  }");
 					writer.println("  fields <- c(fields, \"" + sqlFieldName + "\")");
-					writer.println("  values <- c(values, " + createSqlValueCode(rFieldName) + ")");
+					writer.println("  values <- c(values, " + createValueCode(rFieldName) + ")");
 					writer.println("");
 				}
 				writer.println("  inserts <- list(testId = frameworkContext$testId, testDescription = frameworkContext$testDescription, table = \"" + sqlTableName
@@ -334,7 +336,7 @@ public class ETLTestFrameWorkGenerator {
 					writer.println("    } else {");
 					writer.println("      statement <- paste0(statement, \" AND\")");
 					writer.println("    }");
-					writer.println("    statement <- paste0(statement, \" " + sqlFieldName + " = \", " + createSqlValueCode(rFieldName) + ")");
+					writer.println("    statement <- paste0(statement, \" " + sqlFieldName + "\"," + createSqlValueCode(rFieldName) + ")");
 					writer.println("  }");
 					writer.println("");
 				}
@@ -453,7 +455,7 @@ public class ETLTestFrameWorkGenerator {
 		writer.println("                     \"' AS test, CASE WHEN (SELECT COUNT(*) FROM @cdm_database_schema.\",");
 		writer.println("                     expect$table,");
 		writer.println("                     \" WHERE \",");
-		writer.println("                     paste(paste(expect$fields, operators, expect$values), collapse = \" AND \"),");
+		writer.println("                     paste(paste(expect$fields, expect$values), collapse = \" AND \"),");
 		writer.println("                     \") \",");
 		writer.println("                     if (expect$type == " + DEFAULT + ") \"= 0\" else if (expect$type == " + NEGATE
 				+ ") \"!= 0\" else paste(\"!=\", expect$rowCount),");
@@ -580,7 +582,14 @@ public class ETLTestFrameWorkGenerator {
 		return name;
 	}
 
-	 private String createSqlValueCode(String rFieldName) {
+	private String createSqlValueCode(String rFieldName) {
+		return "if (is.null(" + rFieldName + ")) \" IS NULL\" " +
+				"else if (is(" + rFieldName + ", \"subQuery\")) " +
+				"paste0(\" = (\", as.character(" + rFieldName + "), \")\") " +
+				"else paste0(\" = '\", as.character(" + rFieldName + "), \"'\")";
+	}
+
+	 private String createValueCode(String rFieldName) {
          return "if (is.null(" + rFieldName + ")) \"NULL\" " +
                  "else if (is(" + rFieldName + ", \"subQuery\")) " +
                  "paste0(\"(\", as.character(" + rFieldName + "), \")\") " +

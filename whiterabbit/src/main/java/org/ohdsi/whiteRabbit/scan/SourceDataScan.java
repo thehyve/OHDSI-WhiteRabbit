@@ -20,9 +20,9 @@ package org.ohdsi.whiteRabbit.scan;
 import java.io.*;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.epam.parso.Column;
@@ -38,14 +38,14 @@ import org.ohdsi.databases.DbType;
 import org.ohdsi.databases.RichConnection;
 import org.ohdsi.databases.RichConnection.QueryResult;
 import org.ohdsi.rabbitInAHat.dataModel.Table;
-import org.ohdsi.utilities.DateUtilities;
-import org.ohdsi.utilities.ScanFieldName;
-import org.ohdsi.utilities.StringUtilities;
+import org.ohdsi.utilities.*;
 import org.ohdsi.utilities.collections.CountingSet;
 import org.ohdsi.utilities.collections.CountingSet.Count;
 import org.ohdsi.utilities.collections.Pair;
 import org.ohdsi.utilities.files.ReadTextFile;
 import org.ohdsi.whiteRabbit.DbSettings;
+
+import static java.lang.Long.max;
 
 public class SourceDataScan {
 
@@ -54,18 +54,25 @@ public class SourceDataScan {
 	public static int	N_FOR_FREE_TEXT_CHECK				= 1000;
 	public static int	MIN_AVERAGE_LENGTH_FOR_FREE_TEXT	= 100;
 
-	private char		delimiter = ',';
-	private int			sampleSize;
+	private SXSSFWorkbook workbook;
+	private char delimiter = ',';
+	private int sampleSize;
 	private boolean scanValues = false;
 	private boolean calculateNumericStats = false;
-	private int			numStatsSamplerSize;
-	private int			minCellCount;
-	private int			maxValues;
-	private DbType		dbType;
-	private String		database;
-	private Map<String, String> sheetNameLookup;
+	private int numStatsSamplerSize;
+	private int minCellCount;
+	private int maxValues;
+	private DbSettings.SourceType sourceType;
+	private DbType dbType;
+	private String database;
+	private Map<Table, List<FieldInfo>> tableToFieldInfos;
+	private Map<String, String> indexedTableNameLookup;
+
+	private LocalDateTime startTimeStamp;
+
 
 	public void setSampleSize(int sampleSize) {
+		// -1 if sample size is not restricted
 		this.sampleSize = sampleSize;
 	}
 
@@ -89,21 +96,28 @@ public class SourceDataScan {
 		this.numStatsSamplerSize = numStatsSamplerSize;
 	}
 
-	public void process(DbSettings dbSettings, String filename) {
-		Map<String, List<FieldInfo>> tableToFieldInfos;
-		if (dbSettings.dataType == DbSettings.CSVFILES) {
+	public void process(DbSettings dbSettings, String outputFileName) {
+		startTimeStamp = LocalDateTime.now();
+		sourceType = dbSettings.sourceType;
+		dbType = dbSettings.dbType;
+		database = dbSettings.database;
+
+		tableToFieldInfos = new HashMap<>();
+		StringUtilities.outputWithTime("Started new scan of " + dbSettings.tables.size() + " tables...");
+		if (sourceType == DbSettings.SourceType.CSV_FILES) {
 			if (!scanValues)
 				this.minCellCount = Math.max(minCellCount, MIN_CELL_COUNT_FOR_CSV);
-			tableToFieldInfos = processCsvFiles(dbSettings);
-		} else if (dbSettings.dataType == DbSettings.SASFILES) {
-			tableToFieldInfos = processSasFiles(dbSettings);
+			processCsvFiles(dbSettings);
+		} else if (sourceType == DbSettings.SourceType.SAS_FILES) {
+			processSasFiles(dbSettings);
 		} else {
-			tableToFieldInfos = processDatabase(dbSettings);
+			processDatabase(dbSettings);
 		}
-		generateReport(tableToFieldInfos, filename);
+
+		generateReport(outputFileName);
 	}
 
-	private Map<String, List<FieldInfo>> processDatabase(DbSettings dbSettings) {
+	private void processDatabase(DbSettings dbSettings) {
 		// GBQ requires database. Put database value into domain var
 		if (dbSettings.dbType == DbType.BIGQUERY) {
 			dbSettings.domain = dbSettings.database;
@@ -113,55 +127,66 @@ public class SourceDataScan {
 			connection.setVerbose(false);
 			connection.use(dbSettings.database);
 
-			dbType = dbSettings.dbType;
-			database = dbSettings.database;
-
-			return dbSettings.tables.stream()
-					.collect(Collectors.toMap(Function.identity(), table -> processDatabaseTable(table, connection)));
+			tableToFieldInfos = dbSettings.tables.stream()
+					.collect(Collectors.toMap(
+							Table::new,
+							table -> processDatabaseTable(table, connection)
+					));
 		}
 	}
 
-	private Map<String, List<FieldInfo>> processCsvFiles(DbSettings dbSettings) {
+	private void processCsvFiles(DbSettings dbSettings) {
 		delimiter = dbSettings.delimiter;
-		Map<String, List<FieldInfo>> tableToFieldInfos = new HashMap<>();
-		for (String table : dbSettings.tables) {
-			List<FieldInfo> fieldInfos = processCsvFile(table);
-			String tableName = new File(table).getName();
-			if (!tableToFieldInfos.containsKey(tableName)) {
-				tableToFieldInfos.put(tableName, fieldInfos);
-			} else {
-				tableToFieldInfos.put(table, fieldInfos);
-			}
-		}
-		return tableToFieldInfos;
-	}
-
-	private Map<String, List<FieldInfo>> processSasFiles(DbSettings dbSettings) {
-		Map<String, List<FieldInfo>> tableToFieldInfos = new HashMap<>();
 		for (String fileName : dbSettings.tables) {
-			List<FieldInfo> fieldInfos = processSasFile(fileName);
-			String tableName = new File(fileName).getName();
-			if (!tableToFieldInfos.containsKey(tableName)) {
-				tableToFieldInfos.put(tableName, fieldInfos);
-			} else {
-				tableToFieldInfos.put(fileName, fieldInfos);
-			}
+			Table table = new Table();
+			table.setName(new File(fileName).getName());
+			List<FieldInfo> fieldInfos = processCsvFile(fileName);
+			tableToFieldInfos.put(table, fieldInfos);
 		}
-		return tableToFieldInfos;
 	}
 
-	private void generateReport(Map<String, List<FieldInfo>> tableToFieldInfos, String filename) {
-		System.out.println("Generating scan report");
-		removeEmptyTables(tableToFieldInfos);
+	private void processSasFiles(DbSettings dbSettings) {
+		for (String fileName : dbSettings.tables) {
+			try(FileInputStream inputStream = new FileInputStream(new File(fileName))) {
+				SasFileReader sasFileReader = new SasFileReaderImpl(inputStream);
+				SasFileProperties sasFileProperties = sasFileReader.getSasFileProperties();
 
-		SXSSFWorkbook workbook = new SXSSFWorkbook(100); // keep 100 rows in memory, exceeding rows will be flushed to disk
+				Table table = new Table(new File(fileName).getName());
+				table.setName(new File(fileName).getName());
+				table.setComment(sasFileProperties.getName());
 
-		sheetNameLookup = new HashMap<>();
-		createOverviewSheet(workbook, tableToFieldInfos);
+				StringUtilities.outputWithTime("Scanning table " + fileName);
+				List<FieldInfo> fieldInfos = processSasFile(sasFileReader);
+				tableToFieldInfos.put(table, fieldInfos);
+
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	private void generateReport(String filename) {
+		StringUtilities.outputWithTime("Generating scan report");
+		removeEmptyTables();
+
+		workbook = new SXSSFWorkbook(100); // keep 100 rows in memory, exceeding rows will be flushed to disk
+
+		int i = 0;
+		indexedTableNameLookup = new HashMap<>();
+		for (Table table : tableToFieldInfos.keySet()) {
+			String tableNameIndexed = Table.indexTableNameForSheet(table.getName(), i);
+			indexedTableNameLookup.put(table.getName(), tableNameIndexed);
+			i++;
+		}
+
+		createFieldOverviewSheet();
+		createTableOverviewSheet();
 
 		if (scanValues) {
-			createValueSheet(workbook, tableToFieldInfos);
+			createValueSheet();
 		}
+
+		createMetaSheet();
 
 		try (FileOutputStream out = new FileOutputStream(new File(filename))) {
 			workbook.write(out);
@@ -172,8 +197,8 @@ public class SourceDataScan {
 		}
 	}
 
-	private void createOverviewSheet(SXSSFWorkbook workbook, Map<String, List<FieldInfo>> tableToFieldInfos) {
-		Sheet overviewSheet = workbook.createSheet("Overview");
+	private void createFieldOverviewSheet() {
+		Sheet overviewSheet = workbook.createSheet(ScanSheetName.FIELD_OVERVIEW);
 		CellStyle percentageStyle = workbook.createCellStyle();
 		percentageStyle.setDataFormat(workbook.createDataFormat().getFormat("0.0%"));
 
@@ -208,15 +233,11 @@ public class SourceDataScan {
 		addRow(overviewSheet, overviewHeader.toArray());
 
 		// Add fields
-		int sheetIndex = 0;
-		for (String tableName : tableToFieldInfos.keySet()) {
-			// Make tablename unique
-			String tableNameIndexed = Table.indexTableNameForSheet(tableName, sheetIndex);
+		for (Table table : tableToFieldInfos.keySet()) {
+			String tableName = table.getName();
+			String tableNameIndexed = indexedTableNameLookup.get(tableName);
 
-			sheetNameLookup.put(tableName, Table.createSheetNameFromTableName(tableNameIndexed));
-
-			sheetIndex += 1;
-			for (FieldInfo fieldInfo : tableToFieldInfos.get(tableName)) {
+			for (FieldInfo fieldInfo : tableToFieldInfos.get(table)) {
 				List<Object> values = new ArrayList<>(Arrays.asList(
 						tableNameIndexed,
 						fieldInfo.name,
@@ -256,14 +277,55 @@ public class SourceDataScan {
 		}
 	}
 
-	private void createValueSheet(SXSSFWorkbook workbook, Map<String, List<FieldInfo>> tableToFieldInfos) {
+	private void createTableOverviewSheet() {
+		Sheet tableOverviewSheet = workbook.createSheet(ScanSheetName.TABLE_OVERVIEW);
+
+		addRow(tableOverviewSheet,
+				ScanFieldName.TABLE,
+				ScanFieldName.DESCRIPTION,
+				ScanFieldName.N_ROWS,
+				ScanFieldName.N_ROWS_CHECKED,
+				ScanFieldName.N_FIELDS,
+				ScanFieldName.N_FIELDS_EMPTY
+		);
+
+		for (Table table : tableToFieldInfos.keySet()) {
+			String tableName = table.getName();
+			String tableNameIndexed = indexedTableNameLookup.get(tableName);
+			String description = table.getComment();
+			long rowCount = -1;
+			long rowCheckedCount = -1;
+			long nFields = 0;
+			long nFieldsEmpty = 0;
+			for (FieldInfo fieldInfo : tableToFieldInfos.get(table)) {
+				rowCount = max(rowCount, fieldInfo.rowCount);
+				rowCheckedCount = max(rowCheckedCount, fieldInfo.nProcessed);
+				nFields += 1;
+				if (scanValues) {
+					nFieldsEmpty += fieldInfo.getFractionEmpty() == 1 ? 1 : 0;
+				}
+			}
+			addRow(tableOverviewSheet,
+					tableNameIndexed,
+					description,
+					rowCount,
+					rowCheckedCount,
+					nFields,
+					scanValues ? nFieldsEmpty : -1
+			);
+		}
+	}
+
+	private void createValueSheet() {
 		// Make a copy of the tableNames, such that we can dereference the table at the end of each loop to save memory
-		String[] tableNames = tableToFieldInfos.keySet().toArray(new String[0]);
+		Table[] tables = tableToFieldInfos.keySet().toArray(new Table[0]);
 
-		for (String tableName : tableNames) {
-			Sheet valueSheet = workbook.createSheet(sheetNameLookup.get(tableName));
+		for (Table table : tables) {
+			String tableName = table.getName();
+			String tableNameIndexed = indexedTableNameLookup.get(tableName);
+			Sheet valueSheet = workbook.createSheet(Table.createSheetNameFromTableName(tableNameIndexed));
 
-			List<FieldInfo> fieldInfos = tableToFieldInfos.get(tableName);
+			List<FieldInfo> fieldInfos = tableToFieldInfos.get(table);
 			List<List<Pair<String, Integer>>> valueCounts = new ArrayList<>();
 			Object[] header = new Object[fieldInfos.size() * 2];
 			int maxCount = 0;
@@ -295,12 +357,35 @@ public class SourceDataScan {
 				addRow(valueSheet, row);
 			}
 			// Save some memory by dereferencing tables already included in the report:
-			tableToFieldInfos.remove(tableName);
+			tableToFieldInfos.remove(table);
 		}
 	}
 
+	private void createMetaSheet() {
+		// All variables to be stored
+		Sheet metaSheet = workbook.createSheet("_");
+		addRow(metaSheet, "Key", "Value");
+		addRow(metaSheet, "Version", Version.getVersion(this.getClass()));
+		addRow(metaSheet, "Scan started at ", startTimeStamp.toString());
+		addRow(metaSheet, "Scan finished at", LocalDateTime.now().toString());
+		addRow(metaSheet, "MAX_VALUES_IN_MEMORY", SourceDataScan.MAX_VALUES_IN_MEMORY);
+		addRow(metaSheet, "MIN_CELL_COUNT_FOR_CSV", SourceDataScan.MIN_CELL_COUNT_FOR_CSV);
+		addRow(metaSheet, "N_FOR_FREE_TEXT_CHECK", SourceDataScan.N_FOR_FREE_TEXT_CHECK);
+		addRow(metaSheet, "MIN_AVERAGE_LENGTH_FOR_FREE_TEXT", SourceDataScan.MIN_AVERAGE_LENGTH_FOR_FREE_TEXT);
+		addRow(metaSheet, "sourceType", this.sourceType.toString());
+		addRow(metaSheet, "dbType", this.dbType != null ? this.dbType.getTypeName() : "");
+//		addRow(metaSheet, "database", this.database);
+		addRow(metaSheet, "delimiter", this.delimiter);
+		addRow(metaSheet, "sampleSize", this.sampleSize);
+		addRow(metaSheet, "scanValues", this.scanValues);
+		addRow(metaSheet, "minCellCount", this.minCellCount);
+		addRow(metaSheet, "maxValues", this.maxValues);
+		addRow(metaSheet, "calculateNumericStats", this.calculateNumericStats);
+		addRow(metaSheet, "numStatsSamplerSize", this.numStatsSamplerSize);
 
-	private void removeEmptyTables(Map<String, List<FieldInfo>> tableToFieldInfos) {
+	}
+
+	private void removeEmptyTables() {
 		tableToFieldInfos.entrySet()
 				.removeIf(stringListEntry -> stringListEntry.getValue().size() == 0);
 	}
@@ -454,16 +539,23 @@ public class SourceDataScan {
 				column = column.replace("\\\"", "\"");
 				row.set(i, column);
 			}
+
 			if (lineNr == 1) {
-				for (String cell : row)
+				for (String cell : row) {
 					fieldInfos.add(new FieldInfo(cell));
+				}
+
+				if (!scanValues) {
+					return fieldInfos;
+				}
 			} else {
 				if (row.size() == fieldInfos.size()) { // Else there appears to be a formatting error, so skip
-					for (int i = 0; i < row.size(); i++)
+					for (int i = 0; i < row.size(); i++) {
 						fieldInfos.get(i).processValue(row.get(i));
+					}
 				}
 			}
-			if (lineNr == sampleSize)
+			if (sampleSize != -1 && lineNr > sampleSize)
 				break;
 		}
 		for (FieldInfo fieldInfo : fieldInfos)
@@ -472,42 +564,40 @@ public class SourceDataScan {
 		return fieldInfos;
 	}
 
-	private List<FieldInfo> processSasFile(String filename) {
-		StringUtilities.outputWithTime("Scanning table " + filename);
+	private List<FieldInfo> processSasFile(SasFileReader sasFileReader) throws IOException {
 		List<FieldInfo> fieldInfos = new ArrayList<>();
 
-		try(FileInputStream inputStream = new FileInputStream(new File(filename))) {
-			SasFileReader sasFileReader = new SasFileReaderImpl(inputStream);
+		SasFileProperties sasFileProperties = sasFileReader.getSasFileProperties();
+		for (Column column : sasFileReader.getColumns()) {
+			FieldInfo fieldInfo = new FieldInfo(column.getName());
+			fieldInfo.label = column.getLabel();
+			fieldInfo.rowCount = sasFileProperties.getRowCount();
+			if (!scanValues) {
+				// Either NUMBER or STRING; scanning values produces a more granular type and is preferred
+				fieldInfo.type = column.getType().getName().replace("java.lang.", "");
+				fieldInfo.maxLength = column.getLength();
+			}
+			fieldInfos.add(fieldInfo);
+		}
 
-			SasFileProperties sasFileProperties = sasFileReader.getSasFileProperties();
-			for (Column column : sasFileReader.getColumns()) {
-				FieldInfo fieldInfo = new FieldInfo(column.getName());
-				fieldInfo.label = column.getLabel();
-				fieldInfo.rowCount = sasFileProperties.getRowCount();
-				if (!scanValues) {
-					// Either NUMBER or STRING; scanning values produces a more granular type and is preferred
-					fieldInfo.type = column.getType().getName().replace("java.lang.", "");
-				}
-				fieldInfos.add(fieldInfo);
+		if (!scanValues) {
+			return fieldInfos;
+		}
+
+		for (int lineNr = 0; lineNr < sasFileProperties.getRowCount(); lineNr++) {
+			Object[] row = sasFileReader.readNext();
+
+			if (row.length != fieldInfos.size()) {
+				StringUtilities.outputWithTime("WARNING: row " + lineNr + " not scanned due to field count mismatch.");
+				continue;
 			}
 
-			for (int lineNr = 0; lineNr < sasFileProperties.getRowCount(); lineNr++) {
-				Object[] row = sasFileReader.readNext();
-
-				if (row.length != fieldInfos.size()) {
-					StringUtilities.outputWithTime("WARNING: row " + lineNr + " not scanned due to field count mismatch.");
-					continue;
-				}
-
-				for (int i = 0; i < row.length; i++) {
-					fieldInfos.get(i).processValue(row[i] == null ? "" : row[i].toString());
-				}
-
-				if (lineNr == sampleSize)
-					break;
+			for (int i = 0; i < row.length; i++) {
+				fieldInfos.get(i).processValue(row[i] == null ? "" : row[i].toString());
 			}
-		} catch (IOException e) {
-			e.printStackTrace();
+
+			if (sampleSize != -1 && lineNr >= sampleSize)
+				break;
 		}
 
 		for (FieldInfo fieldInfo : fieldInfos) {
@@ -574,15 +664,16 @@ public class SourceDataScan {
 
 		public Double getFractionEmpty() {
 			if (nProcessed == 0)
-				return 0d;
+				return 1d;
 			else
 				return emptyCount / (double) nProcessed;
 		}
 
 		public String getTypeDescription() {
-			// TODO: standardize in enum. Type names deviated in fakedata generator.
 			if (type != null)
 				return type;
+			else if (!scanValues) // If not type assigned and not values scanned, do not derive
+				return "";
 			else if (nProcessed == emptyCount)
 				return DataType.EMPTY.name();
 			else if (isFreeText)
@@ -688,15 +779,16 @@ public class SourceDataScan {
 		}
 
 		private Object formatNumericValue(double value, boolean dateAsDays) {
-			if (getTypeDescription().equals(DataType.EMPTY.name())) {
+			if (nProcessed == 0) {
+				return Double.NaN;
+			} else if (getTypeDescription().equals(DataType.EMPTY.name())) {
 				return Double.NaN;
 			} else if (isInteger || isReal) {
 				return value;
 			} else if (isDate && dateAsDays) {
-				return value/1000/3600/24;
+				return value;
 			} else if (isDate) {
-				Date date = new Date((long) value);
-				return new SimpleDateFormat("yyyy-MM-dd").format(date);
+				return LocalDate.ofEpochDay((long) value).toString();
 			} else {
 				return Double.NaN;
 			}

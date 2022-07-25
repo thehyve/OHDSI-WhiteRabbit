@@ -231,7 +231,7 @@ public class ETLMarkupDocumentGenerator {
 		 */
 		MarkdownDocument(String directoryName) {
 			this.mainFolder = new File(directoryName);
-			this.filesFolder = new File(directoryName, "_files");
+			this.filesFolder = new File(directoryName, "md_files");
 		}
 
 		@Override
@@ -315,8 +315,14 @@ public class ETLMarkupDocumentGenerator {
 
 			for (Row row : rows) {
 				line = new StringBuilder();
-				for (String value : row.getCells())
-					line.append("| ").append(value.replaceAll("\n", "  ")).append(" ");
+				for (String value : row.getCells()) {
+					if (value != null) {
+						value = value.replaceAll("\n", "  ");
+					} else {
+						value = "";
+					}
+					line.append("| ").append(value).append(" ");
+				}
 				line.append("|");
 				lines.add(line.toString());
 			}
@@ -336,7 +342,7 @@ public class ETLMarkupDocumentGenerator {
 		 */
 		HtmlDocument(String directoryName) {
 			this.mainFolder = new File(directoryName);
-			this.filesFolder = new File(directoryName, "_files");
+			this.filesFolder = new File(directoryName, "html_files");
 		}
 
 		@Override
@@ -415,8 +421,12 @@ public class ETLMarkupDocumentGenerator {
 
 				for (Row row : rows) {
 					lines.add("\t<tr>");
-					for (String cell : row.getCells())
+					for (String cell : row.getCells()) {
+						if (cell == null) {
+							cell = "";
+						}
 						lines.add("\t\t<td>" + cell + "</td>");
+					}
 					lines.add("\t</tr>");
 				}
 				lines.add("</table>");

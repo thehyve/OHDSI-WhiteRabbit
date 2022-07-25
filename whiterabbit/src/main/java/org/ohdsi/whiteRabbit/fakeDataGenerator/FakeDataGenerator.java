@@ -25,7 +25,6 @@ import org.ohdsi.rabbitInAHat.dataModel.Field;
 import org.ohdsi.rabbitInAHat.dataModel.Table;
 import org.ohdsi.rabbitInAHat.dataModel.ValueCounts;
 import org.ohdsi.utilities.StringUtilities;
-import org.ohdsi.utilities.collections.OneToManySet;
 import org.ohdsi.utilities.files.Row;
 import org.ohdsi.utilities.files.WriteCSVFileWithHeader;
 import org.ohdsi.whiteRabbit.DbSettings;
@@ -33,31 +32,27 @@ import org.ohdsi.whiteRabbit.DbSettings;
 public class FakeDataGenerator {
 
 	private RichConnection connection;
-	private int targetType;
 	private int maxRowsPerTable = 1000;
-	private boolean firstFieldAsKey;
 	private boolean doUniformSampling;
-
 
 	private static int REGULAR = 0;
 	private static int RANDOM = 1;
 	private static int PRIMARY_KEY = 2;
 
 	public void generateData(DbSettings dbSettings, int maxRowsPerTable, String filename, String folder) {
-		generateData(dbSettings, maxRowsPerTable, filename, folder, false, false);
+		generateData(dbSettings, maxRowsPerTable, filename, folder, false);
 	}
 
-	public void generateData(DbSettings dbSettings, int maxRowsPerTable, String filename, String folder, boolean firstFieldAsKey, boolean doUniformSampling) {
+	public void generateData(DbSettings dbSettings, int maxRowsPerTable, String filename, String folder, boolean doUniformSampling) {
 		this.maxRowsPerTable = maxRowsPerTable;
-		this.targetType = dbSettings.dataType;
-		this.firstFieldAsKey = firstFieldAsKey;
+		DbSettings.SourceType targetType = dbSettings.sourceType;
 		this.doUniformSampling = doUniformSampling;
 
 		StringUtilities.outputWithTime("Starting creation of fake data");
 		System.out.println("Loading scan report from " + filename);
 		Database database = Database.generateModelFromScanReport(filename);
 
-		if (targetType == DbSettings.DATABASE) {
+		if (targetType == DbSettings.SourceType.DATABASE) {
 			connection = new RichConnection(dbSettings.server, dbSettings.domain, dbSettings.user, dbSettings.password, dbSettings.dbType);
 			connection.use(dbSettings.database);
 			for (Table table : database.getTables()) {
@@ -95,7 +90,7 @@ public class FakeDataGenerator {
 		for (int i = 0; i < table.getFields().size(); i++) {
 			Field field = table.getFields().get(i);
 			fieldNames[i] = field.getName();
-			ValueGenerator valueGenerator = new ValueGenerator(field, this.firstFieldAsKey && i == 0);
+			ValueGenerator valueGenerator = new ValueGenerator(field);
 			valueGenerators[i] = valueGenerator;
 //			if (valueGenerator.generatorType == PRIMARY_KEY && valueGenerator.values.length < size)
 //				size = valueGenerator.values.length;
@@ -138,22 +133,25 @@ public class FakeDataGenerator {
 		private String[] values;
 		private int[] cumulativeFrequency;
 		private int totalFrequency;
+		private String fieldName;
 		private String type;
 		private int length;
 		private int pk_cursor;
 		private int generatorType;
 		private Random random = new Random();
+		private boolean isNotUniqueWarningShown = false;
 
-		public ValueGenerator(Field field, boolean forcePrimaryKey) {
+		public ValueGenerator(Field field) {
 			ValueCounts valueCounts = field.getValueCounts();
+			fieldName = field.getName();
 			type = field.getType();
+			boolean isUnique = field.getFractionUnique() != null && field.getFractionUnique() == 1;
 
 			if (valueCounts.isEmpty()) {
 				length = field.getMaxLength();
 				generatorType = RANDOM;
 			} else {
 				int length = valueCounts.size();
-
 				int runningTotal = 0;
 				values = new String[length];
 				cumulativeFrequency = new int[length];
@@ -171,8 +169,7 @@ public class FakeDataGenerator {
 				totalFrequency = runningTotal;
 				generatorType = REGULAR;
 			}
-
-			if (forcePrimaryKey) {
+			if (isUnique) {
 				generatorType = PRIMARY_KEY;
 				pk_cursor = 0;
 			}
@@ -198,12 +195,21 @@ public class FakeDataGenerator {
 					return "";
 				else
 					return "";
-			} else if (generatorType == PRIMARY_KEY) { // Pick the next value:
-				String value = values[pk_cursor];
-				pk_cursor++;
-				if (pk_cursor >= values.length) {
-					// Loop back to the first (not primary key anymore!)
-					pk_cursor = 0;
+			} else if (generatorType == PRIMARY_KEY) {
+				// Pick the next value or use the pk_cursor
+				String value;
+				if (values != null) {
+					if (pk_cursor >= values.length) {
+						// Loop back to the first (not a primary key anymore!)
+						pk_cursor = 0;
+						if (!isNotUniqueWarningShown) {
+							StringUtilities.outputWithTime("Used all the known " + values.length + " values for unique field '" + fieldName + "'. The values are recycled and the fake data in this column will not be unique.");
+							isNotUniqueWarningShown = true;
+						}
+					}
+					value = values[pk_cursor++];
+				} else {
+					value = String.valueOf(++pk_cursor);
 				}
 				return value;
 			} else { // Sample from values:
