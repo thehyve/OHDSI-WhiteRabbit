@@ -19,11 +19,9 @@ package org.ohdsi.databases;
 
 import java.io.Closeable;
 import java.sql.BatchUpdateException;
-import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
@@ -40,7 +38,7 @@ import org.ohdsi.utilities.files.Row;
 
 public class RichConnection implements Closeable {
 	public static int				INSERT_BATCH_SIZE	= 100000;
-	private Connection				connection;
+	private DBConnection				connection;
 	private boolean					verbose				= false;
 	private static DecimalFormat	decimalFormat		= new DecimalFormat("#.#");
 	private DbType					dbType;
@@ -93,7 +91,7 @@ public class RichConnection implements Closeable {
 		}
 	}
 
-	private void outputQueryStats(Statement statement, long ms) throws SQLException {
+	void outputQueryStats(Statement statement, long ms) throws SQLException {
 		Throwable warning = statement.getWarnings();
 		if (warning != null)
 			System.out.println("- SERVER: " + warning.getMessage());
@@ -116,7 +114,7 @@ public class RichConnection implements Closeable {
 	 * @return
 	 */
 	public QueryResult query(String sql) {
-		return new QueryResult(sql);
+		return new QueryResult(sql, this);
 	}
 
 	/**
@@ -125,18 +123,23 @@ public class RichConnection implements Closeable {
 	 * @param database
 	 */
 	public void use(String database) {
-		if (database == null || dbType == DbType.MSACCESS || dbType == DbType.BIGQUERY || dbType == DbType.AZURE) {
-			return;
+		if (connection.hasDBConnector()) {
+			connection.getConnector().use(database);
 		}
+		else {
+			if (database == null || dbType == DbType.MSACCESS || dbType == DbType.BIGQUERY || dbType == DbType.AZURE) {
+				return;
+			}
 
-		if (dbType == DbType.ORACLE) {
-			execute("ALTER SESSION SET current_schema = " + database);
-		} else if (dbType == DbType.POSTGRESQL || dbType == DbType.REDSHIFT) {
-			execute("SET search_path TO " + database);
-		} else if (dbType == DbType.TERADATA) {
-			execute("database " + database);
-		} else {
-			execute("USE " + database);
+			if (dbType == DbType.ORACLE) {
+				execute("ALTER SESSION SET current_schema = " + database);
+			} else if (dbType == DbType.POSTGRESQL || dbType == DbType.REDSHIFT) {
+				execute("SET search_path TO " + database);
+			} else if (dbType == DbType.TERADATA) {
+				execute("database " + database);
+			} else {
+				execute("USE " + database);
+			}
 		}
 	}
 
@@ -225,28 +228,10 @@ public class RichConnection implements Closeable {
 		this.verbose = verbose;
 	}
 
-	public class QueryResult implements Iterable<Row> {
-		private String				sql;
-
-		private List<DBRowIterator>	iterators	= new ArrayList<>();
-
-		public QueryResult(String sql) {
-			this.sql = sql;
-		}
-
-		@Override
-		public Iterator<Row> iterator() {
-			DBRowIterator iterator = new DBRowIterator(sql);
-			iterators.add(iterator);
-			return iterator;
-		}
-
-		public void close() {
-			for (DBRowIterator iterator : iterators) {
-				iterator.close();
-			}
-		}
+	public DBConnection getConnection() {
+		return connection;
 	}
+
 
 	/**
 	 * Inserts the rows into a table in the database.
@@ -277,6 +262,10 @@ public class RichConnection implements Closeable {
 				createTable(table, batch);
 			insert(table, batch);
 		}
+	}
+
+	boolean isVerbose() {
+		return verbose;
 	}
 
 	private void insert(String tableName, List<Row> rows) {
@@ -409,96 +398,6 @@ public class RichConnection implements Closeable {
 					return columnNameToSqlName(name) + " varchar(255)";
 			} else
 				throw new RuntimeException("Create table syntax not specified for type " + dbType);
-		}
-	}
-
-	private class DBRowIterator implements Iterator<Row> {
-
-		private ResultSet	resultSet;
-
-		private boolean		hasNext;
-
-		private Set<String>	columnNames	= new HashSet<>();
-
-		public DBRowIterator(String sql) {
-			Statement statement;
-			try {
-				sql.trim();
-				if (sql.endsWith(";"))
-					sql = sql.substring(0, sql.length() - 1);
-				if (verbose) {
-					String abbrSQL = sql.replace('\n', ' ').replace('\t', ' ').trim();
-					if (abbrSQL.length() > 100)
-						abbrSQL = abbrSQL.substring(0, 100).trim() + "...";
-					System.out.println("Executing query: " + abbrSQL);
-				}
-				long start = System.currentTimeMillis();
-				statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-				resultSet = statement.executeQuery(sql);
-				hasNext = resultSet.next();
-				if (verbose)
-					outputQueryStats(statement, System.currentTimeMillis() - start);
-			} catch (SQLException e) {
-				System.err.println(sql);
-				System.err.println(e.getMessage());
-				throw new RuntimeException(e);
-			}
-		}
-
-		public void close() {
-			if (resultSet != null) {
-				try {
-					resultSet.close();
-				} catch (SQLException e) {
-					e.printStackTrace();
-				}
-				resultSet = null;
-				hasNext = false;
-			}
-		}
-
-		@Override
-		public boolean hasNext() {
-			return hasNext;
-		}
-
-		@Override
-		public Row next() {
-			try {
-				Row row = new Row();
-				ResultSetMetaData metaData;
-				metaData = resultSet.getMetaData();
-				columnNames.clear();
-
-				for (int i = 1; i < metaData.getColumnCount() + 1; i++) {
-					String columnName = metaData.getColumnName(i);
-					if (columnNames.add(columnName)) {
-						String value;
-						try {
-							value = resultSet.getString(i);
-						} catch (Exception e) {
-							value = "";
-						}
-						if (value == null)
-							value = "";
-
-						row.add(columnName, value.replace(" 00:00:00", ""));
-					}
-				}
-				hasNext = resultSet.next();
-				if (!hasNext) {
-					resultSet.close();
-					resultSet = null;
-				}
-				return row;
-			} catch (SQLException e) {
-				e.printStackTrace();
-				throw new RuntimeException(e);
-			}
-		}
-
-		@Override
-		public void remove() {
 		}
 	}
 }

@@ -28,9 +28,10 @@ public class DbType {
 	public static DbType	TERADATA	= new DbType("teradata");
 	public static DbType	BIGQUERY	= new DbType("bigquery");
 	public static DbType	AZURE		= new DbType("azure");
+	public static DbType	SNOWFLAKE		= new DbType("snowflake");
 
 	private enum Type {
-		MYSQL, MSSQL, PDW, ORACLE, POSTGRESQL, MSACCESS, REDSHIFT, TERADATA, BIGQUERY, AZURE
+		MYSQL, MSSQL, PDW, ORACLE, POSTGRESQL, MSACCESS, REDSHIFT, TERADATA, BIGQUERY, AZURE, SNOWFLAKE
 	};
 
 	private Type type;

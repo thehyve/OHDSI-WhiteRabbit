@@ -36,7 +36,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.ohdsi.databases.DbType;
 import org.ohdsi.databases.RichConnection;
-import org.ohdsi.databases.RichConnection.QueryResult;
+import org.ohdsi.databases.QueryResult;
 import org.ohdsi.rabbitInAHat.dataModel.Table;
 import org.ohdsi.utilities.*;
 import org.ohdsi.utilities.collections.CountingSet;

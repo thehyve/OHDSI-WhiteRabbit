@@ -32,23 +32,26 @@ public class DBConnector {
 	}
 
 	// If dbType.BIGQUERY: domain field has been replaced with  database field
-	public static Connection connect(String server, String domain, String user, String password, DbType dbType) {
+	public static DBConnection connect(String server, String domain, String user, String password, DbType dbType) {
 		if (dbType.equals(DbType.MYSQL))
-			return DBConnector.connectToMySQL(server, user, password);
+			return new DBConnection(DBConnector.connectToMySQL(server, user, password));
 		else if (dbType.equals(DbType.MSSQL) || dbType.equals(DbType.PDW) || dbType.equals(DbType.AZURE))
-			return DBConnector.connectToMSSQL(server, domain, user, password);
+			return new DBConnection(DBConnector.connectToMSSQL(server, domain, user, password));
 		else if (dbType.equals(DbType.ORACLE))
-			return DBConnector.connectToOracle(server, domain, user, password);
+			return new DBConnection(DBConnector.connectToOracle(server, domain, user, password));
 		else if (dbType.equals(DbType.POSTGRESQL))
-			return DBConnector.connectToPostgreSQL(server, user, password);
+			return new DBConnection(DBConnector.connectToPostgreSQL(server, user, password));
 		else if (dbType.equals(DbType.MSACCESS))
-			return DBConnector.connectToMsAccess(server, user, password);
+			return new DBConnection(DBConnector.connectToMsAccess(server, user, password));
 		else if (dbType.equals(DbType.REDSHIFT))
-			return DBConnector.connectToRedshift(server, user, password);
+			return new DBConnection(DBConnector.connectToRedshift(server, user, password));
 		else if (dbType.equals(DbType.TERADATA))
-			return DBConnector.connectToTeradata(server, user, password);
+			return new DBConnection(DBConnector.connectToTeradata(server, user, password));
 		else if (dbType.equals(DbType.BIGQUERY))
-			return DBConnector.connectToBigQuery(server, domain, user, password);
+			return new DBConnection(DBConnector.connectToBigQuery(server, domain, user, password));
+		else if (dbType.equals(DbType.SNOWFLAKE)) {
+			return new DBConnection(SnowflakeConnector.INSTANCE.getInstance(server, domain, user, password));
+		}
 		else
 			return null;
 	}
@@ -110,10 +113,9 @@ public class DBConnector {
 		final String jdbcProtocol = "jdbc:postgresql://";
 		String url = (!server.startsWith(jdbcProtocol) ? jdbcProtocol : "") + server;
 		try {
-			System.out.printf("DriverManager.getConnection(%s, %s, %s)%n", url, user, password);
 			return DriverManager.getConnection(url, user, password);
 		} catch (SQLException e1) {
-			throw new RuntimeException("Cannot connect to DB server: " + e1.getMessage() + " for url: " + url);
+			throw new RuntimeException("Cannot connect to DB server: " + e1.getMessage());
 		}
 	}
 
