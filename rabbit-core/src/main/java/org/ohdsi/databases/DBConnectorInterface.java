@@ -52,7 +52,8 @@ public interface DBConnectorInterface {
         }
 
         return names;
-}
+    }
+
     default int getNameIndex() {
         return 0;
     }

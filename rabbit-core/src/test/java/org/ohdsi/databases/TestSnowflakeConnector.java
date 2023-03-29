@@ -1,10 +1,10 @@
 package org.ohdsi.databases;
 
-import org.apache.commons.lang.StringUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -12,12 +12,12 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.ohdsi.databases.SnowflakeConnector.*;
 import static org.ohdsi.databases.SnowflakeConnector.ServerConfig.checkSnowflakeConfig;
 
-class SnowflakeConnectorTest {
+class TestSnowflakeConnector {
     @Test
     @EnabledIfEnvironmentVariable(named = "SNOWFLAKE_SERVER", matches = ".*\\.snowflakecomputing\\.com")
     public void testConnectToSnowflake() throws SQLException {
         DbSettings dbSettings = new DbSettings();
-        setSnowflakeTestConfig(dbSettings);
+        SnowflakeTestUtils.setSnowflakeTestConfig(dbSettings);
         Connection connection = INSTANCE.getInstance(dbSettings).getConnection();
 
         assertNotNull(connection);
@@ -25,12 +25,30 @@ class SnowflakeConnectorTest {
     }
 
     @Test
-    public void testUninitializedSnowflakeConnection() {
+    public void testUninitializedSnowflakeConnection() throws SQLException {
+        INSTANCE.resetConnection(); // make sure the connection is not available from running another test first
         Exception exception = assertThrows(RuntimeException.class, () -> {
             INSTANCE.getInstance().getConnection();
         });
 
         assertEquals(ERROR_CONNECTION_NOT_INITIALIZED, exception.getMessage());
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "SNOWFLAKE_SERVER", matches = ".*\\.snowflakecomputing\\.com")
+    public void testGetFieldNames() {
+        DbSettings dbSettings = new DbSettings();
+        SnowflakeTestUtils.setSnowflakeTestConfig(dbSettings);
+        Connection connection = INSTANCE.getInstance(dbSettings).getConnection();
+        ResultSet resultSet = INSTANCE.getFieldNames("customer");
+        try {
+            while (resultSet.next()) {
+                assertEquals(resultSet.getString("COLUMN_NAME"), "iets");
+                assertEquals(resultSet.getString("TYPE_NAME"), "iets");
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e.getMessage());
+        }
     }
 
     @Test
@@ -101,24 +119,5 @@ class SnowflakeConnectorTest {
         }
 
         return false;
-    }
-
-    private static void setSnowflakeTestConfig(DbSettings dbSettings) {
-        // get Snowflake settings from the environment
-        // this should become the OHDSI Snowflake test instance once that is available
-        dbSettings.server = checkAndGetEnv("SNOWFLAKE_SERVER");
-        dbSettings.user = checkAndGetEnv("SNOWFLAKE_USER");
-        dbSettings.password = checkAndGetEnv("SNOWFLAKE_PASSWORD");
-        dbSettings.database = checkAndGetEnv("SNOWFLAKE_DATABASE");
-        dbSettings.domain = dbSettings.database;
-    }
-
-    private static String checkAndGetEnv(String name) {
-        String value = System.getenv(name);
-        if (StringUtils.isEmpty(value)) {
-            throw new RuntimeException(String.format("Environment variable '%s' is not set.", name));
-        }
-
-        return value;
     }
 }

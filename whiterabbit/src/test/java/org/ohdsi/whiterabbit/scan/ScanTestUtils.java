@@ -95,7 +95,7 @@ public class ScanTestUtils {
             }
         }
         else {
-            throw new RuntimeException("Unsupported DBType: " + dbType);
+            throw new RuntimeException("Unsupported DbType: " + dbType);
         }
     }
 }

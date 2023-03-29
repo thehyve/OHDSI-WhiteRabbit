@@ -38,6 +38,13 @@ public enum SnowflakeConnector implements DBConnectorInterface {
     SnowflakeConnector() {
     }
 
+    public void resetConnection() throws SQLException {
+        if (this.snowflakeConnection != null) {
+            this.snowflakeConnection.close();
+        }
+        this.snowflakeConnection = null;
+    }
+
     @Override
     public DBConnectorInterface getInstance(String server, String fullSchemaPath, String user, String password) {
         if (this.serverConfig == null) {

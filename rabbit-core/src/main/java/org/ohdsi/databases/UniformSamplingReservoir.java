@@ -1,4 +1,4 @@
-package org.ohdsi.whiteRabbit.scan;
+package org.ohdsi.databases;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;

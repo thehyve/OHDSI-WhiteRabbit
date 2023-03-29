@@ -32,13 +32,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
 import org.ohdsi.utilities.SimpleCounter;
 import org.ohdsi.utilities.StringUtilities;
 import org.ohdsi.utilities.files.Row;
 
 public class RichConnection implements Closeable {
 	public static int				INSERT_BATCH_SIZE	= 100000;
-	private DBConnection				connection;
+	private DBConnection			connection;
 	private boolean					verbose				= false;
 	private static DecimalFormat	decimalFormat		= new DecimalFormat("#.#");
 	private DbType					dbType;
@@ -174,8 +175,77 @@ public class RichConnection implements Closeable {
 		return names;
 	}
 
-	public ResultSet getMsAccessFieldNames(String table) {
-		if (dbType == DbType.MSACCESS) {
+	public List<FieldInfo> fetchTableStructure(RichConnection connection, String database, String table, ScanParameters scanParameters) {
+		List<FieldInfo> fieldInfos = new ArrayList<>();
+
+		if (dbType == DbType.MSACCESS || dbType == DbType.SNOWFLAKE) {
+			ResultSet rs = getFieldNamesFromJDBC(table);
+			try {
+				while (rs.next()) {
+					FieldInfo fieldInfo = new FieldInfo(scanParameters, rs.getString("COLUMN_NAME"));
+					fieldInfo.type = rs.getString("TYPE_NAME");
+					fieldInfo.rowCount = connection.getTableSize(table);
+					fieldInfos.add(fieldInfo);
+				}
+			} catch (SQLException e) {
+				throw new RuntimeException(e.getMessage());
+			}
+		} else {
+			String query = null;
+			if (dbType == DbType.ORACLE)
+				query = "SELECT COLUMN_NAME,DATA_TYPE FROM ALL_TAB_COLUMNS WHERE table_name = '" + table + "' AND owner = '" + database.toUpperCase() + "'";
+			else if (dbType == DbType.MSSQL || dbType == DbType.PDW) {
+				String trimmedDatabase = database;
+				if (database.startsWith("[") && database.endsWith("]"))
+					trimmedDatabase = database.substring(1, database.length() - 1);
+				String[] parts = table.split("\\.");
+				query = "SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_CATALOG='" + trimmedDatabase + "' AND TABLE_SCHEMA='" + parts[0] +
+						"' AND TABLE_NAME='" + parts[1]	+ "';";
+			} else if (dbType == DbType.AZURE) {
+				String[] parts = table.split("\\.");
+				query = "SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='" + parts[0] +
+						"' AND TABLE_NAME='" + parts[1]	+ "';";
+			} else if (dbType == DbType.MYSQL)
+				query = "SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '" + database + "' AND TABLE_NAME = '" + table
+						+ "';";
+			else if (dbType == DbType.POSTGRESQL || dbType == DbType.REDSHIFT)
+				query = "SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '" + database.toLowerCase() + "' AND TABLE_NAME = '"
+						+ table.toLowerCase() + "' ORDER BY ordinal_position;";
+			else if (dbType == DbType.TERADATA) {
+				query = "SELECT ColumnName, ColumnType FROM dbc.columns WHERE DatabaseName= '" + database.toLowerCase() + "' AND TableName = '"
+						+ table.toLowerCase() + "';";
+			}
+			else if (dbType == DbType.BIGQUERY) {
+				query = "SELECT column_name AS COLUMN_NAME, data_type as DATA_TYPE FROM " + database + ".INFORMATION_SCHEMA.COLUMNS WHERE table_name = \"" + table + "\";";
+			}
+
+			if (StringUtils.isEmpty(query)) {
+				throw new RuntimeException("No query was specified to obtain the table structure for DbType = " + dbType.getTypeName());
+			}
+
+			for (org.ohdsi.utilities.files.Row row : connection.query(query)) {
+				row.upperCaseFieldNames();
+				org.ohdsi.databases.FieldInfo fieldInfo;
+				if (dbType == DbType.TERADATA) {
+					fieldInfo = new org.ohdsi.databases.FieldInfo(scanParameters, row.get("COLUMNNAME"));
+				} else {
+					fieldInfo = new org.ohdsi.databases.FieldInfo(scanParameters, row.get("COLUMN_NAME"));
+				}
+				if (dbType == DbType.TERADATA) {
+					fieldInfo.type = row.get("COLUMNTYPE");
+				} else {
+					fieldInfo.type = row.get("DATA_TYPE");
+				}
+				fieldInfo.rowCount = connection.getTableSize(table);
+				fieldInfos.add(fieldInfo);
+			}
+		}
+		return fieldInfos;
+	}
+
+
+	public ResultSet getFieldNamesFromJDBC(String table) {
+		if (dbType == DbType.MSACCESS || dbType == DbType.SNOWFLAKE) {
 			try {
 				DatabaseMetaData metadata = connection.getMetaData();
 				return metadata.getColumns(null, null, table, null);
@@ -340,25 +410,25 @@ public class RichConnection implements Closeable {
 	private Set<String> createTable(String tableName, List<Row> rows) {
 		Set<String> numericFields = new HashSet<>();
 		Row firstRow = rows.get(0);
-		List<FieldInfo> fields = new ArrayList<>(rows.size());
+		List<NumericFieldInfo> fields = new ArrayList<>(rows.size());
 		for (String field : firstRow.getFieldNames())
-			fields.add(new FieldInfo(field));
+			fields.add(new NumericFieldInfo(field));
 		for (Row row : rows) {
-			for (FieldInfo fieldInfo : fields) {
-				String value = row.get(fieldInfo.name);
-				if (fieldInfo.isNumeric && !StringUtilities.isInteger(value))
-					fieldInfo.isNumeric = false;
-				if (value.length() > fieldInfo.maxLength)
-					fieldInfo.maxLength = value.length();
+			for (NumericFieldInfo numericFieldInfo : fields) {
+				String value = row.get(numericFieldInfo.name);
+				if (numericFieldInfo.isNumeric && !StringUtilities.isInteger(value))
+					numericFieldInfo.isNumeric = false;
+				if (value.length() > numericFieldInfo.maxLength)
+					numericFieldInfo.maxLength = value.length();
 			}
 		}
 
 		StringBuilder sql = new StringBuilder();
 		sql.append("CREATE TABLE ").append(tableName).append(" (\n");
-		for (FieldInfo fieldInfo : fields) {
-			sql.append("  ").append(fieldInfo.toString()).append(",\n");
-			if (fieldInfo.isNumeric)
-				numericFields.add(fieldInfo.name);
+		for (NumericFieldInfo numericFieldInfo : fields) {
+			sql.append("  ").append(numericFieldInfo.toString()).append(",\n");
+			if (numericFieldInfo.isNumeric)
+				numericFields.add(numericFieldInfo.name);
 		}
 		sql.append(");");
 		execute(sql.toString());
@@ -369,12 +439,12 @@ public class RichConnection implements Closeable {
 		return name.replaceAll(" ", "_").replace("-", "_").replace(",", "_").replaceAll("_+", "_");
 	}
 
-	private class FieldInfo {
+	private class NumericFieldInfo {
 		public String	name;
 		public boolean	isNumeric	= true;
 		public int		maxLength	= 0;
 
-		public FieldInfo(String name) {
+		public NumericFieldInfo(String name) {
 			this.name = name;
 		}
 
