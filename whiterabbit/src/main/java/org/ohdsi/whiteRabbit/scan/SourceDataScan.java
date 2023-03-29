@@ -18,8 +18,6 @@
 package org.ohdsi.whiteRabbit.scan;
 
 import java.io.*;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,7 +26,6 @@ import com.epam.parso.Column;
 import com.epam.parso.SasFileProperties;
 import com.epam.parso.SasFileReader;
 import com.epam.parso.impl.SasFileReaderImpl;
-import org.apache.commons.lang.StringUtils;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Row;
@@ -43,11 +40,6 @@ import org.ohdsi.utilities.files.ReadTextFile;
 import static java.lang.Long.max;
 
 public class SourceDataScan implements ScanParameters {
-
-/*	public static int	MAX_VALUES_IN_MEMORY				= 100000;
-	public static int	MIN_CELL_COUNT_FOR_CSV				= 1000000;
-	public static int	N_FOR_FREE_TEXT_CHECK				= 1000;
-	public static int	MIN_AVERAGE_LENGTH_FOR_FREE_TEXT	= 100;*/
 
 	private SXSSFWorkbook workbook;
 	private char delimiter = ',';
@@ -97,6 +89,10 @@ public class SourceDataScan implements ScanParameters {
 
 	public int getMinCellCount() {
 		return minCellCount;
+	}
+
+	public int getSampleSize() {
+		return sampleSize;
 	}
 
 	public void setMaxValues(int maxValues) {
@@ -414,7 +410,7 @@ public class SourceDataScan implements ScanParameters {
 			int actualCount = 0;
 			QueryResult queryResult = null;
 			try {
-				queryResult = fetchRowsFromTable(connection, table, rowCount);
+				queryResult = connection.fetchRowsFromTable(table, rowCount, this);
 				for (org.ohdsi.utilities.files.Row row : queryResult) {
 					for (FieldInfo fieldInfo : fieldInfos) {
 						fieldInfo.processValue(row.get(fieldInfo.name));
@@ -437,43 +433,6 @@ public class SourceDataScan implements ScanParameters {
 		}
 
 		return fieldInfos;
-	}
-
-	private QueryResult fetchRowsFromTable(RichConnection connection, String table, long rowCount) {
-		String query = null;
-
-		if (sampleSize == -1) {
-			if (dbType == DbType.MSACCESS)
-				query = "SELECT * FROM [" + table + "]";
-			else if (dbType == DbType.MSSQL || dbType == DbType.PDW || dbType == DbType.AZURE)
-				query = "SELECT * FROM [" + table.replaceAll("\\.", "].[") + "]";
-			else
-				query = "SELECT * FROM " + table;
-		} else {
-			if (dbType == DbType.MSSQL || dbType == DbType.AZURE)
-				query = "SELECT * FROM [" + table.replaceAll("\\.", "].[") + "] TABLESAMPLE (" + sampleSize + " ROWS)";
-			else if (dbType == DbType.MYSQL)
-				query = "SELECT * FROM " + table + " ORDER BY RAND() LIMIT " + sampleSize;
-			else if (dbType == DbType.PDW)
-				query = "SELECT TOP " + sampleSize + " * FROM [" + table.replaceAll("\\.", "].[") + "] ORDER BY RAND()";
-			else if (dbType == DbType.ORACLE) {
-				if (sampleSize < rowCount) {
-					double percentage = 100 * sampleSize / (double) rowCount;
-					if (percentage < 100)
-						query = "SELECT * FROM " + table + " SAMPLE(" + percentage + ")";
-				} else {
-					query = "SELECT * FROM " + table;
-				}
-			} else if (dbType == DbType.POSTGRESQL || dbType == DbType.REDSHIFT)
-				query = "SELECT * FROM " + table + " ORDER BY RANDOM() LIMIT " + sampleSize;
-			else if (dbType == DbType.MSACCESS)
-				query = "SELECT " + "TOP " + sampleSize + " * FROM [" + table + "]";
-			else if (dbType == DbType.BIGQUERY)
-				query = "SELECT * FROM " + table + " ORDER BY RAND() LIMIT " + sampleSize;
-		}
-		// System.out.println("SQL: " + query);
-		return connection.query(query);
-
 	}
 
 	private List<FieldInfo> processCsvFile(String filename) {

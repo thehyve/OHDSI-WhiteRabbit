@@ -243,6 +243,44 @@ public class RichConnection implements Closeable {
 		return fieldInfos;
 	}
 
+	public QueryResult fetchRowsFromTable(String table, long rowCount, ScanParameters scanParameters) {
+		String query = null;
+		int sampleSize = scanParameters.getSampleSize();
+
+		if (sampleSize == -1) {
+			if (dbType == DbType.MSACCESS)
+				query = "SELECT * FROM [" + table + "]";
+			else if (dbType == DbType.MSSQL || dbType == DbType.PDW || dbType == DbType.AZURE)
+				query = "SELECT * FROM [" + table.replaceAll("\\.", "].[") + "]";
+			else
+				query = "SELECT * FROM " + table;
+		} else {
+			if (dbType == DbType.MSSQL || dbType == DbType.AZURE)
+				query = "SELECT * FROM [" + table.replaceAll("\\.", "].[") + "] TABLESAMPLE (" + sampleSize + " ROWS)";
+			else if (dbType == DbType.MYSQL)
+				query = "SELECT * FROM " + table + " ORDER BY RAND() LIMIT " + sampleSize;
+			else if (dbType == DbType.PDW)
+				query = "SELECT TOP " + sampleSize + " * FROM [" + table.replaceAll("\\.", "].[") + "] ORDER BY RAND()";
+			else if (dbType == DbType.ORACLE) {
+				if (sampleSize < rowCount) {
+					double percentage = 100 * sampleSize / (double) rowCount;
+					if (percentage < 100)
+						query = "SELECT * FROM " + table + " SAMPLE(" + percentage + ")";
+				} else {
+					query = "SELECT * FROM " + table;
+				}
+			} else if (dbType == DbType.POSTGRESQL || dbType == DbType.REDSHIFT)
+				query = "SELECT * FROM " + table + " ORDER BY RANDOM() LIMIT " + sampleSize;
+			else if (dbType == DbType.MSACCESS)
+				query = "SELECT " + "TOP " + sampleSize + " * FROM [" + table + "]";
+			else if (dbType == DbType.BIGQUERY)
+				query = "SELECT * FROM " + table + " ORDER BY RAND() LIMIT " + sampleSize;
+		}
+		// System.out.println("SQL: " + query);
+		return query(query);
+
+	}
+
 
 	public ResultSet getFieldNamesFromJDBC(String table) {
 		if (dbType == DbType.MSACCESS || dbType == DbType.SNOWFLAKE) {

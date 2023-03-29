@@ -12,6 +12,8 @@ public interface ScanParameters {
 
     public int getMinCellCount();
 
+    public int getSampleSize();
+
     public static int	MAX_VALUES_IN_MEMORY				= 100000;
     public static int	MIN_CELL_COUNT_FOR_CSV				= 1000000;
     public static int	N_FOR_FREE_TEXT_CHECK				= 1000;
