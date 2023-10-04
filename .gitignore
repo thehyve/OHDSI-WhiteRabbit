@@ -20,3 +20,5 @@ Try*
 /examples/
 .DS_Store
 data/
+
+snowflake.env
