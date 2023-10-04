@@ -1,14 +1,14 @@
 /*******************************************************************************
  * Copyright 2019 Observational Health Data Sciences and Informatics
- *
+ * <p>
  * This file is part of WhiteRabbit
- *
+ * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
+ * <p>
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,10 +21,6 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.rmi.RemoteException;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -42,24 +38,16 @@ import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.commons.io.FileUtils;
 import org.ohdsi.databases.DbType;
 import org.ohdsi.databases.RichConnection;
-import org.ohdsi.databases.RichConnection.QueryResult;
+import org.ohdsi.databases.QueryResult;
+import org.ohdsi.databases.*;
 import org.ohdsi.rabbitInAHat.dataModel.Table;
 import org.ohdsi.utilities.*;
-import org.ohdsi.utilities.collections.CountingSet;
-import org.ohdsi.utilities.collections.CountingSet.Count;
 import org.ohdsi.utilities.collections.Pair;
 import org.ohdsi.utilities.files.ReadTextFile;
-import org.ohdsi.whiteRabbit.DbSettings;
 
 import static java.lang.Long.max;
 
-public class SourceDataScan {
-
-	public static int MAX_VALUES_IN_MEMORY = 100000;
-	public static int MIN_CELL_COUNT_FOR_CSV = 1000000;
-	public static int N_FOR_FREE_TEXT_CHECK = 1000;
-	public static int MIN_AVERAGE_LENGTH_FOR_FREE_TEXT = 100;
-
+public class SourceDataScan implements ScanParameters {
 	public final static String SCAN_REPORT_FILE_NAME = "ScanReport.xlsx";
 
 	public static final String POI_TMP_DIR_ENVIRONMENT_VARIABLE_NAME = "ORG_OHDSI_WHITERABBIT_POI_TMPDIR";
@@ -75,7 +63,6 @@ public class SourceDataScan {
 	private int maxValues;
 	private DbSettings.SourceType sourceType;
 	private DbType dbType;
-	private String database;
 	private Map<Table, List<FieldInfo>> tableToFieldInfos;
 	private Map<String, String> indexedTableNameLookup;
 
@@ -96,12 +83,36 @@ public class SourceDataScan {
 		this.sampleSize = sampleSize;
 	}
 
+	public boolean doCalculateNumericStats() {
+		return calculateNumericStats;
+	}
+
+	public int getMaxValues() {
+		return maxValues;
+	}
+
+	public boolean doScanValues() {
+		return scanValues;
+	}
+
+	public int getNumStatsSamplerSize() {
+		return numStatsSamplerSize;
+	}
+
 	public void setScanValues(boolean scanValues) {
 		this.scanValues = scanValues;
 	}
 
 	public void setMinCellCount(int minCellCount) {
 		this.minCellCount = minCellCount;
+	}
+
+	public int getMinCellCount() {
+		return minCellCount;
+	}
+
+	public int getSampleSize() {
+		return sampleSize;
 	}
 
 	public void setMaxValues(int maxValues) {
@@ -120,7 +131,6 @@ public class SourceDataScan {
 		startTimeStamp = LocalDateTime.now();
 		sourceType = dbSettings.sourceType;
 		dbType = dbSettings.dbType;
-		database = dbSettings.database;
 
 		tableToFieldInfos = new HashMap<>();
 		StringUtilities.outputWithTime("Started new scan of " + dbSettings.tables.size() + " tables...");
@@ -222,7 +232,7 @@ public class SourceDataScan {
 			tableToFieldInfos = dbSettings.tables.stream()
 					.collect(Collectors.toMap(
 							Table::new,
-							table -> processDatabaseTable(table, connection)
+							table -> processDatabaseTable(table, connection, dbSettings.database)
 					));
 		}
 	}
@@ -466,7 +476,6 @@ public class SourceDataScan {
 		addRow(metaSheet, "MIN_AVERAGE_LENGTH_FOR_FREE_TEXT", SourceDataScan.MIN_AVERAGE_LENGTH_FOR_FREE_TEXT);
 		addRow(metaSheet, "sourceType", this.sourceType.toString());
 		addRow(metaSheet, "dbType", this.dbType != null ? this.dbType.getTypeName() : "");
-//		addRow(metaSheet, "database", this.database);
 		addRow(metaSheet, "delimiter", this.delimiter);
 		addRow(metaSheet, "sampleSize", this.sampleSize);
 		addRow(metaSheet, "scanValues", this.scanValues);
@@ -479,19 +488,19 @@ public class SourceDataScan {
 
 	private void removeEmptyTables() {
 		tableToFieldInfos.entrySet()
-				.removeIf(stringListEntry -> stringListEntry.getValue().size() == 0);
+				.removeIf(stringListEntry -> stringListEntry.getValue().isEmpty());
 	}
 
-	private List<FieldInfo> processDatabaseTable(String table, RichConnection connection) {
+	private List<FieldInfo> processDatabaseTable(String table, RichConnection connection, String database) {
 		StringUtilities.outputWithTime("Scanning table " + table);
 
 		long rowCount = connection.getTableSize(table);
-		List<FieldInfo> fieldInfos = fetchTableStructure(connection, table);
+		List<FieldInfo> fieldInfos = connection.fetchTableStructure(connection, database, table, this);
 		if (scanValues) {
 			int actualCount = 0;
 			QueryResult queryResult = null;
 			try {
-				queryResult = fetchRowsFromTable(connection, table, rowCount);
+				queryResult = connection.fetchRowsFromTable(table, rowCount, this);
 				for (org.ohdsi.utilities.files.Row row : queryResult) {
 					for (FieldInfo fieldInfo : fieldInfos) {
 						fieldInfo.processValue(row.get(fieldInfo.name));
@@ -516,105 +525,6 @@ public class SourceDataScan {
 		return fieldInfos;
 	}
 
-	private QueryResult fetchRowsFromTable(RichConnection connection, String table, long rowCount) {
-		String query = null;
-
-		if (sampleSize == -1) {
-			if (dbType == DbType.MSACCESS)
-				query = "SELECT * FROM [" + table + "]";
-			else if (dbType == DbType.MSSQL || dbType == DbType.PDW || dbType == DbType.AZURE)
-				query = "SELECT * FROM [" + table.replaceAll("\\.", "].[") + "]";
-			else
-				query = "SELECT * FROM " + table;
-		} else {
-			if (dbType == DbType.MSSQL || dbType == DbType.AZURE)
-				query = "SELECT * FROM [" + table.replaceAll("\\.", "].[") + "] TABLESAMPLE (" + sampleSize + " ROWS)";
-			else if (dbType == DbType.MYSQL)
-				query = "SELECT * FROM " + table + " ORDER BY RAND() LIMIT " + sampleSize;
-			else if (dbType == DbType.PDW)
-				query = "SELECT TOP " + sampleSize + " * FROM [" + table.replaceAll("\\.", "].[") + "] ORDER BY RAND()";
-			else if (dbType == DbType.ORACLE) {
-				if (sampleSize < rowCount) {
-					double percentage = 100 * sampleSize / (double) rowCount;
-					if (percentage < 100)
-						query = "SELECT * FROM " + table + " SAMPLE(" + percentage + ")";
-				} else {
-					query = "SELECT * FROM " + table;
-				}
-			} else if (dbType == DbType.POSTGRESQL || dbType == DbType.REDSHIFT)
-				query = "SELECT * FROM " + table + " ORDER BY RANDOM() LIMIT " + sampleSize;
-			else if (dbType == DbType.MSACCESS)
-				query = "SELECT " + "TOP " + sampleSize + " * FROM [" + table + "]";
-			else if (dbType == DbType.BIGQUERY)
-				query = "SELECT * FROM " + table + " ORDER BY RAND() LIMIT " + sampleSize;
-		}
-		// System.out.println("SQL: " + query);
-		return connection.query(query);
-
-	}
-
-	private List<FieldInfo> fetchTableStructure(RichConnection connection, String table) {
-		List<FieldInfo> fieldInfos = new ArrayList<>();
-
-		if (dbType == DbType.MSACCESS) {
-			ResultSet rs = connection.getMsAccessFieldNames(table);
-			try {
-				while (rs.next()) {
-					FieldInfo fieldInfo = new FieldInfo(rs.getString("COLUMN_NAME"));
-					fieldInfo.type = rs.getString("TYPE_NAME");
-					fieldInfo.rowCount = connection.getTableSize(table);
-					fieldInfos.add(fieldInfo);
-				}
-			} catch (SQLException e) {
-				throw new RuntimeException(e.getMessage());
-			}
-		} else {
-			String query = null;
-			if (dbType == DbType.ORACLE)
-				query = "SELECT COLUMN_NAME,DATA_TYPE FROM ALL_TAB_COLUMNS WHERE table_name = '" + table + "' AND owner = '" + database.toUpperCase() + "'";
-			else if (dbType == DbType.MSSQL || dbType == DbType.PDW) {
-				String trimmedDatabase = database;
-				if (database.startsWith("[") && database.endsWith("]"))
-					trimmedDatabase = database.substring(1, database.length() - 1);
-				String[] parts = table.split("\\.");
-				query = "SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_CATALOG='" + trimmedDatabase + "' AND TABLE_SCHEMA='" + parts[0] +
-						"' AND TABLE_NAME='" + parts[1] + "';";
-			} else if (dbType == DbType.AZURE) {
-				String[] parts = table.split("\\.");
-				query = "SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='" + parts[0] +
-						"' AND TABLE_NAME='" + parts[1] + "';";
-			} else if (dbType == DbType.MYSQL)
-				query = "SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '" + database + "' AND TABLE_NAME = '" + table
-						+ "';";
-			else if (dbType == DbType.POSTGRESQL || dbType == DbType.REDSHIFT)
-				query = "SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '" + database.toLowerCase() + "' AND TABLE_NAME = '"
-						+ table.toLowerCase() + "' ORDER BY ordinal_position;";
-			else if (dbType == DbType.TERADATA) {
-				query = "SELECT ColumnName, ColumnType FROM dbc.columns WHERE DatabaseName= '" + database.toLowerCase() + "' AND TableName = '"
-						+ table.toLowerCase() + "';";
-			} else if (dbType == DbType.BIGQUERY) {
-				query = "SELECT column_name AS COLUMN_NAME, data_type as DATA_TYPE FROM " + database + ".INFORMATION_SCHEMA.COLUMNS WHERE table_name = \"" + table + "\";";
-			}
-
-			for (org.ohdsi.utilities.files.Row row : connection.query(query)) {
-				row.upperCaseFieldNames();
-				FieldInfo fieldInfo;
-				if (dbType == DbType.TERADATA) {
-					fieldInfo = new FieldInfo(row.get("COLUMNNAME"));
-				} else {
-					fieldInfo = new FieldInfo(row.get("COLUMN_NAME"));
-				}
-				if (dbType == DbType.TERADATA) {
-					fieldInfo.type = row.get("COLUMNTYPE");
-				} else {
-					fieldInfo.type = row.get("DATA_TYPE");
-				}
-				fieldInfo.rowCount = connection.getTableSize(table);
-				fieldInfos.add(fieldInfo);
-			}
-		}
-		return fieldInfos;
-	}
 
 	private List<FieldInfo> processCsvFile(String filename) {
 		StringUtilities.outputWithTime("Scanning table " + filename);
@@ -633,7 +543,7 @@ public class SourceDataScan {
 
 			if (lineNr == 1) {
 				for (String cell : row) {
-					fieldInfos.add(new FieldInfo(cell));
+					fieldInfos.add(new FieldInfo(this, cell));
 				}
 
 				if (!scanValues) {
@@ -660,7 +570,7 @@ public class SourceDataScan {
 
 		SasFileProperties sasFileProperties = sasFileReader.getSasFileProperties();
 		for (Column column : sasFileReader.getColumns()) {
-			FieldInfo fieldInfo = new FieldInfo(column.getName());
+			FieldInfo fieldInfo = new FieldInfo(this, column.getName());
 			fieldInfo.label = column.getLabel();
 			fieldInfo.rowCount = sasFileProperties.getRowCount();
 			if (!scanValues) {
@@ -696,229 +606,6 @@ public class SourceDataScan {
 		}
 
 		return fieldInfos;
-	}
-
-	private class FieldInfo {
-		public String type;
-		public String name;
-		public String label;
-		public CountingSet<String> valueCounts = new CountingSet<>();
-		public long sumLength = 0;
-		public int maxLength = 0;
-		public long nProcessed = 0;
-		public long emptyCount = 0;
-		public long uniqueCount = 0;
-		public long rowCount = -1;
-		public boolean isInteger = true;
-		public boolean isReal = true;
-		public boolean isDate = true;
-		public boolean isFreeText = false;
-		public boolean tooManyValues = false;
-		public UniformSamplingReservoir samplingReservoir;
-		public Object average;
-		public Object stdev;
-		public Object minimum;
-		public Object maximum;
-		public Object q1;
-		public Object q2;
-		public Object q3;
-
-		public FieldInfo(String name) {
-			this.name = name;
-			if (calculateNumericStats) {
-				this.samplingReservoir = new UniformSamplingReservoir(numStatsSamplerSize);
-			}
-		}
-
-		public void trim() {
-			// Only keep values that are used in scan report
-			if (valueCounts.size() > maxValues) {
-				valueCounts.keepTopN(maxValues);
-			}
-
-			// Calculate numeric stats and dereference sampling reservoir to save memory.
-			if (calculateNumericStats) {
-				average = getAverage();
-				stdev = getStandardDeviation();
-				minimum = getMinimum();
-				maximum = getMaximum();
-				q1 = getQ1();
-				q2 = getQ2();
-				q3 = getQ3();
-			}
-			samplingReservoir = null;
-		}
-
-		public boolean hasValuesTrimmed() {
-			return tooManyValues;
-		}
-
-		public Double getFractionEmpty() {
-			if (nProcessed == 0)
-				return 1d;
-			else
-				return emptyCount / (double) nProcessed;
-		}
-
-		public String getTypeDescription() {
-			if (type != null)
-				return type;
-			else if (!scanValues) // If not type assigned and not values scanned, do not derive
-				return "";
-			else if (nProcessed == emptyCount)
-				return DataType.EMPTY.name();
-			else if (isFreeText)
-				return DataType.TEXT.name();
-			else if (isDate)
-				return DataType.DATE.name();
-			else if (isInteger)
-				return DataType.INT.name();
-			else if (isReal)
-				return DataType.REAL.name();
-			else
-				return DataType.VARCHAR.name();
-		}
-
-		public Double getFractionUnique() {
-			if (nProcessed == 0 || uniqueCount == 1) {
-				return 0d;
-			} else {
-				return uniqueCount / (double) nProcessed;
-			}
-
-		}
-
-		public void processValue(String value) {
-			nProcessed++;
-			sumLength += value.length();
-			if (value.length() > maxLength)
-				maxLength = value.length();
-
-			String trimValue = value.trim();
-			if (trimValue.length() == 0)
-				emptyCount++;
-
-			if (!isFreeText) {
-				boolean newlyAdded = valueCounts.add(value);
-				if (newlyAdded) uniqueCount++;
-
-				if (trimValue.length() != 0) {
-					evaluateDataType(trimValue);
-				}
-
-				if (nProcessed == N_FOR_FREE_TEXT_CHECK && !isInteger && !isReal && !isDate) {
-					doFreeTextCheck();
-				}
-			} else {
-				valueCounts.addAll(StringUtilities.mapToWords(trimValue.toLowerCase()));
-			}
-
-			// if over this large constant number, then trimmed back to size used in report (maxValues).
-			if (!tooManyValues && valueCounts.size() > MAX_VALUES_IN_MEMORY) {
-				tooManyValues = true;
-				this.trim();
-			}
-
-			if (calculateNumericStats && !trimValue.isEmpty()) {
-				if (isInteger || isReal) {
-					samplingReservoir.add(Double.parseDouble(trimValue));
-				} else if (isDate) {
-					samplingReservoir.add(DateUtilities.parseDate(trimValue));
-				}
-			}
-		}
-
-		public List<Pair<String, Integer>> getSortedValuesWithoutSmallValues() {
-			List<Pair<String, Integer>> result = valueCounts.key2count.entrySet().stream()
-					.filter(e -> e.getValue().count >= minCellCount)
-					.sorted(Comparator.<Map.Entry<String, Count>>comparingInt(e -> e.getValue().count).reversed())
-					.limit(maxValues)
-					.map(e -> new Pair<>(e.getKey(), e.getValue().count))
-					.collect(Collectors.toCollection(ArrayList::new));
-
-			if (result.size() < valueCounts.key2count.size()) {
-				result.add(new Pair<>("List truncated...", -1));
-			}
-			return result;
-		}
-
-		private void evaluateDataType(String value) {
-			if (isReal && !StringUtilities.isNumber(value))
-				isReal = false;
-			if (isInteger && !StringUtilities.isLong(value))
-				isInteger = false;
-			if (isDate && !StringUtilities.isDate(value))
-				isDate = false;
-		}
-
-		private void doFreeTextCheck() {
-			double averageLength = sumLength / (double) (nProcessed - emptyCount);
-			if (averageLength >= MIN_AVERAGE_LENGTH_FOR_FREE_TEXT) {
-				isFreeText = true;
-				// Reset value count to word count
-				CountingSet<String> wordCounts = new CountingSet<>();
-				for (Map.Entry<String, Count> entry : valueCounts.key2count.entrySet())
-					for (String word : StringUtilities.mapToWords(entry.getKey().toLowerCase()))
-						wordCounts.add(word, entry.getValue().count);
-				valueCounts = wordCounts;
-			}
-		}
-
-		private Object formatNumericValue(double value) {
-			return formatNumericValue(value, false);
-		}
-
-		private Object formatNumericValue(double value, boolean dateAsDays) {
-			if (nProcessed == 0) {
-				return Double.NaN;
-			} else if (getTypeDescription().equals(DataType.EMPTY.name())) {
-				return Double.NaN;
-			} else if (isInteger || isReal) {
-				return value;
-			} else if (isDate && dateAsDays) {
-				return value;
-			} else if (isDate) {
-				return LocalDate.ofEpochDay((long) value).toString();
-			} else {
-				return Double.NaN;
-			}
-		}
-
-		private Object getMinimum() {
-			double min = samplingReservoir.getPopulationMinimum();
-			return formatNumericValue(min);
-		}
-
-		private Object getMaximum() {
-			double max = samplingReservoir.getPopulationMaximum();
-			return formatNumericValue(max);
-		}
-
-		private Object getAverage() {
-			double average = samplingReservoir.getPopulationMean();
-			return formatNumericValue(average);
-		}
-
-		private Object getStandardDeviation() {
-			double stddev = samplingReservoir.getSampleStandardDeviation();
-			return formatNumericValue(stddev, true);
-		}
-
-		private Object getQ1() {
-			double q1 = samplingReservoir.getSampleQuartiles().get(0);
-			return formatNumericValue(q1);
-		}
-
-		private Object getQ2() {
-			double q2 = samplingReservoir.getSampleQuartiles().get(1);
-			return formatNumericValue(q2);
-		}
-
-		private Object getQ3() {
-			double q3 = samplingReservoir.getSampleQuartiles().get(2);
-			return formatNumericValue(q3);
-		}
-
 	}
 
 	private Row addRow(Sheet sheet, Object... values) {

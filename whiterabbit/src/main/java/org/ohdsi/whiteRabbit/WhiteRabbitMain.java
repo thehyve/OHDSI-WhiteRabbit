@@ -67,6 +67,7 @@ import javax.swing.border.TitledBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 import org.apache.commons.csv.CSVFormat;
+import org.ohdsi.databases.DbSettings;
 import org.ohdsi.databases.DbType;
 import org.ohdsi.databases.RichConnection;
 import org.ohdsi.utilities.DirectoryUtilities;
@@ -175,7 +176,7 @@ public class WhiteRabbitMain implements ActionListener {
 				dbSettings.dbType = DbType.REDSHIFT;
 			else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("SQL Server")) {
 				dbSettings.dbType = DbType.MSSQL;
-				if (iniFile.get("USER_NAME").length() != 0) { // Not using windows authentication
+				if (!iniFile.get("USER_NAME").isEmpty()) { // Not using windows authentication
 					String[] parts = iniFile.get("USER_NAME").split("/");
 					if (parts.length == 2) {
 						dbSettings.user = parts[1];
@@ -184,7 +185,7 @@ public class WhiteRabbitMain implements ActionListener {
 				}
 			} else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Azure")) {
 				dbSettings.dbType = DbType.AZURE;
-				if (iniFile.get("USER_NAME").length() != 0) { // Not using windows authentication
+				if (!iniFile.get("USER_NAME").isEmpty()) { // Not using windows authentication
 					String[] parts = iniFile.get("USER_NAME").split("/");
 					if (parts.length == 2) {
 						dbSettings.user = parts[1];
@@ -193,7 +194,7 @@ public class WhiteRabbitMain implements ActionListener {
 				}
 			} else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("PDW")) {
 				dbSettings.dbType = DbType.PDW;
-				if (iniFile.get("USER_NAME").length() != 0) { // Not using windows authentication
+				if (!iniFile.get("USER_NAME").isEmpty()) { // Not using windows authentication
 					String[] parts = iniFile.get("USER_NAME").split("/");
 					if (parts.length == 2) {
 						dbSettings.user = parts[1];

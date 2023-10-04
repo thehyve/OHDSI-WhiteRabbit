@@ -9,7 +9,7 @@ import org.ohdsi.databases.RichConnection;
 import org.ohdsi.ooxml.ReadXlsxFileWithHeader;
 import org.ohdsi.utilities.files.Row;
 import org.ohdsi.utilities.files.RowUtilities;
-import org.ohdsi.whiteRabbit.DbSettings;
+import org.ohdsi.databases.DbSettings;
 import org.ohdsi.whiteRabbit.scan.SourceDataScan;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.PostgreSQLContainer;

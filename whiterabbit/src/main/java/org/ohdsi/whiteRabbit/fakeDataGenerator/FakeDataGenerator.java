@@ -19,6 +19,7 @@ package org.ohdsi.whiteRabbit.fakeDataGenerator;
 
 import java.util.*;
 
+import org.ohdsi.databases.DbSettings;
 import org.ohdsi.databases.RichConnection;
 import org.ohdsi.rabbitInAHat.dataModel.Database;
 import org.ohdsi.rabbitInAHat.dataModel.Field;
@@ -27,7 +28,6 @@ import org.ohdsi.rabbitInAHat.dataModel.ValueCounts;
 import org.ohdsi.utilities.StringUtilities;
 import org.ohdsi.utilities.files.Row;
 import org.ohdsi.utilities.files.WriteCSVFileWithHeader;
-import org.ohdsi.whiteRabbit.DbSettings;
 
 public class FakeDataGenerator {
 

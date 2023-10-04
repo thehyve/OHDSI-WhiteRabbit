@@ -15,13 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package org.ohdsi.whiteRabbit;
+package org.ohdsi.databases;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.csv.CSVFormat;
-import org.ohdsi.databases.DbType;
 
 public class DbSettings {
     public enum SourceType {
@@ -36,10 +35,13 @@ public class DbSettings {
     public String user;
     public String password;
     public String database;
+    public String warehouse;
+    public String schema;
     public String server;
     public String domain;
 
     // CSV file settings
     public char delimiter = ',';
     public CSVFormat csvFormat = CSVFormat.RFC4180;
+
 }
