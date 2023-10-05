@@ -22,39 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class TestSourceDataScanPostgreSQL {
 
     @Container
-    public static PostgreSQLContainer<?> postgreSQL;
-
-    static {
-        /*
-         * Since the database is only read, setting it up once suffices.
-         *
-         * Note that the init script is read locally, but accesses the CSV files from
-         * the resource mapped into the container.
-         *
-         * The data used in this test are actually OMOP data. One reason for this is convenience: the DDL
-         * for this data is know and could simply be copied instead of composed.
-         * Also, for the technical correctness of WhiteRabbit (does it open the database, get the table
-         * names and scan those tables), the actual nature of the source data does not matter.
-         */
-        try {
-            postgreSQL = new PostgreSQLContainer<>("postgres:13.1")
-                    .withUsername("test")
-                    .withPassword("test")
-                    .withDatabaseName("test")
-                    .withClasspathResourceMapping(
-                            "scan_data",
-                            "/scan_data",
-                            BindMode.READ_ONLY)
-                    .withInitScript("scan_data/create_data_postgresql.sql");
-
-            postgreSQL.start();
-
-        } finally {
-            if (postgreSQL != null) {
-                postgreSQL.stop();
-            }
-        }
-    }
+    public static PostgreSQLContainer<?> postgreSQL = createPostgreSQLContainer();
 
     @Test
     public void connectToDatabase() {
@@ -72,6 +40,23 @@ class TestSourceDataScanPostgreSQL {
         List<String> tableNames = getTableNames(dbSettings);
         assertEquals(2, tableNames.size());
     }
+
+    public static PostgreSQLContainer<?> createPostgreSQLContainer() {
+        PostgreSQLContainer<?> postgreSQLContainer = new PostgreSQLContainer<>("postgres:13.1")
+                .withUsername("test")
+                .withPassword("test")
+                .withDatabaseName("test")
+                .withClasspathResourceMapping(
+                        "scan_data",
+                        "/scan_data",
+                        BindMode.READ_ONLY)
+                .withInitScript("scan_data/create_data_postgresql.sql");
+
+        postgreSQLContainer.start();
+
+        return postgreSQLContainer;
+    }
+
     @Test
     void testSourceDataScan(@TempDir Path tempDir) throws IOException {
         Path outFile = tempDir.resolve("scanresult.xslx");
