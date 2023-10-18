@@ -73,17 +73,19 @@ public class ScanTestUtils {
         }
     }
 
-    private static String expectedTypeValue(String columnName, DbType dbType) {
+    private static String expectedTypeValue(String postgresType, DbType dbType) {
         /*
          * This is very pragmatical and may need to change when tests are added for more databases.
          * For now, PostgreSQL is used as the reference, and the expected types need to be adapted to match
          * for other database.
+         *
+         * IN: expected type for postgres; OUT: expected type for database type dbType
          */
-        if (dbType == DbType.POSTGRESQL || columnName.equals("")) {
-            return columnName;
+        if (dbType == DbType.POSTGRESQL || postgresType.equals("")) {
+            return postgresType;
         }
-        else if (dbType == DbType.ORACLE){
-            switch (columnName) {
+        else if (dbType == DbType.ORACLE) {
+            switch (postgresType) {
                 case "integer":
                     return "NUMBER";
                 case "numeric":
@@ -94,11 +96,24 @@ public class ScanTestUtils {
                     // seems a mismatch in the OMOP CMD v5.2 (Oracle defaults to WITH time zone)
                     return "TIMESTAMP(6) WITH TIME ZONE";
                 default:
-                    throw new RuntimeException("Unsupported column type: " + columnName);
+                    throw new RuntimeException("Unsupported column type: " + postgresType);
+            }
+        }
+        else if (dbType == DbType.SNOWFLAKE) {
+            switch (postgresType) {
+                case "integer":
+                case "numeric":
+                    return "NUMBER";
+                case "character varying":
+                    return "VARCHAR";
+                case "timestamp without time zone":
+                    return "TIMESTAMPNTZ";
+                default:
+                    throw new RuntimeException("Unsupported column type: " + postgresType);
             }
         }
         else {
-            throw new RuntimeException("Unsupported DbType: " + dbType);
+            throw new RuntimeException("Unsupported DbType: " + dbType.getTypeName());
         }
     }
 

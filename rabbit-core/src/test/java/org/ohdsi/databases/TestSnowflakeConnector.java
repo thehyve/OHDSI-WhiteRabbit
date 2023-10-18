@@ -2,6 +2,8 @@ package org.ohdsi.databases;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -13,15 +15,17 @@ import static org.ohdsi.databases.SnowflakeConnector.*;
 import static org.ohdsi.databases.SnowflakeConnector.ServerConfig.checkSnowflakeConfig;
 
 class TestSnowflakeConnector {
+
+    Logger logger = LoggerFactory.getLogger(TestSnowflakeConnector.class);
     @Test
-    @EnabledIfEnvironmentVariable(named = "SNOWFLAKE_TEST_SERVER", matches = ".*\\.snowflakecomputing\\.com")
+    @EnabledIfEnvironmentVariable(named = "SNOWFLAKE_WR_TEST_ACCOUNT", matches = ".+")
     public void testConnectToSnowflake() throws SQLException {
-        DbSettings dbSettings = new DbSettings();
-        SnowflakeTestUtils.setSnowflakeTestConfig(dbSettings);
+        DbSettings dbSettings = SnowflakeTestUtils.getTestDbSettingsSnowflake();
         Connection connection = INSTANCE.getInstance(dbSettings).getConnection();
 
         assertNotNull(connection);
         connection.close();
+        logger.info("Connecting to Snowflake OK");
     }
 
     @Test
@@ -35,12 +39,11 @@ class TestSnowflakeConnector {
     }
 
     @Test
-    @EnabledIfEnvironmentVariable(named = "SNOWFLAKE_TEST_SERVER", matches = ".*\\.snowflakecomputing\\.com")
+    @EnabledIfEnvironmentVariable(named = "SNOWFLAKE_WR_TEST_ACCOUNT", matches = ".+")
     public void testGetFieldNames() {
-        DbSettings dbSettings = new DbSettings();
-        SnowflakeTestUtils.setSnowflakeTestConfig(dbSettings);
+        DbSettings dbSettings = SnowflakeTestUtils.getTestDbSettingsSnowflake();
         Connection connection = INSTANCE.getInstance(dbSettings).getConnection();
-        ResultSet resultSet = INSTANCE.getFieldNames("customer");
+        ResultSet resultSet = INSTANCE.getFieldNames("person");
         try {
             while (resultSet.next()) {
                 assertEquals(resultSet.getString("COLUMN_NAME"), "iets");
@@ -49,6 +52,7 @@ class TestSnowflakeConnector {
         } catch (SQLException e) {
             throw new RuntimeException(e.getMessage());
         }
+        logger.info("Testing field names for Snowflake OK");
     }
 
     @Test

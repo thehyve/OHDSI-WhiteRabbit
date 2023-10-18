@@ -106,6 +106,23 @@ these tests verify essential functionality for WhiteRabbit, like the database in
 
 Also, GitHub actions have been configured to run the test suite automatically.
 
+#### Snowflake
+
+There are automated tests for Snowflake, but since it is not (yet?) possible to have a local
+Snowflake instance in a Docker container, these test will only run if the following information
+is provided through environment variables:
+
+    SNOWFLAKE_WR_TEST_ACCOUNT
+    SNOWFLAKE_WR_TEST_USER
+    SNOWFLAKE_WR_TEST_PASSWORD
+    SNOWFLAKE_WR_TEST_WAREHOUSE
+    SNOWFLAKE_WR_TEST_DATABASE
+    SNOWFLAKE_WR_TEST_SCHEMA
+
+It is recommended that user, password, database and schema are created for these tests only,
+and do not relate in any way to any production environment. 
+The schema should not contain any tables. 
+
 ### Development status
 
 Production. This program is being used by many people.
