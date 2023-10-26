@@ -1,5 +1,6 @@
 package org.ohdsi.whiterabbit.scan;
 
+import org.apache.commons.lang.StringUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.io.TempDir;
@@ -11,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.File;
@@ -19,11 +19,12 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
-@Testcontainers(disabledWithoutDocker = true)
-public class TestSourceDataScanSnowflake {
+public class SourceDataScanSnowflakeIT {
 
-    Logger logger = LoggerFactory.getLogger(TestSourceDataScanSnowflake.class);
+    public final static String SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE = "SNOWFLAKE_WR_TEST_ACCOUNT";
+    Logger logger = LoggerFactory.getLogger(SourceDataScanSnowflakeIT.class);
 
     final String CONTAINER_DATA_PATH = "/scan_data";
     @Container
@@ -33,7 +34,15 @@ public class TestSourceDataScanSnowflake {
     static File tmpDir;
 
     @Test
-    @EnabledIfEnvironmentVariable(named = "SNOWFLAKE_WR_TEST_ACCOUNT", matches = ".+")
+    void testWarnWhenRunningWithoutSnowflakeConfigured() {
+        String snowflakeWrTestAoount = System.getenv(SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE);
+        assertFalse(StringUtils.isEmpty(snowflakeWrTestAoount),
+                String.format("\nTest class %s is being run without a Snowflake test instance configured.\n" +
+                        "This is NOT a valid verification run.", SourceDataScanSnowflakeIT.class.getName()));
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE, matches = ".+")
     void testProcessSnowflake(@TempDir Path tempDir) throws IOException, InterruptedException {
         prepareTestData();
         Path outFile = tempDir.resolve("scanresult-snowflake.xslx");
@@ -62,7 +71,7 @@ public class TestSourceDataScanSnowflake {
         execAndVerifyCommand(testContainer, "/bin/bash", "-c",
                 String.format("(cd /scan_data; SNOWSQL_PWD='%s' /tmp/snowsql -a %s -u %s -d %s -s %s -f /scan_data/create_data_snowflake.sql)",
                         SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_PASSWORD"),
-                        SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_ACCOUNT"),
+                        SnowflakeTestUtils.getenvOrFail(SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE),
                         SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_USER"),
                         SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_DATABASE"),
                         SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_SCHEMA")
@@ -98,15 +107,4 @@ public class TestSourceDataScanSnowflake {
             assertEquals(expectedExitValue, result.getExitCode(), message);
         }
     }
-
-    /*
-    SNOWFLAKE_TEST_DATABASE=compute_wh.snowflake_sample_data.tpch_sf1;
-    SNOWFLAKE_TEST_SERVER=https://yblmrlr-lx94238.snowflakecomputing.com;
-    SNOWFLAKE_TEST_USER=jblomthehyve;
-    SNOWFLAKE_WH_TEST_ACCOUNT=yblmrlr-lx94238;
-    SNOWFLAKE_WH_TEST_DATABASE=test;
-    SNOWFLAKE_WH_TEST_SCHEMA=wr_test;
-    SNOWFLAKE_WH_TEST_USER=jblomthehyve;
-    SNOWFLAKE_WH_TEST_WAREHOUSE=compute_wh
-     */
 }

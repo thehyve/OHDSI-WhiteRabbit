@@ -63,6 +63,11 @@
                         <include>**/*IT.java</include>
                     </includes>
                     <skipTests>${skipIntegrationTests}</skipTests>
+                    <argLine>
+                    <!-- experimental workaround for Snowflake JDBC issue,
+                         see https://community.snowflake.com/s/article/JDBC-Driver-Compatibility-Issue-With-JDK-16-and-Later -->
+                    --add-opens java.base/java.nio=ALL-UNNAMED
+                    </argLine>
                 </configuration>
                 <executions>
                     <execution>
