@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 
 @Testcontainers(disabledWithoutDocker = true)
-class TestSourceDataScanPostgreSQL {
+class SourceDataScanPostgreSQLIT {
 
     @Container
     public static PostgreSQLContainer<?> postgreSQL = createPostgreSQLContainer();

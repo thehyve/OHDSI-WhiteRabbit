@@ -19,7 +19,7 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @Testcontainers(disabledWithoutDocker = true)
-class TestSourceDataScanOracle {
+class SourceDataScanOracleIT {
 
     private final static String USER_NAME = "test_user";
     private final static String SCHEMA_NAME = USER_NAME;
