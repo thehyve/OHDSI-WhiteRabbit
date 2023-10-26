@@ -98,15 +98,9 @@ To generate the files ready for distribution, run `mvn install`.
 
 ### Testing
 
-Some newer code has unit and/or integration tests. Tests that depend on external resources being available,
-such as a database, should be excluded from executing automatically. You can use the @Tag annotation to combine
-such tests in a group with the same tag, and exclude that tag from being run automatically by maven (this
-should be done in the configuration of the surefire plugin in pom.xml of the module involved).
-
-An exception to the above are tests that depend on Docker. Currently, these tests are implemented with the 
-TestContainers library, and are configured to check for Docker being present. If not, these tests will not
-be run, but the tests as a whole will still succeed. However, it is recommended that these tests are run since
-these tests verify essential functionality for WhiteRabbit, like the database interface.
+A limited number of unit and integration tests exist. The integration tests run only in the `maven verify` phase,
+and depend on docker being available to the user running the verification. If docker is not available, the
+integration tests will fail.
 
 Also, GitHub actions have been configured to run the test suite automatically.
 
@@ -125,7 +119,10 @@ is provided through environment variables:
 
 It is recommended that user, password, database and schema are created for these tests only,
 and do not relate in any way to any production environment. 
-The schema should not contain any tables. 
+The schema should not contain any tables.
+
+It is possible to skip the Snowflake tests without failing the build by passing 
+`-Dohdsi.org.whiterabbit.skip_snowflake_tests=1` to maven.
 
 ### Development status
 

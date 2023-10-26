@@ -26,7 +26,7 @@ public class SourceDataScanSnowflakeIT {
     public final static String SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE = "SNOWFLAKE_WR_TEST_ACCOUNT";
     Logger logger = LoggerFactory.getLogger(SourceDataScanSnowflakeIT.class);
 
-    final String CONTAINER_DATA_PATH = "/scan_data";
+    final static String CONTAINER_DATA_PATH = "/scan_data";
     @Container
     public static GenericContainer<?> testContainer = createPythonContainer();
 
@@ -35,8 +35,8 @@ public class SourceDataScanSnowflakeIT {
 
     @Test
     void testWarnWhenRunningWithoutSnowflakeConfigured() {
-        String snowflakeWrTestAoount = System.getenv(SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE);
-        assertFalse(StringUtils.isEmpty(snowflakeWrTestAoount),
+        String snowflakeWrTestAccunt = System.getenv(SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE);
+        assertFalse(StringUtils.isEmpty(snowflakeWrTestAccunt) && StringUtils.isEmpty(System.getProperty("ohdsi.org.whiterabbit.skip_snowflake_tests")),
                 String.format("\nTest class %s is being run without a Snowflake test instance configured.\n" +
                         "This is NOT a valid verification run.", SourceDataScanSnowflakeIT.class.getName()));
     }
@@ -69,13 +69,15 @@ public class SourceDataScanSnowflakeIT {
 
         // run the sql script needed to initialize the test data
         execAndVerifyCommand(testContainer, "/bin/bash", "-c",
-                String.format("(cd /scan_data; SNOWSQL_PWD='%s' /tmp/snowsql -a %s -u %s -d %s -s %s -f /scan_data/create_data_snowflake.sql)",
+                String.format("(cd %s; SNOWSQL_PWD='%s' /tmp/snowsql -a %s -u %s -d %s -s %s -f %s/create_data_snowflake.sql)",
+                        CONTAINER_DATA_PATH,
                         SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_PASSWORD"),
                         SnowflakeTestUtils.getenvOrFail(SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE),
                         SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_USER"),
                         SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_DATABASE"),
-                        SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_SCHEMA")
-                ));
+                        SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_SCHEMA"),
+                        CONTAINER_DATA_PATH
+                        ));
     }
 
     public static GenericContainer<?> createPythonContainer() {
@@ -83,7 +85,7 @@ public class SourceDataScanSnowflakeIT {
                 .withCommand("/bin/sh", "-c", "tail -f /dev/null") // keeps the container running until it is explicitly stopped
                 .withClasspathResourceMapping(
                         "scan_data",
-                        "/scan_data",
+                        CONTAINER_DATA_PATH,
                         BindMode.READ_ONLY);
 
         testContainer.start();

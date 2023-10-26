@@ -8,6 +8,7 @@ dist/
 .idea/
 target/
 *.class
+*.log
 
 # jenv file(s)
 .java-version

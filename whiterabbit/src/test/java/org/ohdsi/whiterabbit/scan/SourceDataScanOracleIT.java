@@ -9,7 +9,6 @@ import org.ohdsi.databases.RichConnection;
 import org.ohdsi.whiteRabbit.scan.SourceDataScan;
 import org.testcontainers.containers.OracleContainer;
 import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.io.*;
 import java.net.URISyntaxException;
@@ -48,7 +47,7 @@ class SourceDataScanOracleIT {
     public static void startContainer() {
         oracleContainer.start();
     }
-    
+
     @Test
     public void connectToDatabase() {
         // this is also implicitly tested by testSourceDataScan(), but having it fail separately helps identify problems quicker
