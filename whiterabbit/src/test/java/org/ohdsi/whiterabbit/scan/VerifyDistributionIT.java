@@ -22,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.*;
  * are missing. Typical tests are those that connect to a database of brand X and connect to it, so that the
  * distribution is known to have all dependencies present required to connect to a database of brand X.
  */
-@Testcontainers(disabledWithoutDocker = true)
 public class VerifyDistributionIT {
 
     @Container

@@ -18,7 +18,6 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 
-@Testcontainers(disabledWithoutDocker = true)
 class SourceDataScanPostgreSQLIT {
 
     @Container

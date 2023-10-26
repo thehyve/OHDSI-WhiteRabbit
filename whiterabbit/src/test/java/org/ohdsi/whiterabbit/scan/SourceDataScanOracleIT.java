@@ -1,5 +1,6 @@
 package org.ohdsi.whiterabbit.scan;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.ohdsi.databases.DbSettings;
@@ -18,7 +19,6 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@Testcontainers(disabledWithoutDocker = true)
 class SourceDataScanOracleIT {
 
     private final static String USER_NAME = "test_user";
@@ -44,6 +44,11 @@ class SourceDataScanOracleIT {
             .withDatabaseName("testDB")
             .withInitScript("scan_data/create_data_oracle.sql");
 
+    @BeforeAll
+    public static void startContainer() {
+        oracleContainer.start();
+    }
+    
     @Test
     public void connectToDatabase() {
         // this is also implicitly tested by testSourceDataScan(), but having it fail separately helps identify problems quicker
