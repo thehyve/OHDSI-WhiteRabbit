@@ -26,7 +26,7 @@ public enum SnowflakeConnector implements DBConnectorInterface {
     public final static String ERROR_NO_FIELD_OF_TYPE = "No value was specified for type";
     public final static String ERROR_INVALID_SERVER_STRING = "Server string is not valid";
     public final static String ERROR_INCORRECT_SCHEMA_SPECIFICATION =
-            "Database should be speficied as 'warehouse.database.schema', " +
+            "Database should be specified as 'warehouse.database.schema', " +
                     "e.g. 'computewh.snowflake_sample_data.weather";
     public final static String ERROR_CONNECTION_NOT_INITIALIZED =
             "Snowflake Database connections has not been initialized.";

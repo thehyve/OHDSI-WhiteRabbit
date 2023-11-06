@@ -1,9 +1,12 @@
-
+//
+// To be able to use the configured snowflake test environment, make sure that the role and grant
+// statements below have been exectuded, using the correct snowflake username for <<snowflake user>>
+//
 //create role if not exists testrole;
 //grant usage on database test to role testrole;
 //grant usage on schema test.wr_test to role testrole;
 //grant ALL PRIVILEGES on schema test.wr_test to role testrole;
-//grant role testrole to user jblomthehyve;
+//grant role testrole to user <<snowflake user>>;
 
 //use schema test.wr_test;
 

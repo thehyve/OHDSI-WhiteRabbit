@@ -85,6 +85,8 @@ public class WhiteRabbitMain implements ActionListener {
 	public final static String DOCUMENTATION_URL = "http://ohdsi.github.io/WhiteRabbit";
 	public final static String ACTION_CMD_HELP = "Open documentation";
 
+	public final static String DELIMITED_TEXT_FILES = "Delimited text files";
+
 	private JFrame				frame;
 	private JTextField			folderField;
 	private JTextField			scanReportFileField;
@@ -117,6 +119,8 @@ public class WhiteRabbitMain implements ActionListener {
 	private boolean				targetIsFiles					= false;
 
 	private List<JComponent>	componentsToDisableWhenRunning	= new ArrayList<JComponent>();
+
+	public String reportFilePath = "";
 
 	public static void main(String[] args) {
 		new WhiteRabbitMain(args);
@@ -152,7 +156,7 @@ public class WhiteRabbitMain implements ActionListener {
 	private void launchCommandLine(String iniFileName) {
 		IniFile iniFile = new IniFile(iniFileName);
 		DbSettings dbSettings = new DbSettings();
-		if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Delimited text files")) {
+		if (iniFile.get("DATA_TYPE").equalsIgnoreCase(DELIMITED_TEXT_FILES)) {
 			dbSettings.sourceType = DbSettings.SourceType.CSV_FILES;
 			if (iniFile.get("DELIMITER").equalsIgnoreCase("tab"))
 				dbSettings.delimiter = '\t';
@@ -266,7 +270,8 @@ public class WhiteRabbitMain implements ActionListener {
 		sourceDataScan.setMaxValues(maxValues);
 		sourceDataScan.setCalculateNumericStats(calculateNumericStats);
 		sourceDataScan.setNumStatsSamplerSize(numericStatsSamplerSize);
-		sourceDataScan.process(dbSettings, iniFile.get("WORKING_FOLDER") + "/" + SourceDataScan.SCAN_REPORT_FILE_NAME);
+		reportFilePath = iniFile.get("WORKING_FOLDER") + "/" + SourceDataScan.SCAN_REPORT_FILE_NAME;
+		sourceDataScan.process(dbSettings, reportFilePath);
 	}
 
 	private JComponent createTabsPanel() {
@@ -313,11 +318,11 @@ public class WhiteRabbitMain implements ActionListener {
 		sourcePanel.setLayout(new GridLayout(0, 2));
 		sourcePanel.setBorder(BorderFactory.createTitledBorder("Source data location"));
 		sourcePanel.add(new JLabel("Data type"));
-		sourceType = new JComboBox<>(new String[] { "Delimited text files", "SAS7bdat", "MySQL", "Oracle", "SQL Server", "PostgreSQL", "MS Access", "PDW", "Redshift", "Teradata", "BigQuery", "Azure"});
+		sourceType = new JComboBox<>(new String[] { DELIMITED_TEXT_FILES, "SAS7bdat", "MySQL", "Oracle", "SQL Server", "PostgreSQL", "MS Access", "PDW", "Redshift", "Teradata", "BigQuery", "Azure", "Snowflake"});
 		sourceType.setToolTipText("Select the type of source data available");
 		sourceType.addItemListener(itemEvent -> {
 			String selectedSourceType = itemEvent.getItem().toString();
-			sourceIsFiles = selectedSourceType.equals("Delimited text files");
+			sourceIsFiles = selectedSourceType.equals(DELIMITED_TEXT_FILES);
 			sourceIsSas = selectedSourceType.equals("SAS7bdat");
 			boolean sourceIsDatabase = !(sourceIsFiles || sourceIsSas);
 
@@ -343,6 +348,8 @@ public class WhiteRabbitMain implements ActionListener {
 				sourceUserField.setToolTipText("GBQ SA only: OAuthServiceAccountEMAIL");
 				sourcePasswordField.setToolTipText("GBQ SA only: OAuthPvtKeyPath");
 				sourceDatabaseField.setToolTipText("GBQ SA & UA: Data Set within ProjectID");
+			} else if (sourceIsDatabase && selectedSourceType.equals(("Snowflake"))) {
+
 			} else if (sourceIsDatabase) {
 				if (selectedSourceType.equals("Azure")) {
 					sourceServerField.setToolTipText("For Azure, this field contains the host name and database name (<host>;database=<database>)");
@@ -565,10 +572,10 @@ public class WhiteRabbitMain implements ActionListener {
 		targetPanel.setLayout(new GridLayout(0, 2));
 		targetPanel.setBorder(BorderFactory.createTitledBorder("Target data location"));
 		targetPanel.add(new JLabel("Data type"));
-		targetType = new JComboBox<>(new String[] {"Delimited text files", "MySQL", "Oracle", "SQL Server", "PostgreSQL", "PDW"});
+		targetType = new JComboBox<>(new String[] {DELIMITED_TEXT_FILES, "MySQL", "Oracle", "SQL Server", "PostgreSQL", "PDW"});
 		targetType.setToolTipText("Select the type of source data available");
 		targetType.addItemListener(event -> {
-			targetIsFiles = event.getItem().toString().equals("Delimited text files");
+			targetIsFiles = event.getItem().toString().equals(DELIMITED_TEXT_FILES);
 			targetServerField.setEnabled(!targetIsFiles);
 			targetUserField.setEnabled(!targetIsFiles);
 			targetPasswordField.setEnabled(!targetIsFiles);
@@ -773,7 +780,7 @@ public class WhiteRabbitMain implements ActionListener {
 				fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 
 				if (sourceDbSettings.sourceType == DbSettings.SourceType.CSV_FILES) {
-					fileChooser.setFileFilter(new FileNameExtensionFilter("Delimited text files", "csv", "txt"));
+					fileChooser.setFileFilter(new FileNameExtensionFilter(DELIMITED_TEXT_FILES, "csv", "txt"));
 				} else if (sourceDbSettings.sourceType == DbSettings.SourceType.SAS_FILES) {
 					fileChooser.setFileFilter(new FileNameExtensionFilter("SAS Data Files", "sas7bdat"));
 				}
@@ -812,7 +819,7 @@ public class WhiteRabbitMain implements ActionListener {
 
 	private DbSettings getSourceDbSettings() {
 		DbSettings dbSettings = new DbSettings();
-		if (sourceType.getSelectedItem().equals("Delimited text files")) {
+		if (sourceType.getSelectedItem().equals(DELIMITED_TEXT_FILES)) {
 			dbSettings.sourceType = DbSettings.SourceType.CSV_FILES;
 			if (sourceDelimiterField.getText().length() == 0) {
 				JOptionPane.showMessageDialog(frame, "Delimiter field cannot be empty for source database", "Error connecting to server",
@@ -919,7 +926,7 @@ public class WhiteRabbitMain implements ActionListener {
 
 	private DbSettings getTargetDbSettings() {
 		DbSettings dbSettings = new DbSettings();
-		if (targetType.getSelectedItem().equals("Delimited text files")) {
+		if (targetType.getSelectedItem().equals(DELIMITED_TEXT_FILES)) {
 			dbSettings.sourceType = DbSettings.SourceType.CSV_FILES;
 
 			switch(targetCSVFormat.getSelectedItem().toString()) {

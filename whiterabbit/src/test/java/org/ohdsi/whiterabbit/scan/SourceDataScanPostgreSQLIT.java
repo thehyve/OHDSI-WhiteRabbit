@@ -58,11 +58,12 @@ class SourceDataScanPostgreSQLIT {
     @Test
     void testSourceDataScan(@TempDir Path tempDir) throws IOException {
         Path outFile = tempDir.resolve("scanresult.xslx");
-        SourceDataScan sourceDataScan = new SourceDataScan();
+        SourceDataScan sourceDataScan = ScanTestUtils.createSourceDataScan();
         DbSettings dbSettings = getTestDbSettings();
 
         sourceDataScan.process(dbSettings, outFile.toString());
         ScanTestUtils.verifyScanResultsFromXSLX(outFile, dbSettings.dbType);
+        System.out.println("Hold it!");
     }
 
     private List<String> getTableNames(DbSettings dbSettings) {

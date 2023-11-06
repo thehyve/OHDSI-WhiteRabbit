@@ -68,7 +68,7 @@ class SourceDataScanOracleIT {
     void testSourceDataScan(@TempDir Path tempDir) throws IOException {
         loadData();
         Path outFile = tempDir.resolve("scanresult.xslx");
-        SourceDataScan sourceDataScan = new SourceDataScan();
+        SourceDataScan sourceDataScan = ScanTestUtils.createSourceDataScan();
         DbSettings dbSettings = getTestDbSettings();
 
         sourceDataScan.process(dbSettings, outFile.toString());

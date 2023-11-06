@@ -22,4 +22,5 @@ Try*
 .DS_Store
 data/
 
+# contains authentication data for a Snowflake instance
 snowflake.env

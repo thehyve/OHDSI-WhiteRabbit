@@ -46,7 +46,7 @@ public class SourceDataScanSnowflakeIT {
     void testProcessSnowflake(@TempDir Path tempDir) throws IOException, InterruptedException {
         prepareTestData();
         Path outFile = tempDir.resolve("scanresult-snowflake.xslx");
-        SourceDataScan sourceDataScan = new SourceDataScan();
+        SourceDataScan sourceDataScan = ScanTestUtils.createSourceDataScan();
         DbSettings dbSettings = SnowflakeTestUtils.getTestDbSettingsSnowflake();
 
         sourceDataScan.process(dbSettings, outFile.toString());

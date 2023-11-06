@@ -275,8 +275,14 @@ public class RichConnection implements Closeable {
 				query = "SELECT " + "TOP " + sampleSize + " * FROM [" + table + "]";
 			else if (dbType == DbType.BIGQUERY)
 				query = "SELECT * FROM " + table + " ORDER BY RAND() LIMIT " + sampleSize;
+			else if (dbType == DbType.SNOWFLAKE) {
+				query = String.format("SELECT * FROM %s ORDER BY RANDOM() LIMIT %s", table, sampleSize);
+			}
 		}
-		// System.out.println("SQL: " + query);
+
+		if (StringUtils.isEmpty(query)) {
+			throw new RuntimeException("No query was generated for database type " + dbType.getTypeName());
+		}
 		return query(query);
 
 	}
