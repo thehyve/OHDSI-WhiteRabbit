@@ -19,14 +19,14 @@ CREATE TABLE wr_test.person (person_id BIGINT, gender_concept_id BIGINT, year_of
 
 REMOVE @~ pattern=".*csv.gz";
 
-put file:///scan_data/cost.csv @~;
+put file:///scan_data/cost-no-header.csv @~;
 
-put file:///scan_data/person.csv @~;
+put file:///scan_data/person-no-header.csv @~;
 
-CREATE OR REPLACE FILE FORMAT my_tsv_format TYPE = 'csv' FIELD_DELIMITER = '\t';
+CREATE OR REPLACE FILE FORMAT my_csv_format TYPE = 'csv' FIELD_DELIMITER = ',';
 
-COPY INTO cost from @~/cost.csv.gz FILE_FORMAT = (FORMAT_NAME = 'my_tsv_format');
+COPY INTO cost from @~/cost-no-header.csv.gz FILE_FORMAT = (FORMAT_NAME = 'my_csv_format');
 
-COPY INTO person from @~/person.csv.gz FILE_FORMAT = (FORMAT_NAME = 'my_tsv_format');
+COPY INTO person from @~/person-no-header.csv.gz FILE_FORMAT = (FORMAT_NAME = 'my_csv_format');
 
-//REMOVE @~ pattern=".*csv.gz";
+REMOVE @~ pattern=".*csv.gz";

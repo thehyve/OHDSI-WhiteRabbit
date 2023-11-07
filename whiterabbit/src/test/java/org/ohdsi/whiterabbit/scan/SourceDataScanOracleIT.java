@@ -12,8 +12,10 @@ import org.testcontainers.junit.jupiter.Container;
 
 import java.io.*;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -65,14 +67,16 @@ class SourceDataScanOracleIT {
         assertEquals(2, tableNames.size());
     }
     @Test
-    void testSourceDataScan(@TempDir Path tempDir) throws IOException {
+    void testSourceDataScan(@TempDir Path tempDir) throws IOException, URISyntaxException {
         loadData();
         Path outFile = tempDir.resolve("scanresult.xslx");
+        URL referenceScanReport = TestSourceDataScanIniFileTsv.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
+
         SourceDataScan sourceDataScan = ScanTestUtils.createSourceDataScan();
         DbSettings dbSettings = getTestDbSettings();
 
         sourceDataScan.process(dbSettings, outFile.toString());
-        ScanTestUtils.verifyScanResultsFromXSLX(outFile, dbSettings.dbType);
+        ScanTestUtils.compareScanResultsToReference(outFile, Paths.get(referenceScanReport.toURI()), DbType.ORACLE);
     }
 
     private void loadData() {
@@ -86,11 +90,12 @@ class SourceDataScanOracleIT {
             try (BufferedReader reader = new BufferedReader(getResourcePath(tableName))) {
                 String line = null;
                 while ((line = reader.readLine()) != null) {
-                    String[] values = line.split("\t");
-                    if (line.endsWith("\t")) {
+                    String[] values = line.split(",");
+                    if (line.endsWith(",")) {
                         values = Arrays.copyOf(values, values.length + 1);
                         values[values.length - 1] = "";
                     }
+                    // Oracle INSERT needs quotes around the values
                     String insertSql = String.format("INSERT INTO %s.%s VALUES('%s');", dbSettings.database, tableName, String.join("','", values));
                     richConnection.execute(insertSql);
                 }
@@ -101,7 +106,7 @@ class SourceDataScanOracleIT {
     }
 
     private InputStreamReader getResourcePath(String tableName) throws URISyntaxException, IOException {
-        String resourceName = String.format("scan_data/%s.csv", tableName);
+        String resourceName = String.format("scan_data/%s-no-header.csv", tableName);
 
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File(Objects.requireNonNull(classLoader.getResource(resourceName)).toURI());

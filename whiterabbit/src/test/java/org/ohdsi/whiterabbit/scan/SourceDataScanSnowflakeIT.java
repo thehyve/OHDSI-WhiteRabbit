@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.io.TempDir;
 import org.ohdsi.databases.DbSettings;
+import org.ohdsi.databases.DbType;
 import org.ohdsi.databases.SnowflakeTestUtils;
 import org.ohdsi.whiteRabbit.scan.SourceDataScan;
 import org.slf4j.Logger;
@@ -16,7 +17,10 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -43,14 +47,16 @@ public class SourceDataScanSnowflakeIT {
 
     @Test
     @EnabledIfEnvironmentVariable(named = SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE, matches = ".+")
-    void testProcessSnowflake(@TempDir Path tempDir) throws IOException, InterruptedException {
+    void testProcessSnowflake(@TempDir Path tempDir) throws IOException, InterruptedException, URISyntaxException {
         prepareTestData();
-        Path outFile = tempDir.resolve("scanresult-snowflake.xslx");
+        Path outFile = tempDir.resolve("scanresult-snowflake.xlsx");
+        URL referenceScanReport = TestSourceDataScanIniFileTsv.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
+
         SourceDataScan sourceDataScan = ScanTestUtils.createSourceDataScan();
         DbSettings dbSettings = SnowflakeTestUtils.getTestDbSettingsSnowflake();
 
         sourceDataScan.process(dbSettings, outFile.toString());
-        ScanTestUtils.verifyScanResultsFromXSLX(outFile, dbSettings.dbType);
+        ScanTestUtils.compareScanResultsToReference(outFile, Paths.get(referenceScanReport.toURI()), DbType.SNOWFLAKE);
 
         logger.info("Testing scan on Snowflake OK");
     }
@@ -58,7 +64,7 @@ public class SourceDataScanSnowflakeIT {
     private static void prepareTestData() throws IOException, InterruptedException {
         // snowsql is used for initializing the database
 
-        // add some packages neede for the installation of snowsql
+        // add some packages needed for the installation of snowsql
         execAndVerifyCommand(testContainer, "/bin/sh", "-c", "apt update; apt -y install wget unzip");
         // download snowsql
         execAndVerifyCommand(testContainer, "/bin/bash", "-c",

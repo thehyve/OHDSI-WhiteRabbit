@@ -11,7 +11,10 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -56,14 +59,15 @@ class SourceDataScanPostgreSQLIT {
     }
 
     @Test
-    void testSourceDataScan(@TempDir Path tempDir) throws IOException {
+    void testSourceDataScan(@TempDir Path tempDir) throws IOException, URISyntaxException {
         Path outFile = tempDir.resolve("scanresult.xslx");
+        URL referenceScanReport = TestSourceDataScanIniFileTsv.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
+
         SourceDataScan sourceDataScan = ScanTestUtils.createSourceDataScan();
         DbSettings dbSettings = getTestDbSettings();
 
         sourceDataScan.process(dbSettings, outFile.toString());
-        ScanTestUtils.verifyScanResultsFromXSLX(outFile, dbSettings.dbType);
-        System.out.println("Hold it!");
+        ScanTestUtils.compareScanResultsToReference(outFile, Paths.get(referenceScanReport.toURI()), DbType.ORACLE);
     }
 
     private List<String> getTableNames(DbSettings dbSettings) {
