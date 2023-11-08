@@ -67,9 +67,7 @@ import javax.swing.border.TitledBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 import org.apache.commons.csv.CSVFormat;
-import org.ohdsi.databases.DbSettings;
-import org.ohdsi.databases.DbType;
-import org.ohdsi.databases.RichConnection;
+import org.ohdsi.databases.*;
 import org.ohdsi.utilities.DirectoryUtilities;
 import org.ohdsi.utilities.StringUtilities;
 import org.ohdsi.utilities.Version;
@@ -127,7 +125,7 @@ public class WhiteRabbitMain implements ActionListener {
 	}
 
 	public WhiteRabbitMain(String[] args) {
-		if (args.length == 2 && args[0].equalsIgnoreCase("-ini"))
+		if (args.length == 2 && (args[0].equalsIgnoreCase("-ini") || args[0].equalsIgnoreCase("--ini")))
 			launchCommandLine(args[1]);
 		else {
 			frame = new JFrame("White Rabbit");
@@ -155,67 +153,84 @@ public class WhiteRabbitMain implements ActionListener {
 
 	private void launchCommandLine(String iniFileName) {
 		IniFile iniFile = new IniFile(iniFileName);
-		DbSettings dbSettings = new DbSettings();
-		if (iniFile.get("DATA_TYPE").equalsIgnoreCase(DELIMITED_TEXT_FILES)) {
-			dbSettings.sourceType = DbSettings.SourceType.CSV_FILES;
-			if (iniFile.get("DELIMITER").equalsIgnoreCase("tab"))
-				dbSettings.delimiter = '\t';
-			else
-				dbSettings.delimiter = iniFile.get("DELIMITER").charAt(0);
-		} else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("SAS7bdat")) {
-			dbSettings.sourceType = DbSettings.SourceType.SAS_FILES;
+		DbSettings dbSettings = getDbSettings(iniFile);
+		findTablesToScan(iniFile, dbSettings);
+		performSourceDataScan(iniFile, dbSettings);
+	}
+
+	private DbSettings getDbSettings(IniFile iniFile) {
+		DbSettings dbSettings;
+
+		DBConnectorInterface dbConnectorInstance = DBConnectorInterface.getDBConnectorInstance(iniFile);
+		if (dbConnectorInstance != null) {
+			dbSettings = dbConnectorInstance.getDbSettings();
 		} else {
-			dbSettings.sourceType = DbSettings.SourceType.DATABASE;
-			dbSettings.user = iniFile.get("USER_NAME");
-			dbSettings.password = iniFile.get("PASSWORD");
-			dbSettings.server = iniFile.get("SERVER_LOCATION");
-			dbSettings.database = iniFile.get("DATABASE_NAME");
-			if (iniFile.get("DATA_TYPE").equalsIgnoreCase("MySQL"))
-				dbSettings.dbType = DbType.MYSQL;
-			else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Oracle"))
-				dbSettings.dbType = DbType.ORACLE;
-			else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("PostgreSQL"))
-				dbSettings.dbType = DbType.POSTGRESQL;
-			else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Redshift"))
-				dbSettings.dbType = DbType.REDSHIFT;
-			else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("SQL Server")) {
-				dbSettings.dbType = DbType.MSSQL;
-				if (!iniFile.get("USER_NAME").isEmpty()) { // Not using windows authentication
-					String[] parts = iniFile.get("USER_NAME").split("/");
-					if (parts.length == 2) {
-						dbSettings.user = parts[1];
-						dbSettings.domain = parts[0];
+			dbSettings = new DbSettings();
+			if (iniFile.get("DATA_TYPE").equalsIgnoreCase(DELIMITED_TEXT_FILES)) {
+				dbSettings.sourceType = DbSettings.SourceType.CSV_FILES;
+				if (iniFile.get("DELIMITER").equalsIgnoreCase("tab"))
+					dbSettings.delimiter = '\t';
+				else
+					dbSettings.delimiter = iniFile.get("DELIMITER").charAt(0);
+			} else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("SAS7bdat")) {
+				dbSettings.sourceType = DbSettings.SourceType.SAS_FILES;
+			} else {
+				dbSettings.sourceType = DbSettings.SourceType.DATABASE;
+				dbSettings.user = iniFile.get("USER_NAME");
+				dbSettings.password = iniFile.get("PASSWORD");
+				dbSettings.server = iniFile.get("SERVER_LOCATION");
+				dbSettings.database = iniFile.get("DATABASE_NAME");
+				if (iniFile.get("DATA_TYPE").equalsIgnoreCase("MySQL"))
+					dbSettings.dbType = DbType.MYSQL;
+				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Oracle"))
+					dbSettings.dbType = DbType.ORACLE;
+				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("PostgreSQL"))
+					dbSettings.dbType = DbType.POSTGRESQL;
+				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Redshift"))
+					dbSettings.dbType = DbType.REDSHIFT;
+				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("SQL Server")) {
+					dbSettings.dbType = DbType.MSSQL;
+					if (!iniFile.get("USER_NAME").isEmpty()) { // Not using windows authentication
+						String[] parts = iniFile.get("USER_NAME").split("/");
+						if (parts.length == 2) {
+							dbSettings.user = parts[1];
+							dbSettings.domain = parts[0];
+						}
 					}
-				}
-			} else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Azure")) {
-				dbSettings.dbType = DbType.AZURE;
-				if (!iniFile.get("USER_NAME").isEmpty()) { // Not using windows authentication
-					String[] parts = iniFile.get("USER_NAME").split("/");
-					if (parts.length == 2) {
-						dbSettings.user = parts[1];
-						dbSettings.domain = parts[0];
+				} else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Azure")) {
+					dbSettings.dbType = DbType.AZURE;
+					if (!iniFile.get("USER_NAME").isEmpty()) { // Not using windows authentication
+						String[] parts = iniFile.get("USER_NAME").split("/");
+						if (parts.length == 2) {
+							dbSettings.user = parts[1];
+							dbSettings.domain = parts[0];
+						}
 					}
-				}
-			} else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("PDW")) {
-				dbSettings.dbType = DbType.PDW;
-				if (!iniFile.get("USER_NAME").isEmpty()) { // Not using windows authentication
-					String[] parts = iniFile.get("USER_NAME").split("/");
-					if (parts.length == 2) {
-						dbSettings.user = parts[1];
-						dbSettings.domain = parts[0];
+				} else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("PDW")) {
+					dbSettings.dbType = DbType.PDW;
+					if (!iniFile.get("USER_NAME").isEmpty()) { // Not using windows authentication
+						String[] parts = iniFile.get("USER_NAME").split("/");
+						if (parts.length == 2) {
+							dbSettings.user = parts[1];
+							dbSettings.domain = parts[0];
+						}
 					}
+				} else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("MS Access"))
+					dbSettings.dbType = DbType.MSACCESS;
+				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Teradata"))
+					dbSettings.dbType = DbType.TERADATA;
+				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("BigQuery")) {
+					dbSettings.dbType = DbType.BIGQUERY;
+					/* GBQ requires database. Putting database into domain var for connect() */
+					dbSettings.domain = dbSettings.database;
 				}
-			} else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("MS Access"))
-				dbSettings.dbType = DbType.MSACCESS;
-			else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Teradata"))
-				dbSettings.dbType = DbType.TERADATA;
-			else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("BigQuery")) {
-				dbSettings.dbType = DbType.BIGQUERY;
-				/* GBQ requires database. Putting database into domain var for connect() */
-				dbSettings.domain = dbSettings.database;
 			}
 		}
 
+		return dbSettings;
+	}
+
+	private void findTablesToScan(IniFile iniFile, DbSettings dbSettings) {
 		if (iniFile.get("TABLES_TO_SCAN").equalsIgnoreCase("*")) {
 			if (dbSettings.sourceType == DbSettings.SourceType.DATABASE) {
 				try (RichConnection connection = new RichConnection(dbSettings.server, dbSettings.domain, dbSettings.user, dbSettings.password, dbSettings.dbType)) {
@@ -247,7 +262,9 @@ public class WhiteRabbitMain implements ActionListener {
 				dbSettings.tables.add(table);
 			}
 		}
+	}
 
+	private void performSourceDataScan(IniFile iniFile, DbSettings dbSettings) {
 		SourceDataScan sourceDataScan = new SourceDataScan();
 		int maxRows = Integer.parseInt(iniFile.get("ROWS_PER_TABLE"));
 		boolean scanValues = iniFile.get("SCAN_FIELD_VALUES").equalsIgnoreCase("yes");

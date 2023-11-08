@@ -7,6 +7,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.ohdsi.databases.DbSettings;
 import org.ohdsi.databases.DbType;
 import org.ohdsi.databases.SnowflakeTestUtils;
+import org.ohdsi.whiteRabbit.WhiteRabbitMain;
 import org.ohdsi.whiteRabbit.scan.SourceDataScan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,9 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -32,7 +36,16 @@ public class SourceDataScanSnowflakeIT {
 
     final static String CONTAINER_DATA_PATH = "/scan_data";
     @Container
-    public static GenericContainer<?> testContainer = createPythonContainer();
+    public static GenericContainer<?> testContainer;
+
+    static {
+        try {
+            testContainer = createPythonContainer();
+            prepareTestData();
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException("Creating python container failed.");
+        }
+    }
 
     @TempDir
     static File tmpDir;
@@ -48,17 +61,41 @@ public class SourceDataScanSnowflakeIT {
     @Test
     @EnabledIfEnvironmentVariable(named = SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE, matches = ".+")
     void testProcessSnowflake(@TempDir Path tempDir) throws IOException, InterruptedException, URISyntaxException {
-        prepareTestData();
         Path outFile = tempDir.resolve("scanresult-snowflake.xlsx");
         URL referenceScanReport = TestSourceDataScanIniFileTsv.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
 
         SourceDataScan sourceDataScan = ScanTestUtils.createSourceDataScan();
         DbSettings dbSettings = SnowflakeTestUtils.getTestDbSettingsSnowflake();
 
+        logger.info("dbSettings before: " + dbSettings);
         sourceDataScan.process(dbSettings, outFile.toString());
+        logger.info("dbSettings after : " + dbSettings);
         ScanTestUtils.compareScanResultsToReference(outFile, Paths.get(referenceScanReport.toURI()), DbType.SNOWFLAKE);
 
         logger.info("Testing scan on Snowflake OK");
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE, matches = ".+")
+    void testProcessSnowflakeFromIni(@TempDir Path tempDir) throws URISyntaxException, IOException {
+        Charset charset = StandardCharsets.UTF_8;
+        Path iniFile = tempDir.resolve("snowflake.ini");
+        URL iniTemplate = TestSourceDataScanIniFileTsv.class.getClassLoader().getResource("scan_data/snowflake.ini.template");
+        URL referenceScanReport = TestSourceDataScanIniFileTsv.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
+        assert iniTemplate != null;
+        String content = new String(Files.readAllBytes(Paths.get(iniTemplate.toURI())), charset);
+        content = content.replaceAll("%WORKING_FOLDER%", tempDir.toString())
+                .replaceAll("%SNOWFLAKE_ACCOUNT%", SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_ACCOUNT"))
+                .replaceAll("%SNOWFLAKE_USER%", SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_USER"))
+                .replaceAll("%SNOWFLAKE_PASSWORD%", SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_PASSWORD"))
+                .replaceAll("%SNOWFLAKE_WAREHOUSE%", SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_WAREHOUSE"))
+                .replaceAll("%SNOWFLAKE_DATABASE%", SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_DATABASE"))
+                .replaceAll("%SNOWFLAKE_SCHEMA%", SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_SCHEMA"));
+        Files.write(iniFile, content.getBytes(charset));
+        WhiteRabbitMain wrMain = new WhiteRabbitMain(new String[]{"-ini", iniFile.toAbsolutePath().toString()});
+        System.out.println("Hold it!");
+        assert referenceScanReport != null;
+        ScanTestUtils.compareScanResultsToReference(tempDir.resolve("ScanReport.xlsx"), Paths.get(referenceScanReport.toURI()), DbType.SNOWFLAKE);
     }
 
     private static void prepareTestData() throws IOException, InterruptedException {
@@ -86,7 +123,7 @@ public class SourceDataScanSnowflakeIT {
                         ));
     }
 
-    public static GenericContainer<?> createPythonContainer() {
+    public static GenericContainer<?> createPythonContainer() throws IOException, InterruptedException {
         GenericContainer<?> testContainer = new GenericContainer<>(DockerImageName.parse("ubuntu:22.04"))
                 .withCommand("/bin/sh", "-c", "tail -f /dev/null") // keeps the container running until it is explicitly stopped
                 .withClasspathResourceMapping(

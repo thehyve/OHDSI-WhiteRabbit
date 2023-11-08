@@ -23,9 +23,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.sql.Types;
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -41,11 +39,10 @@ public class RichConnection implements Closeable {
 	public static int				INSERT_BATCH_SIZE	= 100000;
 	private DBConnection			connection;
 	private boolean					verbose				= false;
-	private static DecimalFormat	decimalFormat		= new DecimalFormat("#.#");
 	private DbType					dbType;
 
 	public RichConnection(String server, String domain, String user, String password, DbType dbType) {
-		this.connection = DBConnector.connect(server, domain, user, password, dbType);
+		this.connection = DBConnector.connect(server, domain, user, password, dbType, verbose);
 		this.dbType = dbType;
 	}
 
@@ -55,57 +52,7 @@ public class RichConnection implements Closeable {
 	 * @param sql
 	 */
 	public void execute(String sql) {
-		Statement statement = null;
-		try {
-			if (sql.length() == 0)
-				return;
-
-			statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-			for (String subQuery : sql.split(";")) {
-				if (verbose) {
-					String abbrSQL = subQuery.replace('\n', ' ').replace('\t', ' ').trim();
-					if (abbrSQL.length() > 100)
-						abbrSQL = abbrSQL.substring(0, 100).trim() + "...";
-					System.out.println("Adding query to batch: " + abbrSQL);
-				}
-
-				statement.addBatch(subQuery);
-			}
-			long start = System.currentTimeMillis();
-			if (verbose)
-				System.out.println("Executing batch");
-			statement.executeBatch();
-			if (verbose)
-				outputQueryStats(statement, System.currentTimeMillis() - start);
-		} catch (SQLException e) {
-			System.err.println(sql);
-			e.printStackTrace();
-		} finally {
-			if (statement != null) {
-				try {
-					statement.close();
-				} catch (SQLException e) {
-					// TODO Auto-generated catch block
-					System.err.println(e.getMessage());
-				}
-			}
-		}
-	}
-
-	void outputQueryStats(Statement statement, long ms) throws SQLException {
-		Throwable warning = statement.getWarnings();
-		if (warning != null)
-			System.out.println("- SERVER: " + warning.getMessage());
-		String timeString;
-		if (ms < 1000)
-			timeString = ms + " ms";
-		else if (ms < 60000)
-			timeString = decimalFormat.format(ms / 1000d) + " seconds";
-		else if (ms < 3600000)
-			timeString = decimalFormat.format(ms / 60000d) + " minutes";
-		else
-			timeString = decimalFormat.format(ms / 3600000d) + " hours";
-		System.out.println("- Query completed in " + timeString);
+		connection.execute(sql, verbose);
 	}
 
 	/**
@@ -115,7 +62,7 @@ public class RichConnection implements Closeable {
 	 * @return
 	 */
 	public QueryResult query(String sql) {
-		return new QueryResult(sql, this);
+		return new QueryResult(sql, connection, verbose);
 	}
 
 	/**
@@ -124,55 +71,11 @@ public class RichConnection implements Closeable {
 	 * @param database
 	 */
 	public void use(String database) {
-		if (connection.hasDBConnector()) {
-			connection.getConnector().use(database);
-		}
-		else {
-			if (database == null || dbType == DbType.MSACCESS || dbType == DbType.BIGQUERY || dbType == DbType.AZURE) {
-				return;
-			}
-
-			if (dbType == DbType.ORACLE) {
-				execute("ALTER SESSION SET current_schema = " + database);
-			} else if (dbType == DbType.POSTGRESQL || dbType == DbType.REDSHIFT) {
-				execute("SET search_path TO " + database);
-			} else if (dbType == DbType.TERADATA) {
-				execute("database " + database);
-			} else {
-				execute("USE " + database);
-			}
-		}
+		connection.use(database, dbType);
 	}
 
 	public List<String> getTableNames(String database) {
-		List<String> names = new ArrayList<>();
-		String query = null;
-		if (dbType == DbType.MYSQL) {
-			query = "SHOW TABLES IN " + database;
-		} else if (dbType == DbType.MSSQL || dbType == DbType.PDW || dbType == DbType.AZURE) {
-			query = "SELECT CONCAT(schemas.name, '.', tables_views.name) FROM " +
-					"(SELECT schema_id, name FROM %1$s.sys.tables UNION ALL SELECT schema_id, name FROM %1$s.sys.views) tables_views " +
-					"INNER JOIN %1$s.sys.schemas ON tables_views.schema_id = schemas.schema_id " +
-					"ORDER BY schemas.name, tables_views.name";
-			query = String.format(query, database);
-			System.out.println(query);
-		} else if (dbType == DbType.ORACLE) {
-			query = "SELECT table_name FROM " +
-					"(SELECT table_name, owner FROM all_tables UNION ALL SELECT view_name, owner FROM all_views) tables_views " +
-					"WHERE owner='" + database.toUpperCase() + "'";
-		} else if (dbType == DbType.POSTGRESQL || dbType == DbType.REDSHIFT) {
-			query = "SELECT table_name FROM information_schema.tables WHERE table_schema = '" + database.toLowerCase() + "' ORDER BY table_name";
-		} else if (dbType == DbType.MSACCESS) {
-			query = "SELECT Name FROM sys.MSysObjects WHERE (Type=1 OR Type=5) AND Flags=0;";
-		} else if (dbType == DbType.TERADATA) {
-			query = "SELECT TableName from dbc.tables WHERE tablekind IN ('T','V') and databasename='" + database + "'";
-		} else if (dbType == DbType.BIGQUERY) {
-			query = "SELECT table_name from " + database + ".INFORMATION_SCHEMA.TABLES ORDER BY table_name;";
-		}
-
-		for (Row row : query(query))
-			names.add(row.get(row.getFieldNames().get(0)));
-		return names;
+		return connection.getTableNames(database);
 	}
 
 	public List<FieldInfo> fetchTableStructure(RichConnection connection, String database, String table, ScanParameters scanParameters) {
@@ -296,8 +199,9 @@ public class RichConnection implements Closeable {
 			} catch (SQLException e) {
 				throw new RuntimeException(e.getMessage());
 			}
-		} else
-			throw new RuntimeException("DB is not of type MS Access");
+		} else {
+			throw new RuntimeException("DB is not of supported type");
+		}
 	}
 
 	/**
@@ -339,7 +243,7 @@ public class RichConnection implements Closeable {
 	}
 
 	public void setVerbose(boolean verbose) {
-		this.verbose = verbose;
+		this.connection.setVerbose(verbose);
 	}
 
 	public DBConnection getConnection() {
@@ -379,7 +283,7 @@ public class RichConnection implements Closeable {
 	}
 
 	boolean isVerbose() {
-		return verbose;
+		return connection.isVerbose();
 	}
 
 	private void insert(String tableName, List<Row> rows) {

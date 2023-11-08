@@ -44,10 +44,13 @@ import org.ohdsi.rabbitInAHat.dataModel.Table;
 import org.ohdsi.utilities.*;
 import org.ohdsi.utilities.collections.Pair;
 import org.ohdsi.utilities.files.ReadTextFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static java.lang.Long.max;
 
 public class SourceDataScan implements ScanParameters {
+	Logger logger = LoggerFactory.getLogger(SourceDataScan.class);
 	public final static String SCAN_REPORT_FILE_NAME = "ScanReport.xlsx";
 
 	public static final String POI_TMP_DIR_ENVIRONMENT_VARIABLE_NAME = "ORG_OHDSI_WHITERABBIT_POI_TMPDIR";
@@ -128,6 +131,7 @@ public class SourceDataScan implements ScanParameters {
 	}
 
 	public void process(DbSettings dbSettings, String outputFileName) {
+		logger.info("Processing source data scan from dbSettings: " + dbSettings);
 		startTimeStamp = LocalDateTime.now();
 		sourceType = dbSettings.sourceType;
 		dbType = dbSettings.dbType;
@@ -494,7 +498,12 @@ public class SourceDataScan implements ScanParameters {
 	private List<FieldInfo> processDatabaseTable(String table, RichConnection connection, String database) {
 		StringUtilities.outputWithTime("Scanning table " + table);
 
-		long rowCount = connection.getTableSize(table);
+		long rowCount;
+		if (connection.getConnection().hasDBConnector()) {
+			rowCount = connection.getConnection().getDBConnector().getTableSize(table, connection);
+		} else {
+			rowCount = connection.getTableSize(table);
+		}
 		List<FieldInfo> fieldInfos = connection.fetchTableStructure(connection, database, table, this);
 		if (scanValues) {
 			int actualCount = 0;

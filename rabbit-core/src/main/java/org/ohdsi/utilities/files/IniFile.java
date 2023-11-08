@@ -17,6 +17,8 @@
  ******************************************************************************/
 package org.ohdsi.utilities.files;
 
+import org.apache.commons.lang.StringUtils;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -42,5 +44,17 @@ public class IniFile {
 			return "";
 		else
 			return value;
+	}
+
+	public String getOrFail(String fieldName){
+		String value = settings.get(fieldName.toLowerCase());
+		if (StringUtils.isEmpty(value)) {
+			throw new RuntimeException("Ini file should contain a value for '" + fieldName + "'");
+		}
+		return value;
+	}
+
+	public String getDataType() {
+		return getOrFail("DATA_TYPE");
 	}
 }

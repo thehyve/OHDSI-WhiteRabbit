@@ -19,23 +19,26 @@ class DBRowIterator implements Iterator<Row> {
     private Set<String> columnNames = new HashSet<>();
 
     public DBRowIterator(String sql, RichConnection richConnection) {
+        new DBRowIterator(sql, richConnection.getConnection(), richConnection.isVerbose());
+    }
+    public DBRowIterator(String sql, DBConnection dbConnection, boolean verbose) {
         Statement statement;
         try {
             sql.trim();
             if (sql.endsWith(";"))
                 sql = sql.substring(0, sql.length() - 1);
-            if (richConnection.isVerbose()) {
+            if (verbose) {
                 String abbrSQL = sql.replace('\n', ' ').replace('\t', ' ').trim();
                 if (abbrSQL.length() > 100)
                     abbrSQL = abbrSQL.substring(0, 100).trim() + "...";
                 System.out.println("Executing query: " + abbrSQL);
             }
             long start = System.currentTimeMillis();
-            statement = richConnection.getConnection().createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+            statement = dbConnection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
             resultSet = statement.executeQuery(sql);
             hasNext = resultSet.next();
-            if (richConnection.isVerbose())
-                richConnection.outputQueryStats(statement, System.currentTimeMillis() - start);
+            if (verbose)
+                dbConnection.outputQueryStats(statement, System.currentTimeMillis() - start);
         } catch (SQLException e) {
             System.err.println(sql);
             System.err.println(e.getMessage());

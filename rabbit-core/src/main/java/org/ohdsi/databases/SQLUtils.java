@@ -7,7 +7,7 @@ public class SQLUtils {
      * @param sql
      * @return
      */
-    public static QueryResult query(String sql, RichConnection connection) {
-        return new QueryResult(sql, connection);
+    public static QueryResult query(String sql, DBConnection connection) {
+        return new QueryResult(sql, connection, false);
     }
 }

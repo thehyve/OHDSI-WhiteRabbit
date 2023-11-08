@@ -9,6 +9,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.http.client.utils.URLEncodedUtils;
+import org.ohdsi.utilities.files.IniFile;
 
 
 import static org.ohdsi.databases.SnowflakeConnector.ServerConfig.buildUrl;
@@ -20,8 +21,14 @@ import static org.ohdsi.databases.SnowflakeConnector.ServerConfig.buildUrl;
  */
 public enum SnowflakeConnector implements DBConnectorInterface {
     INSTANCE();
+
+    private DbSettings dbSettings = null;
     private ServerConfig serverConfig = null;
     private Connection snowflakeConnection = null;
+    private String warehouse;
+    private String database;
+    private String schema;
+
     private final DbType dbType = DbType.SNOWFLAKE;
     public final static String ERROR_NO_FIELD_OF_TYPE = "No value was specified for type";
     public final static String ERROR_INVALID_SERVER_STRING = "Server string is not valid";
@@ -43,6 +50,22 @@ public enum SnowflakeConnector implements DBConnectorInterface {
             this.snowflakeConnection.close();
         }
         this.snowflakeConnection = null;
+    }
+
+    public DBConnectorInterface getInstance(IniFile iniFile) {
+        warehouse = iniFile.getOrFail("SNOWFLAKE_WAREHOUSE");
+        database = iniFile.getOrFail("SNOWFLAKE_DATABASE");
+        schema = iniFile.getOrFail("SNOWFLAKE_SCHEMA");
+        dbSettings = new DbSettings();
+        dbSettings.server = String.format("https://%s.snowflakecomputing.com", iniFile.getOrFail("SNOWFLAKE_ACCOUNT"));
+        dbSettings.database = String.format("%s.%s.%s", warehouse, database, schema);
+        dbSettings.domain = dbSettings.database;
+        dbSettings.user = iniFile.getOrFail("SNOWFLAKE_USER");
+        dbSettings.password = iniFile.getOrFail("SNOWFLAKE_PASSWORD");
+        dbSettings.dbType = DbType.SNOWFLAKE;
+        dbSettings.sourceType = DbSettings.SourceType.DATABASE;
+
+        return getInstance(dbSettings.server, dbSettings.database, dbSettings.user, dbSettings.password);
     }
 
     @Override
@@ -82,7 +105,7 @@ public enum SnowflakeConnector implements DBConnectorInterface {
     }
 
     public String getTablesQuery(String database) {
-        return "SHOW TERSE TABLES IN " + database;
+        return String.format("SELECT TABLE_NAME FROM %s.INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '%s'", this.database.toUpperCase(), schema.toUpperCase());
     }
 
     @Override
@@ -103,6 +126,14 @@ public enum SnowflakeConnector implements DBConnectorInterface {
     public Connection connect(DbSettings dbSettings) throws RuntimeException {
         SnowflakeConnector.INSTANCE.getInstance(dbSettings.server, dbSettings.database, dbSettings.user, dbSettings.password);
         return this.snowflakeConnection;
+    }
+
+    public DbSettings getDbSettings() {
+        if (dbSettings == null) {
+            throw new RuntimeException(String.format("dbSettings were never initialized for class %s", this.getClass().getName()));
+        }
+
+        return dbSettings;
     }
 
     private static Connection connectToSnowflake(String server, String schema, String user, String password) {

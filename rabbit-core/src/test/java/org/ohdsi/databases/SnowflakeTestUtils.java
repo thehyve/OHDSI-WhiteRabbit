@@ -9,8 +9,7 @@ public class SnowflakeTestUtils {
     public static DbSettings getTestDbSettingsSnowflake() {
         DbSettings dbSettings = new DbSettings();
         dbSettings.dbType = DbType.SNOWFLAKE;
-        dbSettings.tables = Arrays.asList("PERSON", "COST"); //, "DAILY_16_TOTAL", "HOURLY_14_TOTAL", "HOURLY_16_TOTAL",
-        // "WEATHER_14_TOTAL");
+        dbSettings.tables = Arrays.asList("PERSON", "COST");
         dbSettings.sourceType = DbSettings.SourceType.DATABASE;
         dbSettings.user = SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_USER");
         dbSettings.password = SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_PASSWORD");

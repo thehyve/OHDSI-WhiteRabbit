@@ -1,5 +1,6 @@
 package org.ohdsi.databases;
 
+import org.ohdsi.utilities.files.IniFile;
 import org.ohdsi.utilities.files.Row;
 
 import java.sql.Connection;
@@ -28,7 +29,7 @@ public interface DBConnectorInterface {
      */
     default long getTableSize(String tableName, RichConnection connectionInterface) {
         long returnVal;
-        QueryResult qr = SQLUtils.query(getTableSizeQuery(tableName), connectionInterface);
+        QueryResult qr = SQLUtils.query(getTableSizeQuery(tableName), connectionInterface.getConnection());
         try {
             returnVal = Long.parseLong(qr.iterator().next().getCells().get(0));
         } catch (Exception e) {
@@ -43,12 +44,16 @@ public interface DBConnectorInterface {
         return;
     }
 
-    default List<String> getTableNames(String database, RichConnection connection) {
+    default void close() {
+        // no-op by default, so singletons don't need to implement it
+    }
+
+    default List<String> getTableNames(String database, DBConnection connection) {
         List<String> names = new ArrayList<>();
         String query = this.getTablesQuery(database);
 
 		for (Row row : SQLUtils.query(query, connection)) {
-            names.add(row.get(row.getFieldNames().get(getNameIndex())));
+            names.add(row.getCells().get(0));
         }
 
         return names;
@@ -60,5 +65,15 @@ public interface DBConnectorInterface {
     String getTablesQuery(String database);
 
     public ResultSet getFieldNames(String table);
+
+    static DBConnectorInterface getDBConnectorInstance(IniFile iniFile) {
+        if (iniFile.getDataType().equalsIgnoreCase("snowflake")) {
+            return SnowflakeConnector.INSTANCE.getInstance(iniFile);
+        }
+
+        return null;
+    }
+
+    DbSettings getDbSettings();
 
 }

@@ -10,16 +10,16 @@ public class QueryResult implements Iterable<Row> {
     private String sql;
 
     private List<DBRowIterator> iterators = new ArrayList<>();
-    private RichConnection connectionInterface;
+    private DBConnection dbConnection;
 
-    public QueryResult(String sql, RichConnection connectionInterface) {
+    public QueryResult(String sql, DBConnection dbConnection, boolean verbose) {
         this.sql = sql;
-        this.connectionInterface = connectionInterface;
+        this.dbConnection = dbConnection;
     }
 
     @Override
     public Iterator<Row> iterator() {
-        DBRowIterator iterator = new DBRowIterator(sql, connectionInterface);
+        DBRowIterator iterator = new DBRowIterator(sql, dbConnection, false);
         iterators.add(iterator);
         return iterator;
     }
