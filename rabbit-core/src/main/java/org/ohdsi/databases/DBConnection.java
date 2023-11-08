@@ -2,6 +2,8 @@ package org.ohdsi.databases;
 
 import org.apache.commons.lang.StringUtils;
 import org.ohdsi.utilities.files.Row;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.text.DecimalFormat;
@@ -20,6 +22,8 @@ import java.util.List;
  * needs of WhiteRabbit
  */
 public class DBConnection {
+    Logger logger = LoggerFactory.getLogger(DBConnection.class);
+
     private final Connection connection;
     private final DbType dbType;
     private boolean verbose;
@@ -108,29 +112,28 @@ public class DBConnection {
                     String abbrSQL = subQuery.replace('\n', ' ').replace('\t', ' ').trim();
                     if (abbrSQL.length() > 100)
                         abbrSQL = abbrSQL.substring(0, 100).trim() + "...";
-                    System.out.println("Adding query to batch: " + abbrSQL);
+                    logger.info("Adding query to batch: " + abbrSQL);
                 }
 
                 statement.addBatch(subQuery);
             }
             long start = System.currentTimeMillis();
             if (verbose) {
-                System.out.println("Executing batch");
+                logger.info("Executing batch");
             }
             statement.executeBatch();
             if (verbose) {
                 outputQueryStats(statement, System.currentTimeMillis() - start);
             }
         } catch (SQLException e) {
-            System.err.println(sql);
-            e.printStackTrace();
+            logger.error(sql);
+            logger.error(e.getMessage(), e);
         } finally {
             if (statement != null) {
                 try {
                     statement.close();
                 } catch (SQLException e) {
-                    // TODO Auto-generated catch block
-                    System.err.println(e.getMessage());
+                    logger.error(e.getMessage());
                 }
             }
         }
@@ -139,7 +142,7 @@ public class DBConnection {
     void outputQueryStats(Statement statement, long ms) throws SQLException {
         Throwable warning = statement.getWarnings();
         if (warning != null)
-            System.out.println("- SERVER: " + warning.getMessage());
+            logger.info("- SERVER: " + warning.getMessage());
         String timeString;
         if (ms < 1000)
             timeString = ms + " ms";
@@ -149,7 +152,7 @@ public class DBConnection {
             timeString = decimalFormat.format(ms / 60000d) + " minutes";
         else
             timeString = decimalFormat.format(ms / 3600000d) + " hours";
-        System.out.println("- Query completed in " + timeString);
+        logger.info("- Query completed in " + timeString);
     }
 
     public List<String> getTableNames(String database) {
@@ -171,7 +174,7 @@ public class DBConnection {
                     "INNER JOIN %1$s.sys.schemas ON tables_views.schema_id = schemas.schema_id " +
                     "ORDER BY schemas.name, tables_views.name";
             query = String.format(query, database);
-            System.out.println(query);
+            logger.info(query);
         } else if (dbType == DbType.ORACLE) {
             query = "SELECT table_name FROM " +
                     "(SELECT table_name, owner FROM all_tables UNION ALL SELECT view_name, owner FROM all_views) tables_views " +

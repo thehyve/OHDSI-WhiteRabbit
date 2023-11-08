@@ -34,8 +34,12 @@ import org.apache.commons.lang.StringUtils;
 import org.ohdsi.utilities.SimpleCounter;
 import org.ohdsi.utilities.StringUtilities;
 import org.ohdsi.utilities.files.Row;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RichConnection implements Closeable {
+	Logger logger = LoggerFactory.getLogger(RichConnection.class);
+
 	public static int				INSERT_BATCH_SIZE	= 100000;
 	private DBConnection			connection;
 	private boolean					verbose				= false;
@@ -238,7 +242,7 @@ public class RichConnection implements Closeable {
 		try {
 			connection.close();
 		} catch (SQLException e) {
-			e.printStackTrace();
+			logger.error(e.getMessage(), e);
 		}
 	}
 
@@ -266,8 +270,9 @@ public class RichConnection implements Closeable {
 		SimpleCounter counter = new SimpleCounter(1000000, true);
 		while (iterator.hasNext()) {
 			if (batch.size() == INSERT_BATCH_SIZE) {
-				if (first && create)
+				if (first && create) {
 					createTable(table, batch);
+				}
 				insert(table, batch);
 				batch.clear();
 				first = false;
@@ -275,9 +280,10 @@ public class RichConnection implements Closeable {
 			batch.add(iterator.next());
 			counter.count();
 		}
-		if (batch.size() != 0) {
-			if (first && create)
+		if (!batch.isEmpty()) {
+			if (first && create) {
 				createTable(table, batch);
+			}
 			insert(table, batch);
 		}
 	}
@@ -289,14 +295,14 @@ public class RichConnection implements Closeable {
 	private void insert(String tableName, List<Row> rows) {
 		List<String> columns;
 		columns = rows.get(0).getFieldNames();
-		for (int i = 0; i < columns.size(); i++)
-			columns.set(i, columnNameToSqlName(columns.get(i)));
+        columns.replaceAll(this::columnNameToSqlName);
 
 		StringBuilder sql = new StringBuilder("INSERT INTO " + tableName);
 		sql.append(" (").append(StringUtilities.join(columns, ",")).append(")");
 		sql.append(" VALUES (?");
-		for (int i = 1; i < columns.size(); i++)
+		for (int i = 1; i < columns.size(); i++) {
 			sql.append(",?");
+		}
 		sql.append(")");
 		try {
 			connection.setAutoCommit(false);
@@ -304,16 +310,16 @@ public class RichConnection implements Closeable {
 			for (Row row : rows) {
 				for (int i = 0; i < columns.size(); i++) {
 					String value = row.get(columns.get(i));
-					if (value == null)
-						System.out.println(row.toString());
-					else if (value.length() == 0)
+					if (value == null) {
+						logger.info(row.toString());
+					} else if (value.isEmpty()) {
 						value = null;
-					// System.out.println(value);
-					if (dbType == DbType.POSTGRESQL || dbType == DbType.REDSHIFT) // PostgreSQL does not allow unspecified types
+					}
+					if (dbType == DbType.POSTGRESQL || dbType == DbType.REDSHIFT) {// PostgreSQL does not allow unspecified types
 						statement.setObject(i + 1, value, Types.OTHER);
+					}
 					else if (dbType == DbType.ORACLE) {
 						if (isDate(value)) {
-							// System.out.println(value);
 							statement.setDate(i + 1, java.sql.Date.valueOf(value));
 
 						} else
@@ -329,9 +335,9 @@ public class RichConnection implements Closeable {
 			connection.setAutoCommit(true);
 			connection.clearWarnings();
 		} catch (SQLException e) {
-			e.printStackTrace();
+			logger.error(e.getMessage(), e);
 			if (e instanceof BatchUpdateException) {
-				System.err.println(e.getNextException().getMessage());
+				logger.error(e.getNextException().getMessage());
 			}
 		}
 	}

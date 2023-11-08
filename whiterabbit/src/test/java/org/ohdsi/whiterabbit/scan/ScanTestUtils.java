@@ -136,7 +136,7 @@ public class ScanTestUtils {
                         case NUMERIC: values.add(String.valueOf(cell.getNumericCellValue())); break;
                         case STRING: values.add(cell.getStringCellValue()); break;
                         default: throw new RuntimeException("Unsupported cell type: " + cell.getCellType().name());
-                    };;
+                    };
                 }
                 sheet.add(values);
             }
