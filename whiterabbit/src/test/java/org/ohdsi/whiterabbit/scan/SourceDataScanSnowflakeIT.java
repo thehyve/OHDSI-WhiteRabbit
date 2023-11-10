@@ -62,7 +62,7 @@ public class SourceDataScanSnowflakeIT {
     @EnabledIfEnvironmentVariable(named = SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE, matches = ".+")
     void testProcessSnowflake(@TempDir Path tempDir) throws IOException, InterruptedException, URISyntaxException {
         Path outFile = tempDir.resolve("scanresult-snowflake.xlsx");
-        URL referenceScanReport = TestSourceDataScanIniFileTsv.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
+        URL referenceScanReport = TestSourceDataScanCsvGui.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
 
         SourceDataScan sourceDataScan = ScanTestUtils.createSourceDataScan();
         DbSettings dbSettings = SnowflakeTestUtils.getTestDbSettingsSnowflake();
@@ -80,8 +80,8 @@ public class SourceDataScanSnowflakeIT {
     void testProcessSnowflakeFromIni(@TempDir Path tempDir) throws URISyntaxException, IOException {
         Charset charset = StandardCharsets.UTF_8;
         Path iniFile = tempDir.resolve("snowflake.ini");
-        URL iniTemplate = TestSourceDataScanIniFileTsv.class.getClassLoader().getResource("scan_data/snowflake.ini.template");
-        URL referenceScanReport = TestSourceDataScanIniFileTsv.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
+        URL iniTemplate = SourceDataScanSnowflakeIT.class.getClassLoader().getResource("scan_data/snowflake.ini.template");
+        URL referenceScanReport = SourceDataScanSnowflakeIT.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
         assert iniTemplate != null;
         String content = new String(Files.readAllBytes(Paths.get(iniTemplate.toURI())), charset);
         content = content.replaceAll("%WORKING_FOLDER%", tempDir.toString())

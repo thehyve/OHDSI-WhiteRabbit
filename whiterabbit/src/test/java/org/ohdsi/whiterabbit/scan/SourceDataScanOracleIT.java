@@ -70,7 +70,7 @@ class SourceDataScanOracleIT {
     void testSourceDataScan(@TempDir Path tempDir) throws IOException, URISyntaxException {
         loadData();
         Path outFile = tempDir.resolve("scanresult.xslx");
-        URL referenceScanReport = TestSourceDataScanIniFileTsv.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
+        URL referenceScanReport = SourceDataScanOracleIT.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
 
         SourceDataScan sourceDataScan = ScanTestUtils.createSourceDataScan();
         DbSettings dbSettings = getTestDbSettings();

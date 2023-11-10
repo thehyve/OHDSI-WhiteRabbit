@@ -74,7 +74,6 @@ public class ScanTestUtils {
                                                     tabName, scanValue, referenceValue));
                                 }
                             });
-                    //assertEquals(scanSheet.get(i), referenceSheet.get(i), String.format("Values in sheet %s, row %d do not match.", tabName, i));
                 }
             }
         }

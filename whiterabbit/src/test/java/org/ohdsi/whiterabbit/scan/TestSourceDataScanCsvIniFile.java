@@ -1,11 +1,10 @@
 package org.ohdsi.whiterabbit.scan;
 
-import org.opentest4j.AssertionFailedError;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 import org.ohdsi.databases.DbType;
 import org.ohdsi.whiteRabbit.WhiteRabbitMain;
+import org.opentest4j.AssertionFailedError;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -15,19 +14,23 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
-public class TestSourceDataScanIniFileTsv {
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+class TestSourceDataScanCsvIniFile {
     @Test
-    void testSourceDataScan(@TempDir Path tempDir) throws URISyntaxException, IOException {
+    void testSourceDataScanFromIniFile(@TempDir Path tempDir) throws URISyntaxException, IOException {
         Charset charset = StandardCharsets.UTF_8;
         Path iniFile = tempDir.resolve("tsv.ini");
-        URL iniTemplate = TestSourceDataScanIniFileTsv.class.getClassLoader().getResource("scan_data/tsv.ini.template");
-        URL referenceScanReport = TestSourceDataScanIniFileTsv.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-csv.xlsx");
-        Path personCsv = Paths.get(TestSourceDataScanIniFileTsv.class.getClassLoader().getResource("scan_data/person-header.csv").toURI());
-        Path costCsv = Paths.get(TestSourceDataScanIniFileTsv.class.getClassLoader().getResource("scan_data/cost-header.csv").toURI());
-        assert iniTemplate != null;
+        URL iniTemplate = TestSourceDataScanCsvIniFile.class.getClassLoader().getResource("scan_data/tsv.ini.template");
+        URL referenceScanReport = TestSourceDataScanCsvIniFile.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-csv.xlsx");
+        Path personCsv = Paths.get(TestSourceDataScanCsvIniFile.class.getClassLoader().getResource("scan_data/person-header.csv").toURI());
+        Path costCsv = Paths.get(TestSourceDataScanCsvIniFile.class.getClassLoader().getResource("scan_data/cost-header.csv").toURI());
+        assertNotNull(iniTemplate);
         String content = new String(Files.readAllBytes(Paths.get(iniTemplate.toURI())), charset);
         content = content.replaceAll("%WORKING_FOLDER%", tempDir.toString());
         Files.write(iniFile, content.getBytes(charset));
@@ -35,14 +38,14 @@ public class TestSourceDataScanIniFileTsv {
         Files.copy(costCsv, tempDir.resolve("cost.csv"));
         WhiteRabbitMain wrMain = new WhiteRabbitMain(new String[]{"-ini", iniFile.toAbsolutePath().toString()});
         System.out.println("Hold it!");
-        assert referenceScanReport != null;
-        ScanTestUtils.compareScanResultsToReference(tempDir.resolve("ScanReport.xlsx"), Paths.get(referenceScanReport.toURI()), DbType.POSTGRESQL);
+        assertNotNull(referenceScanReport);
+        ScanTestUtils.compareScanResultsToReference(tempDir.resolve("ScanReport.xlsx"), Paths.get(referenceScanReport.toURI()), DbType.DELIMITED_TEXT_FILES);
     }
 
-
     @Test
-    // minimal test to verify comparing ScanReports: test the tester :-)
-    void testCompareSheets() throws URISyntaxException, IOException {
+    // minimal test to verify comparing ScanReports: test the tester :-) (and no, this test strictly speaking does not belong here, it should be in its own class)
+    void testCompareSheets() {
+        // conform that ScanTestUtils.compareSheets does know how to compare scan results (same, different)
         Map<String, List<List<String>>> sheets1 = Collections.singletonMap("Field Overview", Collections.singletonList(Arrays.asList("one", "two", "three")));
         Map<String, List<List<String>>> sheets2 = Collections.singletonMap("Field Overview", Collections.singletonList(Arrays.asList("one", "two", "three")));
         Map<String, List<List<String>>> sheets3 = Collections.singletonMap("Field Overview", Collections.singletonList(Arrays.asList("two", "three", "four")));

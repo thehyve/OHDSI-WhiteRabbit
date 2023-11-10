@@ -36,6 +36,28 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <java.awt.headless>false</java.awt.headless>
+                        <awt.toolkit>com.github.caciocavallosilano.cacio.ctc.CTCToolkit</awt.toolkit>
+                        <java.awt.graphicsenv>com.github.caciocavallosilano.cacio.ctc.CTCGraphicsEnvironment</java.awt.graphicsenv>
+                    </systemPropertyVariables>
+                    <argLine>
+                        --add-exports=java.desktop/java.awt=ALL-UNNAMED
+                        --add-exports=java.desktop/java.awt.peer=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.awt.image=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.java2d=ALL-UNNAMED
+                        --add-exports=java.desktop/java.awt.dnd.peer=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.awt=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.awt.event=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.awt.datatransfer=ALL-UNNAMED
+                        --add-exports=java.base/sun.security.action=ALL-UNNAMED
+                        --add-opens=java.base/java.util=ALL-UNNAMED
+                        --add-opens=java.desktop/java.awt=ALL-UNNAMED
+                        --add-opens=java.desktop/sun.java2d=ALL-UNNAMED
+                        --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+                    </argLine>
+                </configuration>
             </plugin>
             <!-- unpack the examples zip so that the contents can be used as test resources -->
             <plugin>

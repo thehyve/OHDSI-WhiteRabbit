@@ -293,6 +293,7 @@ public class WhiteRabbitMain implements ActionListener {
 
 	private JComponent createTabsPanel() {
 		JTabbedPane tabbedPane = new JTabbedPane();
+		tabbedPane.setName("TabbedPane");
 
 		JPanel locationPanel = createLocationsPanel();
 		tabbedPane.addTab("Locations", null, locationPanel, "Specify the location of the source data and the working folder");
@@ -308,6 +309,7 @@ public class WhiteRabbitMain implements ActionListener {
 
 	private JPanel createLocationsPanel() {
 		JPanel panel = new JPanel();
+		panel.setName("Locations");
 
 		panel.setLayout(new GridBagLayout());
 		GridBagConstraints c = new GridBagConstraints();
@@ -318,6 +320,7 @@ public class WhiteRabbitMain implements ActionListener {
 		folderPanel.setLayout(new BoxLayout(folderPanel, BoxLayout.X_AXIS));
 		folderPanel.setBorder(BorderFactory.createTitledBorder("Working folder"));
 		folderField = new JTextField();
+		folderField.setName("FolderField");
 		folderField.setText((new File("").getAbsolutePath()));
 		folderField.setToolTipText("The folder where all output will be written");
 		folderPanel.add(folderField);
@@ -336,6 +339,7 @@ public class WhiteRabbitMain implements ActionListener {
 		sourcePanel.setBorder(BorderFactory.createTitledBorder("Source data location"));
 		sourcePanel.add(new JLabel("Data type"));
 		sourceType = new JComboBox<>(new String[] { DELIMITED_TEXT_FILES, "SAS7bdat", "MySQL", "Oracle", "SQL Server", "PostgreSQL", "MS Access", "PDW", "Redshift", "Teradata", "BigQuery", "Azure", "Snowflake"});
+		sourceType.setName("SourceType");
 		sourceType.setToolTipText("Select the type of source data available");
 		sourceType.addItemListener(itemEvent -> {
 			String selectedSourceType = itemEvent.getItem().toString();
@@ -406,7 +410,9 @@ public class WhiteRabbitMain implements ActionListener {
 		sourcePanel.add(sourceDatabaseField);
 
 		sourcePanel.add(new JLabel("Delimiter"));
-		sourceDelimiterField = new JTextField(",");
+		JTextField delimiterField = new JTextField(",");
+		delimiterField.setName("Delimiter");
+		sourceDelimiterField = delimiterField;
 		sourceDelimiterField.setToolTipText("The delimiter that separates values. Enter 'tab' for tab.");
 		sourcePanel.add(sourceDelimiterField);
 
@@ -446,6 +452,7 @@ public class WhiteRabbitMain implements ActionListener {
 		tablePanel.setLayout(new BorderLayout());
 		tablePanel.setBorder(new TitledBorder("Tables to scan"));
 		tableList = new JList<String>();
+		tableList.setName("TableList");
 		tableList.setToolTipText("Specify the tables (or CSV files) to be scanned here");
 		tablePanel.add(new JScrollPane(tableList), BorderLayout.CENTER);
 
@@ -461,6 +468,7 @@ public class WhiteRabbitMain implements ActionListener {
 		addAllButton.setEnabled(false);
 		tableButtonPanel.add(addAllButton);
 		JButton addButton = new JButton("Add");
+		addButton.setName("Add");
 		addButton.setToolTipText("Add tables to list");
 		addButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -541,6 +549,7 @@ public class WhiteRabbitMain implements ActionListener {
 		southPanel.add(Box.createVerticalStrut(3));
 
 		JButton scanButton = new JButton("Scan tables");
+		scanButton.setName("ScanTables");
 		scanButton.setBackground(new Color(151, 220, 141));
 		scanButton.setToolTipText("Scan the selected tables");
 		scanButton.addActionListener(new ActionListener() {
@@ -706,6 +715,7 @@ public class WhiteRabbitMain implements ActionListener {
 
 	private JComponent createConsolePanel() {
 		JTextArea consoleArea = new JTextArea();
+		consoleArea.setName("Console");
 		consoleArea.setToolTipText("General progress information");
 		consoleArea.setEditable(false);
 		Console console = new Console();
@@ -793,6 +803,7 @@ public class WhiteRabbitMain implements ActionListener {
 		if (sourceDbSettings != null) {
 			if (sourceDbSettings.sourceType == DbSettings.SourceType.CSV_FILES || sourceDbSettings.sourceType == DbSettings.SourceType.SAS_FILES) {
 				JFileChooser fileChooser = new JFileChooser(new File(folderField.getText()));
+				fileChooser.setName("FileChooser");
 				fileChooser.setMultiSelectionEnabled(true);
 				fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 
@@ -1214,4 +1225,7 @@ public class WhiteRabbitMain implements ActionListener {
 		return menuBar;
 	}
 
+	public JFrame getFrame() {
+		return frame;
+	}
 }
