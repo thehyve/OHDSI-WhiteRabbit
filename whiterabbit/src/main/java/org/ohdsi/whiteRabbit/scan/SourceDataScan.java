@@ -36,6 +36,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.commons.io.FileUtils;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.ohdsi.databases.DbType;
 import org.ohdsi.databases.RichConnection;
 import org.ohdsi.databases.QueryResult;
@@ -56,7 +57,7 @@ public class SourceDataScan implements ScanParameters {
 	public static final String POI_TMP_DIR_ENVIRONMENT_VARIABLE_NAME = "ORG_OHDSI_WHITERABBIT_POI_TMPDIR";
 	public static final String POI_TMP_DIR_PROPERTY_NAME = "org.ohdsi.whiterabbit.poi.tmpdir";
 
-	private SXSSFWorkbook workbook;
+	private XSSFWorkbook workbook;
 	private char delimiter = ',';
 	private int sampleSize;
 	private boolean scanValues = false;
@@ -130,7 +131,7 @@ public class SourceDataScan implements ScanParameters {
 		this.numStatsSamplerSize = numStatsSamplerSize;
 	}
 
-	public void process(DbSettings dbSettings, String outputFileName) {
+	public void process(DbSettings dbSettings, String outputFileName) throws IOException {
 		logger.info("Processing source data scan from dbSettings: " + dbSettings);
 		startTimeStamp = LocalDateTime.now();
 		sourceType = dbSettings.sourceType;
@@ -271,11 +272,11 @@ public class SourceDataScan implements ScanParameters {
 		}
 	}
 
-	private void generateReport(String filename) {
+	private void generateReport(String filename) throws IOException {
 		StringUtilities.outputWithTime("Generating scan report");
 		removeEmptyTables();
 
-		workbook = new SXSSFWorkbook(100); // keep 100 rows in memory, exceeding rows will be flushed to disk
+		workbook = new XSSFWorkbook();
 
 		int i = 0;
 		indexedTableNameLookup = new HashMap<>();

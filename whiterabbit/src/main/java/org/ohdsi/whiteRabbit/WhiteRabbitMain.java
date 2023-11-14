@@ -31,42 +31,20 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintStream;
+import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Vector;
 
-import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
-import javax.swing.JComponent;
-import javax.swing.JDialog;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JPasswordField;
-import javax.swing.JScrollPane;
-import javax.swing.JSpinner;
-import javax.swing.JTabbedPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
+import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.io.output.TeeOutputStream;
 import org.ohdsi.databases.*;
 import org.ohdsi.utilities.DirectoryUtilities;
 import org.ohdsi.utilities.StringUtilities;
@@ -74,16 +52,34 @@ import org.ohdsi.utilities.Version;
 import org.ohdsi.utilities.files.IniFile;
 import org.ohdsi.whiteRabbit.fakeDataGenerator.FakeDataGenerator;
 import org.ohdsi.whiteRabbit.scan.SourceDataScan;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This is the WhiteRabbit main class
  */
 public class WhiteRabbitMain implements ActionListener {
 
-	public final static String DOCUMENTATION_URL = "http://ohdsi.github.io/WhiteRabbit";
-	public final static String ACTION_CMD_HELP = "Open documentation";
+	Logger logger = LoggerFactory.getLogger(WhiteRabbitMain.class);
 
-	public final static String DELIMITED_TEXT_FILES = "Delimited text files";
+	public static final String DOCUMENTATION_URL = "http://ohdsi.github.io/WhiteRabbit";
+	public static final String ACTION_CMD_HELP = "Open documentation";
+
+	public static final String DELIMITED_TEXT_FILES = "Delimited text files";
+
+	public static final String LABEL_SERVER_LOCATION = "Server location";
+	public static final String LABEL_USER_NAME = "User name";
+	public static final String LABEL_PASSWORD = "Password";
+	public static final String LABEL_DATABASE_NAME = "Database name";
+	public static final String LABEL_DELIMITER = "Delimiter";
+	public static final String LABEL_TEST_CONNECTION = "Test connection";
+	public static final String LABEL_CONNECTION_SUCCESSFUL = "Connection successful";
+	public static final String NAME_TABBED_PANE = "TabbedPane";
+	public static final String LABEL_LOCATIONS = "Locations";
+	public static final String LABEL_SCAN = "Scan";
+	public static final String LABEL_SCAN_TABLES = "Scan tables";
+
+	public static final String LABEL_ADD_ALL_IN_DB = "Add all in DB";
 
 	private JFrame				frame;
 	private JTextField			folderField;
@@ -116,15 +112,20 @@ public class WhiteRabbitMain implements ActionListener {
 	private boolean				sourceIsSas						= false;
 	private boolean				targetIsFiles					= false;
 
+	private Console	console;
+
+	private boolean				teeOutputStreams; // for testing/debugging purposes
+
 	private List<JComponent>	componentsToDisableWhenRunning	= new ArrayList<JComponent>();
 
 	public String reportFilePath = "";
 
-	public static void main(String[] args) {
-		new WhiteRabbitMain(args);
+	public static void main(String[] args) throws IOException {
+		new WhiteRabbitMain(false, args);
 	}
 
-	public WhiteRabbitMain(String[] args) {
+	public WhiteRabbitMain(boolean teeOutputStreams, String[] args) throws IOException {
+		this.teeOutputStreams = teeOutputStreams;
 		if (args.length == 2 && (args[0].equalsIgnoreCase("-ini") || args[0].equalsIgnoreCase("--ini")))
 			launchCommandLine(args[1]);
 		else {
@@ -151,7 +152,7 @@ public class WhiteRabbitMain implements ActionListener {
 		}
 	}
 
-	private void launchCommandLine(String iniFileName) {
+	private void launchCommandLine(String iniFileName) throws IOException {
 		IniFile iniFile = new IniFile(iniFileName);
 		DbSettings dbSettings = getDbSettings(iniFile);
 		findTablesToScan(iniFile, dbSettings);
@@ -264,7 +265,7 @@ public class WhiteRabbitMain implements ActionListener {
 		}
 	}
 
-	private void performSourceDataScan(IniFile iniFile, DbSettings dbSettings) {
+	private void performSourceDataScan(IniFile iniFile, DbSettings dbSettings) throws IOException {
 		SourceDataScan sourceDataScan = new SourceDataScan();
 		int maxRows = Integer.parseInt(iniFile.get("ROWS_PER_TABLE"));
 		boolean scanValues = iniFile.get("SCAN_FIELD_VALUES").equalsIgnoreCase("yes");
@@ -293,13 +294,13 @@ public class WhiteRabbitMain implements ActionListener {
 
 	private JComponent createTabsPanel() {
 		JTabbedPane tabbedPane = new JTabbedPane();
-		tabbedPane.setName("TabbedPane");
+		tabbedPane.setName(NAME_TABBED_PANE);
 
 		JPanel locationPanel = createLocationsPanel();
-		tabbedPane.addTab("Locations", null, locationPanel, "Specify the location of the source data and the working folder");
+		tabbedPane.addTab(LABEL_LOCATIONS, null, locationPanel, "Specify the location of the source data and the working folder");
 
 		JPanel scanPanel = createScanPanel();
-		tabbedPane.addTab("Scan", null, scanPanel, "Create a scan of the source data");
+		tabbedPane.addTab(LABEL_SCAN, null, scanPanel, "Create a scan of the source data");
 
 		JPanel fakeDataPanel = createFakeDataPanel();
 		tabbedPane.addTab("Fake data generation", null, fakeDataPanel, "Create fake data based on a scan report for development purposes");
@@ -309,7 +310,7 @@ public class WhiteRabbitMain implements ActionListener {
 
 	private JPanel createLocationsPanel() {
 		JPanel panel = new JPanel();
-		panel.setName("Locations");
+		panel.setName(LABEL_LOCATIONS);
 
 		panel.setLayout(new GridBagLayout());
 		GridBagConstraints c = new GridBagConstraints();
@@ -338,7 +339,7 @@ public class WhiteRabbitMain implements ActionListener {
 		sourcePanel.setLayout(new GridLayout(0, 2));
 		sourcePanel.setBorder(BorderFactory.createTitledBorder("Source data location"));
 		sourcePanel.add(new JLabel("Data type"));
-		sourceType = new JComboBox<>(new String[] { DELIMITED_TEXT_FILES, "SAS7bdat", "MySQL", "Oracle", "SQL Server", "PostgreSQL", "MS Access", "PDW", "Redshift", "Teradata", "BigQuery", "Azure", "Snowflake"});
+		sourceType = new JComboBox<>(DBChoice.choices());
 		sourceType.setName("SourceType");
 		sourceType.setToolTipText("Select the type of source data available");
 		sourceType.addItemListener(itemEvent -> {
@@ -392,26 +393,30 @@ public class WhiteRabbitMain implements ActionListener {
 		});
 		sourcePanel.add(sourceType);
 
-		sourcePanel.add(new JLabel("Server location"));
+		sourcePanel.add(new JLabel(LABEL_SERVER_LOCATION));
 		sourceServerField = new JTextField("127.0.0.1");
+		sourceServerField.setName(LABEL_SERVER_LOCATION);
 		sourceServerField.setEnabled(false);
 		sourcePanel.add(sourceServerField);
-		sourcePanel.add(new JLabel("User name"));
+		sourcePanel.add(new JLabel(LABEL_USER_NAME));
 		sourceUserField = new JTextField("");
+		sourceUserField.setName(LABEL_USER_NAME);
 		sourceUserField.setEnabled(false);
 		sourcePanel.add(sourceUserField);
-		sourcePanel.add(new JLabel("Password"));
+		sourcePanel.add(new JLabel(LABEL_PASSWORD));
 		sourcePasswordField = new JPasswordField("");
+		sourcePasswordField.setName(LABEL_PASSWORD);
 		sourcePasswordField.setEnabled(false);
 		sourcePanel.add(sourcePasswordField);
-		sourcePanel.add(new JLabel("Database name"));
+		sourcePanel.add(new JLabel(LABEL_DATABASE_NAME));
 		sourceDatabaseField = new JTextField("");
+		sourceDatabaseField.setName(LABEL_DATABASE_NAME);
 		sourceDatabaseField.setEnabled(false);
 		sourcePanel.add(sourceDatabaseField);
 
-		sourcePanel.add(new JLabel("Delimiter"));
+		sourcePanel.add(new JLabel(LABEL_DELIMITER));
 		JTextField delimiterField = new JTextField(",");
-		delimiterField.setName("Delimiter");
+		delimiterField.setName(LABEL_DELIMITER);
 		sourceDelimiterField = delimiterField;
 		sourceDelimiterField.setToolTipText("The delimiter that separates values. Enter 'tab' for tab.");
 		sourcePanel.add(sourceDelimiterField);
@@ -425,7 +430,8 @@ public class WhiteRabbitMain implements ActionListener {
 		testConnectionButtonPanel.setLayout(new BoxLayout(testConnectionButtonPanel, BoxLayout.X_AXIS));
 		testConnectionButtonPanel.add(Box.createHorizontalGlue());
 
-		JButton testConnectionButton = new JButton("Test connection");
+		JButton testConnectionButton = new JButton(LABEL_TEST_CONNECTION);
+		testConnectionButton.setName(LABEL_TEST_CONNECTION);
 		testConnectionButton.setBackground(new Color(151, 220, 141));
 		testConnectionButton.setToolTipText("Test the connection");
 		testConnectionButton.addActionListener(new ActionListener() {
@@ -458,7 +464,8 @@ public class WhiteRabbitMain implements ActionListener {
 
 		JPanel tableButtonPanel = new JPanel();
 		tableButtonPanel.setLayout(new GridLayout(3, 1));
-		addAllButton = new JButton("Add all in DB");
+		addAllButton = new JButton(LABEL_ADD_ALL_IN_DB);
+		addAllButton.setName(LABEL_ADD_ALL_IN_DB);
 		addAllButton.setToolTipText("Add all tables in the database");
 		addAllButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -548,8 +555,8 @@ public class WhiteRabbitMain implements ActionListener {
 
 		southPanel.add(Box.createVerticalStrut(3));
 
-		JButton scanButton = new JButton("Scan tables");
-		scanButton.setName("ScanTables");
+		JButton scanButton = new JButton(LABEL_SCAN_TABLES);
+		scanButton.setName(LABEL_SCAN_TABLES);
 		scanButton.setBackground(new Color(151, 220, 141));
 		scanButton.setToolTipText("Scan the selected tables");
 		scanButton.addActionListener(new ActionListener() {
@@ -683,7 +690,8 @@ public class WhiteRabbitMain implements ActionListener {
 		fakeDataButtonPanel.add(generateRowCount);
 		fakeDataButtonPanel.add(Box.createHorizontalGlue());
 
-		JButton testConnectionButton = new JButton("Test connection");
+		JButton testConnectionButton = new JButton(LABEL_TEST_CONNECTION);
+		testConnectionButton.setName(LABEL_TEST_CONNECTION);
 		testConnectionButton.setBackground(new Color(151, 220, 141));
 		testConnectionButton.setToolTipText("Test the connection");
 		testConnectionButton.addActionListener(new ActionListener() {
@@ -718,16 +726,35 @@ public class WhiteRabbitMain implements ActionListener {
 		consoleArea.setName("Console");
 		consoleArea.setToolTipText("General progress information");
 		consoleArea.setEditable(false);
-		Console console = new Console();
+		this.console = new Console();
 		console.setTextArea(consoleArea);
-		System.setOut(new PrintStream(console));
-		System.setErr(new PrintStream(console));
+		setOutputStreamsToConsole(console);
 		JScrollPane consoleScrollPane = new JScrollPane(consoleArea);
 		consoleScrollPane.setBorder(BorderFactory.createTitledBorder("Console"));
 		consoleScrollPane.setPreferredSize(new Dimension(800, 200));
 		consoleScrollPane.setAutoscrolls(true);
 		ObjectExchange.console = console;
 		return consoleScrollPane;
+	}
+
+	private void setOutputStreamsToConsole(Console console) {
+		if (teeOutputStreams) {
+			//logger.info("Teeing out & err to Swing Console console.");
+			System.setOut(new PrintStream(new TeeOutputStream(System.out, new PrintStream(console))));
+			System.setErr(new PrintStream(new TeeOutputStream(System.err, new PrintStream(console))));
+		} else {
+			//logger.info("Setting out & err to Swing Console.");
+			System.setOut(new PrintStream(console));
+			System.setErr(new PrintStream(console));
+		}
+
+		Thread resetOutputStreams = new Thread(() -> {
+			System.setOut(new PrintStream(new FileOutputStream(FileDescriptor.out)));
+			System.setErr(new PrintStream(new FileOutputStream(FileDescriptor.err)));
+			logger = LoggerFactory.getLogger(WhiteRabbitMain.class);
+			//logger.info("Resetting out & err to default.");
+		});
+		Runtime.getRuntime().addShutdownHook(resetOutputStreams);
 	}
 
 	private void loadIcons(JFrame f) {
@@ -947,7 +974,7 @@ public class WhiteRabbitMain implements ActionListener {
 
 			connection.close();
 			String message = "Succesfully connected to " + dbSettings.database + " on server " + dbSettings.server;
-			JOptionPane.showMessageDialog(frame, StringUtilities.wordWrap(message, 80), "Connection succesful", JOptionPane.INFORMATION_MESSAGE);
+			JOptionPane.showMessageDialog(frame, StringUtilities.wordWrap(message, 80), LABEL_CONNECTION_SUCCESSFUL, JOptionPane.INFORMATION_MESSAGE);
 
 		}
 	}
@@ -1041,7 +1068,7 @@ public class WhiteRabbitMain implements ActionListener {
 		int valuesCount = StringUtilities.numericOptionToInt(scanValuesCount.getSelectedItem().toString());
 		int numStatsSamplerSize = StringUtilities.numericOptionToInt(numericStatsSampleSize.getSelectedItem().toString());
 
-		ScanThread scanThread = new ScanThread(
+		ScanRunner scanscanRunner = new ScanRunner(
 				rowCount,
 				valuesCount,
 				scanValueScan.isSelected(),
@@ -1049,7 +1076,7 @@ public class WhiteRabbitMain implements ActionListener {
 				calculateNumericStats.isSelected(),
 				numStatsSamplerSize
 		);
-		scanThread.start();
+		scanscanRunner.run();
 	}
 
 	private void fakeDataRun() {
@@ -1058,16 +1085,16 @@ public class WhiteRabbitMain implements ActionListener {
 			String message = "File " + filename + " not found";
 			JOptionPane.showMessageDialog(frame, StringUtilities.wordWrap(message, 80), "File not found", JOptionPane.ERROR_MESSAGE);
 		} else {
-			FakeDataThread thread = new FakeDataThread();
-			thread.start();
+			FakeDataRunner runner = new FakeDataRunner();
+			runner.run();
 		}
 	}
 
-	private class ScanThread extends Thread {
+	private class ScanRunner implements Runnable {
 
 		SourceDataScan sourceDataScan = new SourceDataScan();
 
-		public ScanThread(int maxRows, int maxValues, boolean scanValues, int minCellCount, boolean calculateNumericStats, int numericStatsSampleSize) {
+		public ScanRunner(int maxRows, int maxValues, boolean scanValues, int minCellCount, boolean calculateNumericStats, int numericStatsSampleSize) {
 			sourceDataScan.setSampleSize(maxRows);
 			sourceDataScan.setScanValues(scanValues);
 			sourceDataScan.setMinCellCount(minCellCount);
@@ -1096,10 +1123,9 @@ public class WhiteRabbitMain implements ActionListener {
 					component.setEnabled(true);
 			}
 		}
-
 	}
 
-	private class FakeDataThread extends Thread {
+	private class FakeDataRunner implements Runnable {
 
 		public void run() {
 			for (JComponent component : componentsToDisableWhenRunning) {
@@ -1227,5 +1253,45 @@ public class WhiteRabbitMain implements ActionListener {
 
 	public JFrame getFrame() {
 		return frame;
+	}
+
+	public Console getConsole() {
+		return console;
+	}
+
+	public enum DBChoice {
+
+		DelimitedTextFiles("Delimited text files"),
+		SAS7bdat("SAS7bdat"),
+		MySQL("MySQL"),
+		Oracle("Oracle"),
+		SQLServer("SQL Server"),
+		PostgreSQL("PostgreSQL"),
+		MSAccess("MS Access"),
+		PDW("PDW"),
+		Redshift("Redshift"),
+		Teradata("Teradata"),
+		BigQuery("BigQuery"),
+		Azure("Azure");
+
+		private final String name;
+
+		DBChoice(String s) {
+			name = s;
+		}
+
+		public boolean equalsName(String otherName) {
+			// (otherName == null) check is not needed because name.equals(null) returns false
+			return name.equals(otherName);
+		}
+
+		@Override
+		public String toString() {
+			return this.name;
+		}
+
+		public static String[] choices() {
+			return Arrays.stream(DBChoice.values()).map(Enum::toString).toArray(String[]::new);
+		}
 	}
 }

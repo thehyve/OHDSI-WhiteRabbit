@@ -3,14 +3,10 @@ package org.ohdsi.whiterabbit.scan;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.assertj.swing.timing.Condition;
 import org.ohdsi.databases.DbType;
-import org.ohdsi.databases.RichConnection;
-import org.ohdsi.ooxml.ReadXlsxFileWithHeader;
-import org.ohdsi.utilities.files.Row;
-import org.ohdsi.utilities.files.RowUtilities;
-import org.ohdsi.databases.DbSettings;
+import org.ohdsi.whiteRabbit.Console;
 import org.ohdsi.whiteRabbit.scan.SourceDataScan;
-import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -21,6 +17,8 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.IntStream;
 
+import static org.assertj.swing.timing.Pause.pause;
+import static org.assertj.swing.timing.Timeout.timeout;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.ohdsi.databases.DbType.*;
 
@@ -39,14 +37,28 @@ public class ScanTestUtils {
         return sourceDataScan;
     }
 
-    public static void compareScanResultsToReference(Path scanResults, Path referenceResults, DbType dbType) throws IOException {
+    public static boolean scanResultsSheetMatchesReference(Path scanResults, Path referenceResults, DbType dbType) throws IOException {
         Map<String, List<List<String>>> scanSheets = readXlsxAsStringValues(scanResults);
         Map<String, List<List<String>>> referenceSheets = readXlsxAsStringValues(referenceResults);
 
-        compareSheets(scanSheets, referenceSheets, dbType);
+        return scanValuesMatchReferenceValues(scanSheets, referenceSheets, dbType);
     }
 
-    public static void compareSheets(Map<String, List<List<String>>> scanSheets, Map<String, List<List<String>>> referenceSheets, DbType dbType) {
+    public static boolean isScanReportGeneratedAndMatchesReference(Console console, Path expectedPath, Path referencePath, DbType dbType) throws IOException {
+        assertNotNull(console);
+        // wait for the "Scan report generated:" message in the Console text area
+        pause(new Condition("Label Timeout") {
+            public boolean test() {
+                return console.getText().contains("Scan report generated:");
+            }
+
+        }, timeout(10000));
+        assertTrue(console.getText().contains(expectedPath.toString()));
+
+        return scanResultsSheetMatchesReference(expectedPath, referencePath, dbType);
+    }
+
+    public static boolean scanValuesMatchReferenceValues(Map<String, List<List<String>>> scanSheets, Map<String, List<List<String>>> referenceSheets, DbType dbType) {
         assertEquals(scanSheets.size(), referenceSheets.size(), "Number of sheets does not match.");
         for (String tabName: new String[]{"Field Overview", "Table Overview", "cost.csv", "person.csv"}) {
             if (scanSheets.containsKey(tabName)) {
@@ -77,6 +89,8 @@ public class ScanTestUtils {
                 }
             }
         }
+
+        return true;
     }
 
     private static boolean matchTypeName(String type, String reference, DbType dbType) {
@@ -111,7 +125,7 @@ public class ScanTestUtils {
     }
 
     private static Map<String, List<List<String>>> readXlsxAsStringValues(Path xlsx) throws IOException {
-        assertTrue(Files.exists(xlsx));
+        assertTrue(Files.exists(xlsx), String.format("File %s does not exist.", xlsx));
 
         Map<String, List<List<String>>> sheets = new HashMap<>();
 

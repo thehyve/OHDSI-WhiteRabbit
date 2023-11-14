@@ -26,8 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class SourceDataScanSnowflakeIT {
 
@@ -70,7 +69,7 @@ public class SourceDataScanSnowflakeIT {
         logger.info("dbSettings before: " + dbSettings);
         sourceDataScan.process(dbSettings, outFile.toString());
         logger.info("dbSettings after : " + dbSettings);
-        ScanTestUtils.compareScanResultsToReference(outFile, Paths.get(referenceScanReport.toURI()), DbType.SNOWFLAKE);
+        ScanTestUtils.scanResultsSheetMatchesReference(outFile, Paths.get(referenceScanReport.toURI()), DbType.SNOWFLAKE);
 
         logger.info("Testing scan on Snowflake OK");
     }
@@ -92,10 +91,10 @@ public class SourceDataScanSnowflakeIT {
                 .replaceAll("%SNOWFLAKE_DATABASE%", SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_DATABASE"))
                 .replaceAll("%SNOWFLAKE_SCHEMA%", SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_SCHEMA"));
         Files.write(iniFile, content.getBytes(charset));
-        WhiteRabbitMain wrMain = new WhiteRabbitMain(new String[]{"-ini", iniFile.toAbsolutePath().toString()});
+        WhiteRabbitMain wrMain = new WhiteRabbitMain(true, new String[]{"-ini", iniFile.toAbsolutePath().toString()});
         System.out.println("Hold it!");
         assert referenceScanReport != null;
-        ScanTestUtils.compareScanResultsToReference(tempDir.resolve("ScanReport.xlsx"), Paths.get(referenceScanReport.toURI()), DbType.SNOWFLAKE);
+        assertTrue(ScanTestUtils.scanResultsSheetMatchesReference(tempDir.resolve("ScanReport.xlsx"), Paths.get(referenceScanReport.toURI()), DbType.SNOWFLAKE));
     }
 
     private static void prepareTestData() throws IOException, InterruptedException {

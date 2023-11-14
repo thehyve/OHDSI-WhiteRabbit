@@ -67,7 +67,7 @@ class SourceDataScanPostgreSQLIT {
         DbSettings dbSettings = getTestDbSettings();
 
         sourceDataScan.process(dbSettings, outFile.toString());
-        ScanTestUtils.compareScanResultsToReference(outFile, Paths.get(referenceScanReport.toURI()), DbType.ORACLE);
+        assertTrue(ScanTestUtils.scanResultsSheetMatchesReference(outFile, Paths.get(referenceScanReport.toURI()), DbType.POSTGRESQL));
     }
 
     private List<String> getTableNames(DbSettings dbSettings) {

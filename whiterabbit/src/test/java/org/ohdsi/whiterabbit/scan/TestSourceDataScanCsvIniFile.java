@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TestSourceDataScanCsvIniFile {
     @Test
@@ -36,10 +37,10 @@ class TestSourceDataScanCsvIniFile {
         Files.write(iniFile, content.getBytes(charset));
         Files.copy(personCsv, tempDir.resolve("person.csv"));
         Files.copy(costCsv, tempDir.resolve("cost.csv"));
-        WhiteRabbitMain wrMain = new WhiteRabbitMain(new String[]{"-ini", iniFile.toAbsolutePath().toString()});
+        WhiteRabbitMain wrMain = new WhiteRabbitMain(false, new String[]{"-ini", iniFile.toAbsolutePath().toString()});
         System.out.println("Hold it!");
         assertNotNull(referenceScanReport);
-        ScanTestUtils.compareScanResultsToReference(tempDir.resolve("ScanReport.xlsx"), Paths.get(referenceScanReport.toURI()), DbType.DELIMITED_TEXT_FILES);
+        assertTrue(ScanTestUtils.scanResultsSheetMatchesReference(tempDir.resolve("ScanReport.xlsx"), Paths.get(referenceScanReport.toURI()), DbType.DELIMITED_TEXT_FILES));
     }
 
     @Test
@@ -50,8 +51,8 @@ class TestSourceDataScanCsvIniFile {
         Map<String, List<List<String>>> sheets2 = Collections.singletonMap("Field Overview", Collections.singletonList(Arrays.asList("one", "two", "three")));
         Map<String, List<List<String>>> sheets3 = Collections.singletonMap("Field Overview", Collections.singletonList(Arrays.asList("two", "three", "four")));
         AssertionFailedError thrown = Assertions.assertThrows(AssertionFailedError.class, () -> {
-            ScanTestUtils.compareSheets(sheets1, sheets3, DbType.POSTGRESQL);
+            ScanTestUtils.scanValuesMatchReferenceValues(sheets1, sheets3, DbType.POSTGRESQL);
         }, "AssertionFailedError was expected");
-        ScanTestUtils.compareSheets(sheets1, sheets2, DbType.POSTGRESQL);
+        ScanTestUtils.scanValuesMatchReferenceValues(sheets1, sheets2, DbType.POSTGRESQL);
     }
 }

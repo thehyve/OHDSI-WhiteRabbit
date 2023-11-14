@@ -14,7 +14,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-	<apache-poi-version>4.1.2</apache-poi-version>
+	<apache-poi-version>5.2.4</apache-poi-version>
     </properties>
 
     <build>
@@ -65,41 +65,47 @@
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi</artifactId>
-            <version>4.1.2</version>
-            <exclusions>
+            <version>${apache-poi-version}</version>
+            <!-- exclusions>
                 <exclusion>
                     <groupId>org.apache.ant</groupId>
                     <artifactId>ant</artifactId>
                 </exclusion>
-            </exclusions>
+            </exclusions -->
         </dependency>
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
-            <version>4.1.2</version>
-            <exclusions>
+            <version>${apache-poi-version}</version>
+            <!-- exclusions>
                 <exclusion>
                     <groupId>org.apache.commons</groupId>
                     <artifactId>commons-compress</artifactId>
                 </exclusion>
-            </exclusions>
+            </exclusions -->
         </dependency>
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-excelant</artifactId>
-            <version>4.1.2</version>
-            <exclusions>
+            <version>${apache-poi-version}</version>
+            <!-- exclusions>
                 <exclusion>
                     <groupId>org.apache.ant</groupId>
                     <artifactId>ant</artifactId>
                 </exclusion>
-            </exclusions>
+            </exclusions -->
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml-lite -->
         <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml-lite</artifactId>
+            <version>${apache-poi-version}</version>
+        </dependency>
+        <!-- dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml-schemas</artifactId>
 	    <version>4.1.2</version>
-        </dependency>
+        </dependency -->
         <!-- Note: Apache xmlbeans v4.x and v5.x is incompatible with Apache poi v4-->
         <dependency>
             <groupId>org.apache.xmlbeans</groupId>
