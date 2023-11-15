@@ -29,6 +29,8 @@ public enum SnowflakeConnector implements DBConnectorInterface {
     private String database;
     private String schema;
 
+    private String authenticator;
+
     private final DbType dbType = DbType.SNOWFLAKE;
     public final static String ERROR_NO_FIELD_OF_TYPE = "No value was specified for type";
     public final static String ERROR_INVALID_SERVER_STRING = "Server string is not valid";
@@ -61,9 +63,14 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         dbSettings.database = String.format("%s.%s.%s", warehouse, database, schema);
         dbSettings.domain = dbSettings.database;
         dbSettings.user = iniFile.getOrFail("SNOWFLAKE_USER");
-        dbSettings.password = iniFile.getOrFail("SNOWFLAKE_PASSWORD");
         dbSettings.dbType = DbType.SNOWFLAKE;
         dbSettings.sourceType = DbSettings.SourceType.DATABASE;
+        dbSettings.password = iniFile.get("SNOWFLAKE_PASSWORD");
+        authenticator = iniFile.get("SNOWFLAKE_AUTHENTICATOR");
+
+        if (StringUtils.isEmpty(dbSettings.password) && StringUtils.isEmpty(authenticator)) {
+            throw new RuntimeException("No authentication method (password or authenticator) specified for Snowflake.");
+        }
 
         return getInstance(dbSettings.server, dbSettings.database, dbSettings.user, dbSettings.password);
     }
@@ -142,7 +149,7 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         } catch (ClassNotFoundException ex) {
             throw new RuntimeException("Cannot find JDBC driver. Make sure the file snowflake-jdbc-x.xx.xx.jar is in the path: " + ex.getMessage());
         }
-        String url = buildUrl(server, schema, user, password);
+        String url = buildUrl(server, schema, user, password, INSTANCE.authenticator);
         try {
             return DriverManager.getConnection(url);
         } catch (SQLException ex) {
@@ -197,7 +204,7 @@ public enum SnowflakeConnector implements DBConnectorInterface {
             return errors;
         }
 
-        public static String buildUrl(String server, String schema, String user, String password) {
+        public static String buildUrl(String server, String schema, String user, String password, String authenticator) {
             final String jdbcPrefix = "jdbc:snowflake://";
             String url = (!server.startsWith(jdbcPrefix) ? jdbcPrefix : "") + server;
             if (!url.contains("?")) {
@@ -209,7 +216,11 @@ public enum SnowflakeConnector implements DBConnectorInterface {
             url = appendParameterIfSet(url, "db", parts[1]);
             url = appendParameterIfSet(url, "schema", parts[2]);
             url = appendParameterIfSet(url, "user", user);
-            url = appendParameterIfSet(url, "password", password);
+            if (!StringUtils.isEmpty(authenticator)) {
+                url = appendParameterIfSet(url, "authenticator", authenticator);
+            } else {
+                url = appendParameterIfSet(url, "password", password);
+            }
 
             return url;
         }
