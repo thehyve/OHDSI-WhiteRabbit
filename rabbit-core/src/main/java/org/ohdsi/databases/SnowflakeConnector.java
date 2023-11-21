@@ -10,9 +10,10 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.ohdsi.utilities.files.IniFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-
-import static org.ohdsi.databases.SnowflakeConnector.ServerConfig.buildUrl;
+import static org.ohdsi.databases.SnowflakeConnector.ServerConfig.*;
 
 /*
  * SnowflakeDB implements all Snowflake specific logic required to connect to, and query, a Snowflake instance.
@@ -21,6 +22,12 @@ import static org.ohdsi.databases.SnowflakeConnector.ServerConfig.buildUrl;
  */
 public enum SnowflakeConnector implements DBConnectorInterface {
     INSTANCE();
+
+    static Logger logger = LoggerFactory.getLogger(SnowflakeConnector.class);
+
+    public static final String ERROR_NO_PASSWORD_OR_AUTHENTICATOR = "No authentication method (password or authenticator) specified for Snowflake.";
+    public static final String WARNING_PASSWORD_AND_AUTHENTICATOR_SPECIFIED =
+            "Both password and an authenticator method have been specified for Snowflake. The password will be ignored";
 
     private DbSettings dbSettings = null;
     private ServerConfig serverConfig = null;
@@ -55,6 +62,12 @@ public enum SnowflakeConnector implements DBConnectorInterface {
     }
 
     public DBConnectorInterface getInstance(IniFile iniFile) {
+        readAndValidate(iniFile);
+
+        return getInstance(dbSettings.server, dbSettings.database, dbSettings.user, dbSettings.password);
+    }
+
+    public boolean readAndValidate(IniFile iniFile) {
         warehouse = iniFile.getOrFail("SNOWFLAKE_WAREHOUSE");
         database = iniFile.getOrFail("SNOWFLAKE_DATABASE");
         schema = iniFile.getOrFail("SNOWFLAKE_SCHEMA");
@@ -69,10 +82,32 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         authenticator = iniFile.get("SNOWFLAKE_AUTHENTICATOR");
 
         if (StringUtils.isEmpty(dbSettings.password) && StringUtils.isEmpty(authenticator)) {
-            throw new RuntimeException("No authentication method (password or authenticator) specified for Snowflake.");
+            throw new RuntimeException(ERROR_NO_PASSWORD_OR_AUTHENTICATOR);
+        } else if (!StringUtils.isEmpty(dbSettings.password) && !StringUtils.isEmpty(authenticator)) {
+            logger.warn(WARNING_PASSWORD_AND_AUTHENTICATOR_SPECIFIED);
+        } else if (!StringUtils.isEmpty(authenticator) && !authenticator.equals("externalbrowser")) {
+            switch (authenticator.toLowerCase()) {
+            case "externalbrowser":
+                // this is a supported/tested authentication method, no need to inform the user
+                break;
+            case "snowflake":
+            case "oauth":
+            case "snowflake_jwt":
+            case "username_password_mfa":
+                // These methods are supported by Snowflake, but have not been tested. Warn the user about this.
+                // See https://docs.snowflake.com/en/developer-guide/jdbc/jdbc-parameters
+                logger.warn(String.format("Authentication method '%s' is untested. It will might not work.", authenticator));
+                break;
+            default:
+                if (authenticator.matches("^https://.*\\.okta\\.com")) {
+                    logger.warn(String.format("Authentication method for okta.com is untested. It will might not work.", authenticator));
+                } else {
+                    throw new RuntimeException(String.format("Unsupported authentication method for Snowflake: %s", authenticator));
+                }
+            }
         }
 
-        return getInstance(dbSettings.server, dbSettings.database, dbSettings.user, dbSettings.password);
+        return true;
     }
 
     @Override
@@ -122,18 +157,18 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         }
     }
 
-    public Connection getConnection(DbSettings dbSettings) {
-        return getConnection(dbSettings.server, dbSettings.database, dbSettings.user, dbSettings.password);
-    }
+//    public Connection getConnection(DbSettings dbSettings) {
+//        return getConnection(dbSettings.server, dbSettings.database, dbSettings.user, dbSettings.password);
+//    }
 
-    public Connection getConnection(String server, String fullSchemaPath, String user, String password) {
-        SnowflakeConnector.INSTANCE.getInstance(server, fullSchemaPath, user, password);
-        return snowflakeConnection;
-    }
-    public Connection connect(DbSettings dbSettings) throws RuntimeException {
-        SnowflakeConnector.INSTANCE.getInstance(dbSettings.server, dbSettings.database, dbSettings.user, dbSettings.password);
-        return this.snowflakeConnection;
-    }
+//    public Connection getConnection(String server, String fullSchemaPath, String user, String password) {
+//        SnowflakeConnector.INSTANCE.getInstance(server, fullSchemaPath, user, password);
+//        return snowflakeConnection;
+//    }
+//    public Connection connect(DbSettings dbSettings) throws RuntimeException {
+//        SnowflakeConnector.INSTANCE.getInstance(dbSettings.server, dbSettings.database, dbSettings.user, dbSettings.password);
+//        return this.snowflakeConnection;
+//    }
 
     public DbSettings getDbSettings() {
         if (dbSettings == null) {
@@ -141,6 +176,12 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         }
 
         return dbSettings;
+    }
+
+    @Override
+    public List<DBConfiguration.ConfigurationField> getFields() {
+        //SnowFlakeConfiguration[] iets = SnowFlakeConfiguration.values();
+        return new ArrayList<>();
     }
 
     private static Connection connectToSnowflake(String server, String schema, String user, String password) {
@@ -166,14 +207,61 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         }
     }
 
-    public static class ServerConfig {
+    public static class SnowFlakeConfiguration extends DBConfiguration {
+        public SnowFlakeConfiguration() {
+            super(
+                DBConfiguration.ConfigurationField.create(
+                        SNOWFLAKE_ACCOUNT,
+                        "Account",
+                        "Account for the Snowflake instance"),
+                DBConfiguration.ConfigurationField.create(
+                        SNOWFLAKE_USER,
+                        "User",
+                        "User for the Snowflake instance"),
+                DBConfiguration.ConfigurationField.create(
+                        ServerConfig.SNOWFLAKE_PASSWORD,
+                        "Password",
+                        "Password for the Snowflake instance"),
+                DBConfiguration.ConfigurationField.create(
+                        ServerConfig.SNOWFLAKE_WAREHOUSE,
+                        "Warehouse",
+                        "Warehouse for the Snowflake instance"),
+                DBConfiguration.ConfigurationField.create(
+                        ServerConfig.SNOWFLAKE_DATABASE,
+                        "Database",
+                        "Database for the Snowflake instance"),
+                DBConfiguration.ConfigurationField.create(
+                        ServerConfig.SNOWFLAKE_SCHEMA,
+                        "Schema",
+                        "Schema for the Snowflake instance"),
+                DBConfiguration.ConfigurationField.create(
+                        ServerConfig.SNOWFLAKE_AUTHENTICATOR,
+                        "Authenticator method",
+                        "Snowflake JDBC authenticator method (only 'externalbrowser' is currently supported)")
+            );
+        }
+
+        private final List<DBConfiguration.ConfigurationField> fields = new ArrayList<>();
+
+    }
+    public static class ServerConfig extends DBConfiguration {
+        public static final String SNOWFLAKE_ACCOUNT = "SNOWFLAKE_ACCOUNT";
+        public static final String SNOWFLAKE_USER = "SNOWFLAKE_USER";
+        public static final String SNOWFLAKE_PASSWORD = "SNOWFLAKE_PASSWORD";
+        public static final String SNOWFLAKE_AUTHENTICATOR = "SNOWFLAKE_AUTHENTICATOR";
+        public static final String SNOWFLAKE_WAREHOUSE = "SNOWFLAKE_WAREHOUSE";
+        public static final String SNOWFLAKE_DATABASE = "SNOWFLAKE_DATABASE";
+        public static final String SNOWFLAKE_SCHEMA = "SNOWFLAKE_SCHEMA";
         public final String server;
+        public final String account;
         public final String user;
         public final String password;
         public final String fullSchemaPath;
         public final String warehouse;
         public final String database;
         public final String schema;
+        public final String authenticator;
+        public final DbSettings dbSettings;
 
         public static List<String> checkSnowflakeConfig(String server, String user, String password, String schemaName)
                 throws RuntimeException {
@@ -243,6 +331,8 @@ public enum SnowflakeConnector implements DBConnectorInterface {
             }
         }
         public ServerConfig(String server, String fullSchemaPath, String user, String password) {
+            super(new IniFile());
+            this.account = "";
             this.server = server;
             this.fullSchemaPath = fullSchemaPath;
             this.user = user;
@@ -251,6 +341,25 @@ public enum SnowflakeConnector implements DBConnectorInterface {
             this.warehouse = parts[0];
             this.database = parts[1];
             this.schema = parts[2];
+            this.authenticator = "";
+
+            this.dbSettings = new DbSettings();
+        }
+
+        public ServerConfig(IniFile iniFile) {
+            super(iniFile);
+
+            this.server = String.format("https://%s.snowflakecomputing.com", iniFile.getOrFail("SNOWFLAKE_ACCOUNT"));
+            this.account = iniFile.getOrFail(SNOWFLAKE_ACCOUNT);
+            this.user = iniFile.getOrFail(SNOWFLAKE_USER);
+            this.password = iniFile.get(SNOWFLAKE_PASSWORD);
+            this.authenticator = iniFile.get(SNOWFLAKE_AUTHENTICATOR);
+            this.warehouse = iniFile.getOrFail(SNOWFLAKE_WAREHOUSE);
+            this.database = iniFile.getOrFail(SNOWFLAKE_DATABASE);
+            this.schema = iniFile.getOrFail(SNOWFLAKE_SCHEMA);
+            this.fullSchemaPath = String.format("%s.%s.%s", this.warehouse, this.database, this.schema);
+
+            this.dbSettings = new DbSettings();
         }
     }
 }

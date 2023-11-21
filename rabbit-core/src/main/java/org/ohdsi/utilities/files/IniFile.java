@@ -25,6 +25,9 @@ import java.util.Map;
 public class IniFile {
 	private Map<String, String> settings = new HashMap<String, String>();
 
+	public IniFile() {
+
+	}
 	public IniFile(String filename){
 		for (String line : new ReadTextFile(filename)){
 			int indexOfHash = line.lastIndexOf('#');
@@ -46,8 +49,12 @@ public class IniFile {
 			return value;
 	}
 
+	public void set(String fieldName, String value) {
+		settings.put(fieldName.trim().toLowerCase(), value);
+	}
+
 	public String getOrFail(String fieldName){
-		String value = settings.get(fieldName.toLowerCase());
+		String value = this.get(fieldName);
 		if (StringUtils.isEmpty(value)) {
 			throw new RuntimeException("Ini file should contain a value for '" + fieldName + "'");
 		}

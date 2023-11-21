@@ -92,7 +92,6 @@ public class SourceDataScanSnowflakeIT {
                 .replaceAll("%SNOWFLAKE_SCHEMA%", SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_SCHEMA"));
         Files.write(iniFile, content.getBytes(charset));
         WhiteRabbitMain wrMain = new WhiteRabbitMain(true, new String[]{"-ini", iniFile.toAbsolutePath().toString()});
-        System.out.println("Hold it!");
         assert referenceScanReport != null;
         assertTrue(ScanTestUtils.scanResultsSheetMatchesReference(tempDir.resolve("ScanReport.xlsx"), Paths.get(referenceScanReport.toURI()), DbType.SNOWFLAKE));
     }

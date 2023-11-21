@@ -17,9 +17,9 @@ public interface DBConnectorInterface {
     void checkInitialised();
 
     DBConnectorInterface getInstance();
-    default public DBConnectorInterface getInstance(DbSettings dbSettings) {
-        return getInstance(dbSettings.server, dbSettings.database, dbSettings.user, dbSettings.password);
-    }
+//    default DBConnectorInterface getInstance(DbSettings dbSettings) {
+//        return getInstance(dbSettings.server, dbSettings.database, dbSettings.user, dbSettings.password);
+//    }
     DBConnectorInterface getInstance(String server, String database, String user, String password);
     /**
      * Returns the row count of the specified table.
@@ -76,4 +76,5 @@ public interface DBConnectorInterface {
 
     DbSettings getDbSettings();
 
+    public List<DBConfiguration.ConfigurationField> getFields();
 }

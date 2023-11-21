@@ -43,7 +43,7 @@ Requires Java 1.8 or higher, and read access to the database to be scanned. Java
 
 Dependencies
 ============
-For the distributable packages, the only requirement is Java 8. For building the package, also Maven is needed.
+For the distributable packages, the only requirement is Java 8. For building the package, Java 17 and Maven are needed.
 
 Getting Started
 ===============
@@ -91,15 +91,17 @@ Development
 White Rabbit and Rabbit in a Hat are structured as a Maven package and can be developed in Eclipse. Contributions are welcome.
 
 While the software in the project can be executed with Java 1.8, for development Java 17 is needed.
-This has to do with test and verification dependencies that are not available in
-a version compatible with Java 1.8 .
+This has to do with test and verification dependencies that are not available in a version compatible with Java 1.8 .
+
+Please note that when using an IDE for development, source and target release must still be Java 1.8 . This is enforced
+in the maven build file (pom.xml), 
 
 To generate the files ready for distribution, run `mvn install`.
 
 ### Testing
 
-A limited number of unit and integration tests exist. The integration tests run only in the `maven verify` phase,
-and depend on docker being available to the user running the verification. If docker is not available, the
+A limited number of unit and integration tests exist. The integration tests run only in the maven verification phase,
+(`mn verify`) and depend on docker being available to the user running the verification. If docker is not available, the
 integration tests will fail.
 
 Also, GitHub actions have been configured to run the test suite automatically.
@@ -119,7 +121,7 @@ is provided through environment variables:
 
 It is recommended that user, password, database and schema are created for these tests only,
 and do not relate in any way to any production environment. 
-The schema should not contain any tables.
+The schema should not contain any tables when the test is started.
 
 It is possible to skip the Snowflake tests without failing the build by passing 
 `-Dohdsi.org.whiterabbit.skip_snowflake_tests=1` to maven.
