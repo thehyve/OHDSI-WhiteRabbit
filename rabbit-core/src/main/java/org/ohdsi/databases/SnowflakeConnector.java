@@ -2,6 +2,8 @@ package org.ohdsi.databases;
 
 import org.apache.commons.lang.StringUtils;
 
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -30,13 +32,15 @@ public enum SnowflakeConnector implements DBConnectorInterface {
             "Both password and an authenticator method have been specified for Snowflake. The password will be ignored";
 
     private DbSettings dbSettings = null;
+
+    SnowFlakeConfiguration configuration = null;
     private ServerConfig serverConfig = null;
     private Connection snowflakeConnection = null;
     private String warehouse;
     private String database;
     private String schema;
 
-    private String authenticator;
+    //private String authenticator;
 
     private final DbType dbType = DbType.SNOWFLAKE;
     public final static String ERROR_NO_FIELD_OF_TYPE = "No value was specified for type";
@@ -62,53 +66,83 @@ public enum SnowflakeConnector implements DBConnectorInterface {
     }
 
     public DBConnectorInterface getInstance(IniFile iniFile) {
-        readAndValidate(iniFile);
+        getConfiguration(iniFile, null);
 
         return getInstance(dbSettings.server, dbSettings.database, dbSettings.user, dbSettings.password);
     }
 
-    public boolean readAndValidate(IniFile iniFile) {
-        warehouse = iniFile.getOrFail("SNOWFLAKE_WAREHOUSE");
-        database = iniFile.getOrFail("SNOWFLAKE_DATABASE");
-        schema = iniFile.getOrFail("SNOWFLAKE_SCHEMA");
-        dbSettings = new DbSettings();
-        dbSettings.server = String.format("https://%s.snowflakecomputing.com", iniFile.getOrFail("SNOWFLAKE_ACCOUNT"));
-        dbSettings.database = String.format("%s.%s.%s", warehouse, database, schema);
-        dbSettings.domain = dbSettings.database;
-        dbSettings.user = iniFile.getOrFail("SNOWFLAKE_USER");
-        dbSettings.dbType = DbType.SNOWFLAKE;
-        dbSettings.sourceType = DbSettings.SourceType.DATABASE;
-        dbSettings.password = iniFile.get("SNOWFLAKE_PASSWORD");
-        authenticator = iniFile.get("SNOWFLAKE_AUTHENTICATOR");
+    public DbSettings getConfiguration(IniFile iniFile, PrintStream stream) {
+        this.configuration = new SnowFlakeConfiguration();
+        ValidationFeedback feedBack = this.configuration.loadAndValidateConfiguration(iniFile);
 
-        if (StringUtils.isEmpty(dbSettings.password) && StringUtils.isEmpty(authenticator)) {
-            throw new RuntimeException(ERROR_NO_PASSWORD_OR_AUTHENTICATOR);
-        } else if (!StringUtils.isEmpty(dbSettings.password) && !StringUtils.isEmpty(authenticator)) {
-            logger.warn(WARNING_PASSWORD_AND_AUTHENTICATOR_SPECIFIED);
-        } else if (!StringUtils.isEmpty(authenticator) && !authenticator.equals("externalbrowser")) {
-            switch (authenticator.toLowerCase()) {
-            case "externalbrowser":
-                // this is a supported/tested authentication method, no need to inform the user
-                break;
-            case "snowflake":
-            case "oauth":
-            case "snowflake_jwt":
-            case "username_password_mfa":
-                // These methods are supported by Snowflake, but have not been tested. Warn the user about this.
-                // See https://docs.snowflake.com/en/developer-guide/jdbc/jdbc-parameters
-                logger.warn(String.format("Authentication method '%s' is untested. It will might not work.", authenticator));
-                break;
-            default:
-                if (authenticator.matches("^https://.*\\.okta\\.com")) {
-                    logger.warn(String.format("Authentication method for okta.com is untested. It will might not work.", authenticator));
-                } else {
-                    throw new RuntimeException(String.format("Unsupported authentication method for Snowflake: %s", authenticator));
-                }
-            }
+        if (feedBack.hasErrors()) {
+            throw new DBConfigurationException(String.format("There are errors in the configuration:%n\t%s", String.join("\n\t", feedBack.getErrors())));
         }
 
-        return true;
+        if (feedBack.hasWarnings() && stream != null) {
+            stream.printf("The validation of the configuration generated warnings:%n\t%s", String.join("\n\t", feedBack.getWarnings()));
+        }
+
+        this.warehouse = configuration.getValue(SNOWFLAKE_WAREHOUSE);
+        this.database = configuration.getValue(SNOWFLAKE_DATABASE);
+        this.schema = configuration.getValue(SNOWFLAKE_SCHEMA);
+        dbSettings = new DbSettings();
+        dbSettings.dbType = DbType.SNOWFLAKE;
+        dbSettings.server = String.format("https://%s.snowflakecomputing.com", configuration.getValue(SNOWFLAKE_ACCOUNT));
+        dbSettings.database = String.format("%s.%s.%s",
+                this.warehouse,
+                this.database,
+                this.schema);
+        dbSettings.domain = dbSettings.database;
+        dbSettings.user = configuration.getValue(SNOWFLAKE_USER);
+        dbSettings.password = configuration.getValue(SNOWFLAKE_PASSWORD);
+        dbSettings.sourceType = DbSettings.SourceType.DATABASE;
+
+
+        return dbSettings;
     }
+//    public boolean readAndValidate(IniFile iniFile) {
+//        warehouse = iniFile.getOrFail("SNOWFLAKE_WAREHOUSE");
+//        database = iniFile.getOrFail("SNOWFLAKE_DATABASE");
+//        schema = iniFile.getOrFail("SNOWFLAKE_SCHEMA");
+//        dbSettings = new DbSettings();
+//        dbSettings.server = String.format("https://%s.snowflakecomputing.com", iniFile.getOrFail("SNOWFLAKE_ACCOUNT"));
+//        dbSettings.database = String.format("%s.%s.%s", warehouse, database, schema);
+//        dbSettings.domain = dbSettings.database;
+//        dbSettings.user = iniFile.getOrFail("SNOWFLAKE_USER");
+//        dbSettings.dbType = DbType.SNOWFLAKE;
+//        dbSettings.sourceType = DbSettings.SourceType.DATABASE;
+//        dbSettings.password = iniFile.get("SNOWFLAKE_PASSWORD");
+//        //authenticator = iniFile.get("SNOWFLAKE_AUTHENTICATOR");
+//
+//        if (StringUtils.isEmpty(dbSettings.password) && StringUtils.isEmpty(authenticator)) {
+//            throw new RuntimeException(ERROR_NO_PASSWORD_OR_AUTHENTICATOR);
+//        } else if (!StringUtils.isEmpty(dbSettings.password) && !StringUtils.isEmpty(authenticator)) {
+//            logger.warn(WARNING_PASSWORD_AND_AUTHENTICATOR_SPECIFIED);
+//        } else if (!StringUtils.isEmpty(authenticator) && !authenticator.equals("externalbrowser")) {
+//            switch (authenticator.toLowerCase()) {
+//            case "externalbrowser":
+//                // this is a supported/tested authentication method, no need to inform the user
+//                break;
+//            case "snowflake":
+//            case "oauth":
+//            case "snowflake_jwt":
+//            case "username_password_mfa":
+//                // These methods are supported by Snowflake, but have not been tested. Warn the user about this.
+//                // See https://docs.snowflake.com/en/developer-guide/jdbc/jdbc-parameters
+//                logger.warn(String.format("Authentication method '%s' is untested. It will might not work.", authenticator));
+//                break;
+//            default:
+//                if (authenticator.matches("^https://.*\\.okta\\.com")) {
+//                    logger.warn(String.format("Authentication method for okta.com is untested. It will might not work.", authenticator));
+//                } else {
+//                    throw new RuntimeException(String.format("Unsupported authentication method for Snowflake: %s", authenticator));
+//                }
+//            }
+//        }
+//
+//        return true;
+//    }
 
     @Override
     public DBConnectorInterface getInstance(String server, String fullSchemaPath, String user, String password) {
@@ -179,7 +213,7 @@ public enum SnowflakeConnector implements DBConnectorInterface {
     }
 
     @Override
-    public List<DBConfiguration.ConfigurationField> getFields() {
+    public List<ConfigurationField> getFields() {
         //SnowFlakeConfiguration[] iets = SnowFlakeConfiguration.values();
         return new ArrayList<>();
     }
@@ -190,7 +224,7 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         } catch (ClassNotFoundException ex) {
             throw new RuntimeException("Cannot find JDBC driver. Make sure the file snowflake-jdbc-x.xx.xx.jar is in the path: " + ex.getMessage());
         }
-        String url = buildUrl(server, schema, user, password, INSTANCE.authenticator);
+        String url = buildUrl(server, schema, user, password, INSTANCE.configuration.getValue(SNOWFLAKE_AUTHENTICATOR));
         try {
             return DriverManager.getConnection(url);
         } catch (SQLException ex) {
@@ -208,42 +242,65 @@ public enum SnowflakeConnector implements DBConnectorInterface {
     }
 
     public static class SnowFlakeConfiguration extends DBConfiguration {
+        public static final String ERROR_MUST_SET_PASSWORD_OR_AUTHENTICATOR = "Either password or authenticator must be specified for Snowflake";
+        public static final String ERROR_MUST_NOT_SET_PASSWORD_AND_AUTHENTICATOR = "Specify only one of password or authenticator Snowflake";
         public SnowFlakeConfiguration() {
             super(
-                DBConfiguration.ConfigurationField.create(
+                ConfigurationField.create(
                         SNOWFLAKE_ACCOUNT,
                         "Account",
-                        "Account for the Snowflake instance"),
-                DBConfiguration.ConfigurationField.create(
+                        "Account for the Snowflake instance")
+                        .required(),
+                ConfigurationField.create(
                         SNOWFLAKE_USER,
                         "User",
-                        "User for the Snowflake instance"),
-                DBConfiguration.ConfigurationField.create(
+                        "User for the Snowflake instance")
+                        .required(),
+                ConfigurationField.create(
                         ServerConfig.SNOWFLAKE_PASSWORD,
                         "Password",
                         "Password for the Snowflake instance"),
-                DBConfiguration.ConfigurationField.create(
+                ConfigurationField.create(
                         ServerConfig.SNOWFLAKE_WAREHOUSE,
                         "Warehouse",
-                        "Warehouse for the Snowflake instance"),
-                DBConfiguration.ConfigurationField.create(
+                        "Warehouse for the Snowflake instance")
+                        .required(),
+                ConfigurationField.create(
                         ServerConfig.SNOWFLAKE_DATABASE,
                         "Database",
-                        "Database for the Snowflake instance"),
-                DBConfiguration.ConfigurationField.create(
+                        "Database for the Snowflake instance")
+                        .required(),
+                ConfigurationField.create(
                         ServerConfig.SNOWFLAKE_SCHEMA,
                         "Schema",
-                        "Schema for the Snowflake instance"),
-                DBConfiguration.ConfigurationField.create(
+                        "Schema for the Snowflake instance")
+                        .required(),
+                ConfigurationField.create(
                         ServerConfig.SNOWFLAKE_AUTHENTICATOR,
                         "Authenticator method",
                         "Snowflake JDBC authenticator method (only 'externalbrowser' is currently supported)")
             );
+            this.configurationFields.addValidator(new PasswordXORAuthenticatorValidator());
         }
 
-        private final List<DBConfiguration.ConfigurationField> fields = new ArrayList<>();
+        class PasswordXORAuthenticatorValidator implements ConfigurationValidator {
 
+            @Override
+            public ValidationFeedback validate(ConfigurationFields fields) {
+                ValidationFeedback feedback = new ValidationFeedback();
+                String password = fields.getValue(SNOWFLAKE_PASSWORD);
+                String authenticator = fields.getValue(SNOWFLAKE_AUTHENTICATOR);
+                if (StringUtils.isEmpty(password) && StringUtils.isEmpty(authenticator)) {
+                    feedback.addError(ERROR_MUST_SET_PASSWORD_OR_AUTHENTICATOR);
+                } else if (!StringUtils.isEmpty(password) && !StringUtils.isEmpty(authenticator)) {
+
+                }
+
+                return feedback;
+            }
+        }
     }
+
     public static class ServerConfig extends DBConfiguration {
         public static final String SNOWFLAKE_ACCOUNT = "SNOWFLAKE_ACCOUNT";
         public static final String SNOWFLAKE_USER = "SNOWFLAKE_USER";

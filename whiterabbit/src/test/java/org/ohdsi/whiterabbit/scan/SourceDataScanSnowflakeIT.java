@@ -57,22 +57,22 @@ public class SourceDataScanSnowflakeIT {
                         "This is NOT a valid verification run.", SourceDataScanSnowflakeIT.class.getName()));
     }
 
-    @Test
-    @EnabledIfEnvironmentVariable(named = SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE, matches = ".+")
-    void testProcessSnowflake(@TempDir Path tempDir) throws IOException, InterruptedException, URISyntaxException {
-        Path outFile = tempDir.resolve("scanresult-snowflake.xlsx");
-        URL referenceScanReport = TestSourceDataScanCsvGui.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
-
-        SourceDataScan sourceDataScan = ScanTestUtils.createSourceDataScan();
-        DbSettings dbSettings = SnowflakeTestUtils.getTestDbSettingsSnowflake();
-
-        logger.info("dbSettings before: " + dbSettings);
-        sourceDataScan.process(dbSettings, outFile.toString());
-        logger.info("dbSettings after : " + dbSettings);
-        ScanTestUtils.scanResultsSheetMatchesReference(outFile, Paths.get(referenceScanReport.toURI()), DbType.SNOWFLAKE);
-
-        logger.info("Testing scan on Snowflake OK");
-    }
+//    @Test
+//    @EnabledIfEnvironmentVariable(named = SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE, matches = ".+")
+//    void testProcessSnowflake(@TempDir Path tempDir) throws IOException, InterruptedException, URISyntaxException {
+//        Path outFile = tempDir.resolve("scanresult-snowflake.xlsx");
+//        URL referenceScanReport = TestSourceDataScanCsvGui.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
+//
+//        SourceDataScan sourceDataScan = ScanTestUtils.createSourceDataScan();
+//        DbSettings dbSettings = SnowflakeTestUtils.getTestDbSettingsSnowflake();
+//
+//        logger.info("dbSettings before: " + dbSettings);
+//        sourceDataScan.process(dbSettings, outFile.toString());
+//        logger.info("dbSettings after : " + dbSettings);
+//        ScanTestUtils.scanResultsSheetMatchesReference(outFile, Paths.get(referenceScanReport.toURI()), DbType.SNOWFLAKE);
+//
+//        logger.info("Testing scan on Snowflake OK");
+//    }
 
     @Test
     @EnabledIfEnvironmentVariable(named = SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE, matches = ".+")

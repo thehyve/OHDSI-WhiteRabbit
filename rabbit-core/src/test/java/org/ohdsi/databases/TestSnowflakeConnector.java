@@ -59,19 +59,19 @@ class TestSnowflakeConnector {
     void testIniFileAuthenticatorMethod() {
         IniFile iniFile = new IniFile(TestSnowflakeConnector.class.getClassLoader().getResource("snowflake.ini").getFile());
 
-        assertTrue(SnowflakeConnector.INSTANCE.readAndValidate(iniFile));
+        assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
 
         iniFile.set("SNOWFLAKE_PASSWORD", "");
         Exception exception = assertThrows(RuntimeException.class, () -> {
-            assertTrue(SnowflakeConnector.INSTANCE.readAndValidate(iniFile));
+            assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
         });
-        assertTrue(exception.getMessage().equals(ERROR_NO_PASSWORD_OR_AUTHENTICATOR));
+        assertTrue(exception.getMessage().contains(SnowFlakeConfiguration.ERROR_MUST_SET_PASSWORD_OR_AUTHENTICATOR));
 
         iniFile.set("SNOWFLAKE_AUTHENTICATOR", "externalbrowser");
-        assertTrue(SnowflakeConnector.INSTANCE.readAndValidate(iniFile));
+        assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
 
         iniFile.set("SNOWFLAKE_PASSWORD", "some-password");
-        assertTrue(SnowflakeConnector.INSTANCE.readAndValidate(iniFile));
+        assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
     }
 
     @Test
@@ -81,7 +81,7 @@ class TestSnowflakeConnector {
             DBConfiguration configuration = new SnowflakeConnector.SnowFlakeConfiguration();
             configuration.printIniFileTemplate(printStream);
             output = outputStream.toString();
-            for (DBConfiguration.ConfigurationField field: configuration.getFields()) {
+            for (ConfigurationField field: configuration.getFields()) {
                 assertTrue(output.contains(field.name), String.format("ini file template should contain field name (%s)", field.name));
                 assertTrue(output.contains(field.toolTip), String.format("ini file template should contain tool tip (%s)", field.toolTip));
                 if (!StringUtils.isEmpty(field.getDefaultValue())) {

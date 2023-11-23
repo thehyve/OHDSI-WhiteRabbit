@@ -76,5 +76,5 @@ public interface DBConnectorInterface {
 
     DbSettings getDbSettings();
 
-    public List<DBConfiguration.ConfigurationField> getFields();
+    public List<ConfigurationField> getFields();
 }
