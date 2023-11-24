@@ -62,7 +62,7 @@ class TestSnowflakeConnector {
         assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
 
         iniFile.set("SNOWFLAKE_PASSWORD", "");
-        Exception exception = assertThrows(RuntimeException.class, () -> {
+        Exception exception = assertThrows(DBConfiguration.DBConfigurationException.class, () -> {
             assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
         });
         assertTrue(exception.getMessage().contains(SnowFlakeConfiguration.ERROR_MUST_SET_PASSWORD_OR_AUTHENTICATOR));
@@ -71,7 +71,10 @@ class TestSnowflakeConnector {
         assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
 
         iniFile.set("SNOWFLAKE_PASSWORD", "some-password");
-        assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
+        exception = assertThrows(DBConfiguration.DBConfigurationException.class, () -> {
+            assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
+        });
+        assertTrue(exception.getMessage().contains(SnowFlakeConfiguration.ERROR_MUST_NOT_SET_PASSWORD_AND_AUTHENTICATOR));
     }
 
     @Test

@@ -76,11 +76,11 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         ValidationFeedback feedBack = this.configuration.loadAndValidateConfiguration(iniFile);
 
         if (feedBack.hasErrors()) {
-            throw new DBConfigurationException(String.format("There are errors in the configuration:%n\t%s", String.join("\n\t", feedBack.getErrors())));
+            throw new DBConfigurationException(String.format("There are errors in the configuration:%n\t%s", String.join("\n\t", feedBack.getErrors().keySet())));
         }
 
         if (feedBack.hasWarnings() && stream != null) {
-            stream.printf("The validation of the configuration generated warnings:%n\t%s", String.join("\n\t", feedBack.getWarnings()));
+            stream.printf("The validation of the configuration generated warnings:%n\t%s", String.join("\n\t", feedBack.getWarnings().keySet()));
         }
 
         this.warehouse = configuration.getValue(SNOWFLAKE_WAREHOUSE);
@@ -245,7 +245,7 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         public static final String ERROR_MUST_SET_PASSWORD_OR_AUTHENTICATOR = "Either password or authenticator must be specified for Snowflake";
         public static final String ERROR_MUST_NOT_SET_PASSWORD_AND_AUTHENTICATOR = "Specify only one of password or authenticator Snowflake";
         public SnowFlakeConfiguration() {
-            super(
+            super(false,
                 ConfigurationField.create(
                         SNOWFLAKE_ACCOUNT,
                         "Account",
@@ -291,9 +291,11 @@ public enum SnowflakeConnector implements DBConnectorInterface {
                 String password = fields.getValue(SNOWFLAKE_PASSWORD);
                 String authenticator = fields.getValue(SNOWFLAKE_AUTHENTICATOR);
                 if (StringUtils.isEmpty(password) && StringUtils.isEmpty(authenticator)) {
-                    feedback.addError(ERROR_MUST_SET_PASSWORD_OR_AUTHENTICATOR);
+                    feedback.addError(ERROR_MUST_SET_PASSWORD_OR_AUTHENTICATOR, fields.get(SNOWFLAKE_PASSWORD));
+                    feedback.addError(ERROR_MUST_SET_PASSWORD_OR_AUTHENTICATOR, fields.get(SNOWFLAKE_AUTHENTICATOR));
                 } else if (!StringUtils.isEmpty(password) && !StringUtils.isEmpty(authenticator)) {
-
+                    feedback.addError(ERROR_MUST_NOT_SET_PASSWORD_AND_AUTHENTICATOR, fields.get(SNOWFLAKE_PASSWORD));
+                    feedback.addError(ERROR_MUST_NOT_SET_PASSWORD_AND_AUTHENTICATOR, fields.get(SNOWFLAKE_AUTHENTICATOR));
                 }
 
                 return feedback;

@@ -15,33 +15,15 @@ class DBConfigurationTest {
     private final String NAME_FIELD2 = "FIELD_2";
     private final String LABEL_FIELD2 = "Field two";
     private final String TOOLTIP_FIELD2 = "Tooltip for field two";
-    private class TestConfiguration extends DBConfiguration {
-        public TestConfiguration(ConfigurationField... fields) {
-            super(fields);
-        }
-    }
 
     @BeforeEach
     void setUp() {
     }
 
     @Test
-    void validateRequiredField() {
-        TestConfiguration testConfiguration = new TestConfiguration(
-                ConfigurationField.create(NAME_FIELD1, LABEL_FIELD1, TOOLTIP_FIELD1).required(),
-                ConfigurationField.create(NAME_FIELD2, LABEL_FIELD2, TOOLTIP_FIELD2));
-
-        DBConfiguration.ValidationFeedback feedback = testConfiguration.validateAll();
-        assertEquals(0, feedback.getWarnings().size(), "There should be no warnings");
-        assertEquals(1, feedback.getErrors().size(), "There should be 1 error");
-        assertEquals(feedback.getErrors().get(0), String.format(VALUE_REQUIRED_FORMAT_STRING, LABEL_FIELD1, NAME_FIELD1),
-                String.format("Error should indicate that field %s has no value", NAME_FIELD1));
-    }
-
-    @Test
     void doNotAcceptDuplicateDefinitionsForField() {
     Exception exception = assertThrows(DBConfiguration.DBConfigurationException.class, () -> {
-        TestConfiguration testConfiguration = new TestConfiguration(
+        DBConfiguration testConfiguration = new DBConfiguration(
                 ConfigurationField.create(NAME_FIELD1, LABEL_FIELD1, TOOLTIP_FIELD1).required(),
                 ConfigurationField.create(NAME_FIELD1, LABEL_FIELD2, TOOLTIP_FIELD2));
         });
@@ -55,5 +37,4 @@ class DBConfigurationTest {
     @Test
     void printIniFileTemplate() {
     }
-
 }

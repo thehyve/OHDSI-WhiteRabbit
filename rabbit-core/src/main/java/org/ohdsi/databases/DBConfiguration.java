@@ -1,12 +1,24 @@
 package org.ohdsi.databases;
 
+import one.util.streamex.EntryStream;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.ohdsi.utilities.files.IniFile;
 
 import java.io.PrintStream;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-public abstract class DBConfiguration {
+public class DBConfiguration {
+    public static final String DELIMITER_FIELD = "DELIMITER";
+    public static final String TABLES_TO_SCAN_FIELD = "TABLES_TO_SCAN";
+    public static final String SCAN_FIELD_VALUES_FIELD = "SCAN_FIELD_VALUES";
+    public static final String MIN_CELL_COUNT_FIELD = "MIN_CELL_COUNT";
+    public static final String MAX_DISTINCT_VALUES_FIELD = "MAX_DISTINCT_VALUES";
+    public static final String ROWS_PER_TABLE_FIELD = "ROWS_PER_TABLE";
+    public static final String CALCULATE_NUMERIC_STATS_FIELD = "CALCULATE_NUMERIC_STATS";
+    public static final String NUMERIC_STATS_SAMPLER_SIZE_FIELD = "NUMERIC_STATS_SAMPLER_SIZE";
     public static final String ERROR_DUPLICATE_DEFINITIONS_FOR_FIELD = "Multiple definitions for field ";
     private IniFile iniFile;
     protected ConfigurationFields configurationFields;
@@ -19,8 +31,65 @@ public abstract class DBConfiguration {
     }
 
     protected DBConfiguration(ConfigurationField... fields) {
+        new DBConfiguration(true, fields);
+    }
+
+    protected DBConfiguration(boolean withDefaults, ConfigurationField... fields) {
+        if (withDefaults) {
+            fields = (ConfigurationField[]) ArrayUtils.addAll(fields, defaultConfigurationFields());
+        }
         checkForDuplicates(fields);
         this.configurationFields = new ConfigurationFields(fields);
+    }
+
+    private ConfigurationField[] defaultConfigurationFields() {
+        return new ConfigurationField[]{
+                ConfigurationField.create(DELIMITER_FIELD,
+                                "",
+                                "")
+                        .defaultValue(",")
+                        .required(),
+                ConfigurationField.create(TABLES_TO_SCAN_FIELD,
+                                "",
+                                "")
+                        .defaultValue("*")
+                        .required(),
+                ConfigurationField.create(SCAN_FIELD_VALUES_FIELD,
+                                "",
+                                "")
+                        .defaultValue("yes")
+                        .required(),
+                ConfigurationField.create(MIN_CELL_COUNT_FIELD,
+                                "",
+                                "")
+                        .defaultValue("5")
+                        .integerValue()
+                        .required(),
+                ConfigurationField.create(MAX_DISTINCT_VALUES_FIELD,
+                                "",
+                                "")
+                        .defaultValue("1000")
+                        .integerValue()
+                        .required(),
+                ConfigurationField.create(ROWS_PER_TABLE_FIELD,
+                                "",
+                                "")
+                        .defaultValue("100000")
+                        .integerValue()
+                        .required(),
+                ConfigurationField.create(CALCULATE_NUMERIC_STATS_FIELD,
+                                "",
+                                "")
+                        .defaultValue("no")
+                        .yesNoValue()
+                        .required(),
+                ConfigurationField.create(NUMERIC_STATS_SAMPLER_SIZE_FIELD,
+                        "",
+                        "")
+                        .defaultValue("500")
+                        .integerValue()
+                        .required()
+        };
     }
 
     private void checkForDuplicates(ConfigurationField... fields) {
@@ -46,8 +115,7 @@ public abstract class DBConfiguration {
         for (ConfigurationField field : this.getFields()) {
             for (FieldValidator validator : field.validators) {
                 ValidationFeedback feedback = validator.validate(field);
-                configurationFeedback.addWarnings(feedback.getWarnings());
-                configurationFeedback.addErrors(feedback.getErrors());
+                configurationFeedback.add(feedback);
             }
         }
 
@@ -58,6 +126,10 @@ public abstract class DBConfiguration {
 
     public List<ConfigurationField> getFields() {
         return configurationFields.getFields();
+    }
+
+    public ConfigurationField getField(String fieldName) {
+        return this.getFields().stream().filter(f -> f.name.equalsIgnoreCase(fieldName)).findFirst().orElse(null);
     }
 
     public String getValue(String fieldName) {
@@ -71,16 +143,6 @@ public abstract class DBConfiguration {
                     field.name,
                     StringUtils.isEmpty(field.getDefaultValue()) ? "_" : field.getDefaultValue(),
                     field.toolTip);
-        }
-    }
-
-    public interface FieldSet {
-        List<ConfigurationField> getFields();
-
-        default void generateIniFileFormat() {
-            for (ConfigurationField field : getFields()) {
-                System.out.println(String.format("%s:\t___\t# %s", field.name, field.toolTip));
-            }
         }
     }
 
@@ -103,8 +165,8 @@ public abstract class DBConfiguration {
     }
 
     public static class ValidationFeedback {
-        private List<String> warnings = new ArrayList<>();
-        private List<String> errors = new ArrayList<>();
+        private Map<String, List<ConfigurationField>> warnings = new HashMap<>();
+        private Map<String, List<ConfigurationField>> errors = new HashMap<>();
 
         public boolean isFullyValid() {
             return warnings.isEmpty() && errors.isEmpty();
@@ -118,37 +180,42 @@ public abstract class DBConfiguration {
             return !errors.isEmpty();
         }
 
-        public List<String> getWarnings() {
+        public Map<String, List<ConfigurationField>> getWarnings() {
             return this.warnings;
         }
 
-        public List<String> getErrors() {
+        public Map<String, List<ConfigurationField>> getErrors() {
             return this.errors;
         }
 
-        public void addWarning(String warning) {
-            this.warnings.add(warning);
+        public void addWarning(String warning, ConfigurationField field) {
+            if (this.warnings.containsKey(warning)) {
+                this.warnings.get(warning).add(field);
+            } else {
+                this.warnings.put(warning, Collections.singletonList(field));
+            }
         }
 
-        public void addWarnings(List<String> warnings) {
-            this.warnings.addAll(warnings);
-        }
-
-        public void addError(String error) {
-            this.errors.add(error);
-        }
-
-        public void addErrors(List<String> errors) {
-            this.errors.addAll(errors);
+        public void addError(String error, ConfigurationField field) {
+            if (this.errors.containsKey(error)) {
+                List<ConfigurationField> iets = this.errors.get(error);
+                iets.add(field);
+            } else {
+                this.errors.put(error, Stream.of(field).collect(Collectors.toList()));
+            }
         }
 
         public void add(ValidationFeedback feedback) {
-            this.addWarnings(feedback.getWarnings());
-            this.addErrors(feedback.getErrors());
+            this.warnings = EntryStream.of(this.warnings)
+                    .append(EntryStream.of(feedback.getWarnings()))
+                    .toMap((e1, e2) -> e1);
+            this.errors = EntryStream.of(this.errors)
+                    .append(EntryStream.of(feedback.getErrors()))
+                    .toMap((e1, e2) -> e1);
         }
     }
 
-    public class ConfigurationFields implements FieldSet {
+    public static class ConfigurationFields {
         List<ConfigurationField> fields;
         List<ConfigurationValidator> validators = new ArrayList<>();
 
@@ -162,6 +229,15 @@ public abstract class DBConfiguration {
 
         public List<ConfigurationField> getFields() {
             return this.fields;
+        }
+
+        public ConfigurationField get(String fieldName) {
+            Optional<ConfigurationField> field = fields.stream().filter(f -> fieldName.equalsIgnoreCase(f.name)).findFirst();
+            if (field.isPresent()) {
+                return field.get();
+            }
+
+            throw new DBConfigurationException(String.format("No ConfigurationField object found for field name '%s'", fieldName));
         }
 
         public String getValue(String fieldName) {
