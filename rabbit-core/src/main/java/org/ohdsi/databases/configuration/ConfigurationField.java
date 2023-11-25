@@ -1,4 +1,4 @@
-package org.ohdsi.databases;
+package org.ohdsi.databases.configuration;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -17,11 +17,11 @@ public class ConfigurationField {
     public static final String INTEGER_VALUE_REQUIRED_FORMAT_STRING = "An integer value is allowed for field %s (name %s)";
     public static final String ONLY_YESNO_ALLOWED_FORMAT_STRING = "Only the values 'yes' or 'no' are allowed for field %s (name %s)";
 
-    List<DBConfiguration.FieldValidator> validators = new ArrayList<>();
+    List<FieldValidator> validators = new ArrayList<>();
 
-    private static final DBConfiguration.FieldValidator fieldRequiredValidator = new FieldRequiredValidator();
-    private static final DBConfiguration.FieldValidator integerValueValidator = new IntegerValueValidator();
-    private static final DBConfiguration.FieldValidator onlyYesNoAllowed = new YesNoValidator();
+    private static final FieldValidator fieldRequiredValidator = new FieldRequiredValidator();
+    private static final FieldValidator integerValueValidator = new IntegerValueValidator();
+    private static final FieldValidator onlyYesNoAllowed = new YesNoValidator();
 
     private ConfigurationField(String name, String label, String toolTip) {
         this.name = name;
@@ -52,7 +52,7 @@ public class ConfigurationField {
         return this;
     }
 
-    public ConfigurationField addValidator(DBConfiguration.FieldValidator validator) {
+    public ConfigurationField addValidator(FieldValidator validator) {
         this.validators.add(validator);
         return this;
     }
@@ -70,9 +70,9 @@ public class ConfigurationField {
         return this.defaultValue;
     }
 
-    private static class FieldRequiredValidator implements DBConfiguration.FieldValidator {
-        public DBConfiguration.ValidationFeedback validate(ConfigurationField field) {
-            DBConfiguration.ValidationFeedback feedback = new DBConfiguration.ValidationFeedback();
+    private static class FieldRequiredValidator implements FieldValidator {
+        public ValidationFeedback validate(ConfigurationField field) {
+            ValidationFeedback feedback = new ValidationFeedback();
             if (StringUtils.isEmpty(field.getValue())) {
                 feedback.addError(String.format(VALUE_REQUIRED_FORMAT_STRING, field.label, field.name), field);
             }
@@ -81,10 +81,10 @@ public class ConfigurationField {
         }
     }
 
-    private static class IntegerValueValidator implements DBConfiguration.FieldValidator {
+    private static class IntegerValueValidator implements FieldValidator {
         static Pattern integerPattern = Pattern.compile("^\\d*$");
-        public DBConfiguration.ValidationFeedback validate(ConfigurationField field) {
-            DBConfiguration.ValidationFeedback feedback = new DBConfiguration.ValidationFeedback();
+        public ValidationFeedback validate(ConfigurationField field) {
+            ValidationFeedback feedback = new ValidationFeedback();
             if (StringUtils.isNotEmpty(field.getValue()) && (!integerPattern.matcher(field.getValue()).matches())) {
                     feedback.addError(String.format(INTEGER_VALUE_REQUIRED_FORMAT_STRING, field.label, field.name), field);
             }
@@ -92,10 +92,10 @@ public class ConfigurationField {
             return feedback;
         }
     }
-    private static class YesNoValidator implements DBConfiguration.FieldValidator {
+    private static class YesNoValidator implements FieldValidator {
         static Pattern yesNoPattern = Pattern.compile("^(yes|no)$", Pattern.CASE_INSENSITIVE);
-        public DBConfiguration.ValidationFeedback validate(ConfigurationField field) {
-            DBConfiguration.ValidationFeedback feedback = new DBConfiguration.ValidationFeedback();
+        public ValidationFeedback validate(ConfigurationField field) {
+            ValidationFeedback feedback = new ValidationFeedback();
             if (StringUtils.isNotEmpty(field.getValue())) {
                 if (!yesNoPattern.matcher(field.getValue()).matches()) {
                     feedback.addError(String.format(ONLY_YESNO_ALLOWED_FORMAT_STRING, field.label, field.name), field);

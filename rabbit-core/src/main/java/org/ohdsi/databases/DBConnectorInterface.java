@@ -1,5 +1,6 @@
 package org.ohdsi.databases;
 
+import org.ohdsi.databases.configuration.ConfigurationField;
 import org.ohdsi.utilities.files.IniFile;
 import org.ohdsi.utilities.files.Row;
 

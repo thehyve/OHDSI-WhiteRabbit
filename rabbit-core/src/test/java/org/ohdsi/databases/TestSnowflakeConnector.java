@@ -2,6 +2,9 @@ package org.ohdsi.databases;
 
 import org.apache.commons.lang.StringUtils;
 import org.junit.jupiter.api.Test;
+import org.ohdsi.databases.configuration.ConfigurationField;
+import org.ohdsi.databases.configuration.DBConfiguration;
+import org.ohdsi.databases.configuration.DBConfigurationException;
 import org.ohdsi.utilities.files.IniFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +65,7 @@ class TestSnowflakeConnector {
         assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
 
         iniFile.set("SNOWFLAKE_PASSWORD", "");
-        Exception exception = assertThrows(DBConfiguration.DBConfigurationException.class, () -> {
+        Exception exception = assertThrows(DBConfigurationException.class, () -> {
             assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
         });
         assertTrue(exception.getMessage().contains(SnowFlakeConfiguration.ERROR_MUST_SET_PASSWORD_OR_AUTHENTICATOR));
@@ -71,7 +74,7 @@ class TestSnowflakeConnector {
         assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
 
         iniFile.set("SNOWFLAKE_PASSWORD", "some-password");
-        exception = assertThrows(DBConfiguration.DBConfigurationException.class, () -> {
+        exception = assertThrows(DBConfigurationException.class, () -> {
             assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
         });
         assertTrue(exception.getMessage().contains(SnowFlakeConfiguration.ERROR_MUST_NOT_SET_PASSWORD_AND_AUTHENTICATOR));

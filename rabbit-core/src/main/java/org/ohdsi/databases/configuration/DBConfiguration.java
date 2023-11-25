@@ -1,14 +1,11 @@
-package org.ohdsi.databases;
+package org.ohdsi.databases.configuration;
 
-import one.util.streamex.EntryStream;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.ohdsi.utilities.files.IniFile;
 
 import java.io.PrintStream;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class DBConfiguration {
     public static final String DELIMITER_FIELD = "DELIMITER";
@@ -30,11 +27,11 @@ public class DBConfiguration {
         this.iniFile = inifile;
     }
 
-    protected DBConfiguration(ConfigurationField... fields) {
+    public DBConfiguration(ConfigurationField... fields) {
         new DBConfiguration(true, fields);
     }
 
-    protected DBConfiguration(boolean withDefaults, ConfigurationField... fields) {
+    public DBConfiguration(boolean withDefaults, ConfigurationField... fields) {
         if (withDefaults) {
             fields = (ConfigurationField[]) ArrayUtils.addAll(fields, defaultConfigurationFields());
         }
@@ -143,114 +140,6 @@ public class DBConfiguration {
                     field.name,
                     StringUtils.isEmpty(field.getDefaultValue()) ? "_" : field.getDefaultValue(),
                     field.toolTip);
-        }
-    }
-
-    public static class DBConfigurationException extends RuntimeException {
-        public DBConfigurationException(String s) {
-            super(s);
-        }
-    }
-
-    ;
-
-    @FunctionalInterface
-    public interface FieldValidator {
-        ValidationFeedback validate(ConfigurationField field);
-    }
-
-    @FunctionalInterface
-    public interface ConfigurationValidator {
-        ValidationFeedback validate(ConfigurationFields fields);
-    }
-
-    public static class ValidationFeedback {
-        private Map<String, List<ConfigurationField>> warnings = new HashMap<>();
-        private Map<String, List<ConfigurationField>> errors = new HashMap<>();
-
-        public boolean isFullyValid() {
-            return warnings.isEmpty() && errors.isEmpty();
-        }
-
-        public boolean hasWarnings() {
-            return !warnings.isEmpty();
-        }
-
-        public boolean hasErrors() {
-            return !errors.isEmpty();
-        }
-
-        public Map<String, List<ConfigurationField>> getWarnings() {
-            return this.warnings;
-        }
-
-        public Map<String, List<ConfigurationField>> getErrors() {
-            return this.errors;
-        }
-
-        public void addWarning(String warning, ConfigurationField field) {
-            if (this.warnings.containsKey(warning)) {
-                this.warnings.get(warning).add(field);
-            } else {
-                this.warnings.put(warning, Collections.singletonList(field));
-            }
-        }
-
-        public void addError(String error, ConfigurationField field) {
-            if (this.errors.containsKey(error)) {
-                this.errors.get(error).add(field);
-            } else {
-                this.errors.put(error, Stream.of(field).collect(Collectors.toList()));
-            }
-        }
-
-        public void add(ValidationFeedback feedback) {
-            this.warnings = EntryStream.of(this.warnings)
-                    .append(EntryStream.of(feedback.getWarnings()))
-                    .toMap((e1, e2) -> e1);
-            this.errors = EntryStream.of(this.errors)
-                    .append(EntryStream.of(feedback.getErrors()))
-                    .toMap((e1, e2) -> e1);
-        }
-    }
-
-    public static class ConfigurationFields {
-        List<ConfigurationField> fields;
-        List<ConfigurationValidator> validators = new ArrayList<>();
-
-        public ConfigurationFields(ConfigurationField... fields) {
-            this.fields = new ArrayList<>(Arrays.asList(fields));
-        }
-
-        public void addValidator(ConfigurationValidator validator) {
-            this.validators.add(validator);
-        }
-
-        public List<ConfigurationField> getFields() {
-            return this.fields;
-        }
-
-        public ConfigurationField get(String fieldName) {
-            Optional<ConfigurationField> field = fields.stream().filter(f -> fieldName.equalsIgnoreCase(f.name)).findFirst();
-            if (field.isPresent()) {
-                return field.get();
-            }
-
-            throw new DBConfigurationException(String.format("No ConfigurationField object found for field name '%s'", fieldName));
-        }
-
-        public String getValue(String fieldName) {
-            Optional<String> value = this.fields.stream().filter(f -> fieldName.equalsIgnoreCase(f.name)).map(ConfigurationField::getValue).findFirst();
-            return (value.orElse(""));
-        }
-
-        public ValidationFeedback validate() {
-            ValidationFeedback allFeedback = new ValidationFeedback();
-            for (ConfigurationValidator validator : this.validators) {
-                allFeedback.add(validator.validate(this));
-            }
-
-            return allFeedback;
         }
     }
 }

@@ -2,10 +2,12 @@ package org.ohdsi.databases;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.ohdsi.databases.configuration.ConfigurationField;
+import org.ohdsi.databases.configuration.DBConfiguration;
+import org.ohdsi.databases.configuration.DBConfigurationException;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.ohdsi.databases.ConfigurationField.VALUE_REQUIRED_FORMAT_STRING;
-import static org.ohdsi.databases.DBConfiguration.ERROR_DUPLICATE_DEFINITIONS_FOR_FIELD;
+import static org.ohdsi.databases.configuration.DBConfiguration.ERROR_DUPLICATE_DEFINITIONS_FOR_FIELD;
 
 class DBConfigurationTest {
 
@@ -22,7 +24,7 @@ class DBConfigurationTest {
 
     @Test
     void doNotAcceptDuplicateDefinitionsForField() {
-    Exception exception = assertThrows(DBConfiguration.DBConfigurationException.class, () -> {
+    Exception exception = assertThrows(DBConfigurationException.class, () -> {
         DBConfiguration testConfiguration = new DBConfiguration(
                 ConfigurationField.create(NAME_FIELD1, LABEL_FIELD1, TOOLTIP_FIELD1).required(),
                 ConfigurationField.create(NAME_FIELD1, LABEL_FIELD2, TOOLTIP_FIELD2));

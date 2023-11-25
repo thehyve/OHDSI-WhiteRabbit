@@ -2,7 +2,6 @@ package org.ohdsi.databases;
 
 import org.apache.commons.lang.StringUtils;
 
-import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -11,6 +10,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.http.client.utils.URLEncodedUtils;
+import org.ohdsi.databases.configuration.*;
 import org.ohdsi.utilities.files.IniFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

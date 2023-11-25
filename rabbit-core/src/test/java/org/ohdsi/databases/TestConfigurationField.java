@@ -1,9 +1,13 @@
 package org.ohdsi.databases;
 
 import org.junit.jupiter.api.Test;
+import org.ohdsi.databases.configuration.ConfigurationField;
+import org.ohdsi.databases.configuration.DBConfiguration;
+import org.ohdsi.databases.configuration.FieldValidator;
+import org.ohdsi.databases.configuration.ValidationFeedback;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.ohdsi.databases.ConfigurationField.*;
+import static org.ohdsi.databases.configuration.ConfigurationField.*;
 
 class TestConfigurationField {
 
@@ -35,7 +39,7 @@ class TestConfigurationField {
         );
 
         // test for values in required fields
-        DBConfiguration.ValidationFeedback feedback = configuration.validateAll();
+        ValidationFeedback feedback = configuration.validateAll();
         assertEquals(0, feedback.getWarnings().size());
         assertEquals(3, feedback.getErrors().size());
         String expectedErrorKey = String.format(VALUE_REQUIRED_FORMAT_STRING, REQUIRED_FIELD, REQUIRED_FIELD);
@@ -84,12 +88,12 @@ class TestConfigurationField {
         assertEquals("no", configuration.getField(OPTIONAL_YESNO_FIELD).getValue());
     }
 
-    static class WarningValidator implements DBConfiguration.FieldValidator {
+    static class WarningValidator implements FieldValidator {
         final static String expectedValue = "Expected value";
         final static String warning = "Field does not contain the expected value!";
         @Override
-        public DBConfiguration.ValidationFeedback validate(ConfigurationField field) {
-            DBConfiguration.ValidationFeedback feedback = new DBConfiguration.ValidationFeedback();
+        public ValidationFeedback validate(ConfigurationField field) {
+            ValidationFeedback feedback = new ValidationFeedback();
 
             if (!field.getValue().equalsIgnoreCase(expectedValue)) {
                 feedback.addWarning(warning, field);
@@ -108,7 +112,7 @@ class TestConfigurationField {
                         .addValidator(new WarningValidator())
                         .setValue(""));
 
-        DBConfiguration.ValidationFeedback feedback = configuration.validateAll();
+        ValidationFeedback feedback = configuration.validateAll();
         assertEquals(1, feedback.getWarnings().size());
         assertEquals(0, feedback.getErrors().size());
         assertTrue(feedback.getWarnings().get(WarningValidator.warning).get(0).name.equalsIgnoreCase(FIELD_NAME));
