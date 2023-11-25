@@ -198,8 +198,7 @@ public class DBConfiguration {
 
         public void addError(String error, ConfigurationField field) {
             if (this.errors.containsKey(error)) {
-                List<ConfigurationField> iets = this.errors.get(error);
-                iets.add(field);
+                this.errors.get(error).add(field);
             } else {
                 this.errors.put(error, Stream.of(field).collect(Collectors.toList()));
             }
