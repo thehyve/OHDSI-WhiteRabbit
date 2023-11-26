@@ -2,8 +2,6 @@ package org.ohdsi.whiteRabbit.gui;
 
 import org.ohdsi.databases.DBConnectorInterface;
 import org.ohdsi.databases.configuration.DBChoice;
-import org.ohdsi.databases.configuration.DBConfiguration;
-import org.ohdsi.databases.configuration.DBConfigurationException;
 import org.ohdsi.whiteRabbit.PanelsManager;
 
 import javax.swing.*;
@@ -18,10 +16,15 @@ import static org.ohdsi.whiteRabbit.WhiteRabbitMain.LABEL_TEST_CONNECTION;
 public class LocationsPanel extends JPanel {
     public static final String LABEL_LOCATIONS = "Locations";
     public static final String LABEL_SERVER_LOCATION = "Server location";
+    public static final String NAME_SERVER_LOCATION = "ServerLocation";
     public static final String LABEL_USER_NAME = "User name";
+    public static final String NAME_USER_NAME = "UserName";
     public static final String LABEL_PASSWORD = "Password";
+    public static final String NAME_PASSWORD = "PasswordName";
     public static final String LABEL_DATABASE_NAME = "Database name";
+    public static final String NAME_DATABASE_NAME = "DatabaseName";
     public static final String LABEL_DELIMITER = "Delimiter";
+    public static final String NAME_DELIMITER = "DelimiterName";
 
     private final JFrame parentFrame;
     private JTextField folderField;
@@ -32,6 +35,7 @@ public class LocationsPanel extends JPanel {
     private JTextField sourcePasswordField;
     private JTextField sourceDatabaseField;
 
+    private SourcePanel sourcePanel;
     private boolean sourceIsFiles = true;
     private boolean sourceIsSas = false;
 
@@ -71,11 +75,17 @@ public class LocationsPanel extends JPanel {
         c.gridwidth = 1;
         panel.add(folderPanel, c);
 
-        JPanel sourcePanel = createSourcePanel();
+
         c.gridx = 0;
         c.gridy = 1;
         c.gridwidth = 1;
-        panel.add(sourcePanel, c);
+        this.sourcePanel = createSourcePanel();
+
+        // make sure the sourcePanel has usable content by default
+        sourceType.setSelectedItem(DBChoice.DelimitedTextFiles);
+        createDatabaseFields(DBChoice.DelimitedTextFiles.toString());
+
+        panel.add(this.sourcePanel, c);
 
         JPanel testConnectionButtonPanel = new JPanel();
         testConnectionButtonPanel.setLayout(new BoxLayout(testConnectionButtonPanel, BoxLayout.X_AXIS));
@@ -96,36 +106,78 @@ public class LocationsPanel extends JPanel {
     }
 
     private void createDatabaseFields(ItemEvent itemEvent) {
+        System.out.println("createDatabaseFields (generic)...");
         String selectedSourceType = itemEvent.getItem().toString();
 
         DBChoice dbChoice = DBChoice.getDBChoice(selectedSourceType);
         if (dbChoice.supportsDBConnectorInterface()) {
-            createDatabaseFields(itemEvent, dbChoice);
+            createDatabaseFields(dbChoice);
         } else {
-            createDatabaseFields(itemEvent, selectedSourceType);
+            createDatabaseFields(selectedSourceType);
         }
     }
 
-    private void createDatabaseFields(ItemEvent itemEvent, DBChoice dbChoice) {
+    private void createDatabaseFields(DBChoice dbChoice) {
+        System.out.println("createDatabaseFields (dbChoice)...");
         //throw new DBConfigurationException("Not implemented (yet)");
 
-        DBConnectorInterface dbConnectorInterface = dbChoice.getDbConnectorInterface();
-        dbConnectorInterface.getFields().stream().forEach(f -> {
+        sourcePanel.clear();
 
+        DBConnectorInterface dbConnectorInterface = dbChoice.getDbConnectorInterface();
+        dbConnectorInterface.getFields().forEach(f -> {
+            sourcePanel.addReplacable(f.label, new JLabel(f.label));
+            JTextField field = new JTextField(f.getValueOrDefault());
+            field.setName(f.name);
+            field.setToolTipText(f.toolTip);
+            sourcePanel.addReplacable(f.name, field);
+            field.setEnabled(true);
         });
     }
 
-    private void createDatabaseFields(ItemEvent itemEvent, String selectedSourceType) {
+    private void createDatabaseFields(String selectedSourceType) {
+        System.out.println("createDatabaseFields (classic)...");
         sourceIsFiles = selectedSourceType.equals(DELIMITED_TEXT_FILES);
         sourceIsSas = selectedSourceType.equals("SAS7bdat");
         boolean sourceIsDatabase = !(sourceIsFiles || sourceIsSas);
 
+        // remove existing fields
+        sourcePanel.clear();
+
+        sourcePanel.addReplacable(LABEL_SERVER_LOCATION, new JLabel(LABEL_SERVER_LOCATION));
+        sourceServerField = new JTextField("127.0.0.1");
+        sourceServerField.setName(LABEL_SERVER_LOCATION);
+        sourceServerField.setEnabled(false);
+        sourcePanel.addReplacable(NAME_SERVER_LOCATION, sourceServerField);
+        sourcePanel.addReplacable(LABEL_USER_NAME, new JLabel(LABEL_USER_NAME));
+        sourceUserField = new JTextField("");
+        sourceUserField.setName(LABEL_USER_NAME);
+        sourceUserField.setEnabled(false);
+        sourcePanel.addReplacable(NAME_USER_NAME, sourceUserField);
+        sourcePanel.addReplacable(NAME_PASSWORD, new JLabel(LABEL_PASSWORD));
+        sourcePasswordField = new JPasswordField("");
+        sourcePasswordField.setName(LABEL_PASSWORD);
+        sourcePasswordField.setEnabled(false);
+        sourcePanel.addReplacable(NAME_PASSWORD, sourcePasswordField);
+        sourcePanel.addReplacable(LABEL_DATABASE_NAME, new JLabel(LABEL_DATABASE_NAME));
+        sourceDatabaseField = new JTextField("");
+        sourceDatabaseField.setName(LABEL_DATABASE_NAME);
+        sourceDatabaseField.setEnabled(false);
+        sourcePanel.addReplacable(NAME_DATABASE_NAME, sourceDatabaseField);
+
+        sourcePanel.addReplacable(LABEL_DELIMITER, new JLabel(LABEL_DELIMITER));
+        JTextField delimiterField = new JTextField(",");
+        delimiterField.setName(LABEL_DELIMITER);
+        sourceDelimiterField = delimiterField;
+        sourceDelimiterField.setToolTipText("The delimiter that separates values. Enter 'tab' for tab.");
+        sourcePanel.addReplacable(NAME_DELIMITER, sourceDelimiterField);
         sourceServerField.setEnabled(sourceIsDatabase);
         sourceUserField.setEnabled(sourceIsDatabase);
         sourcePasswordField.setEnabled(sourceIsDatabase);
         sourceDatabaseField.setEnabled(sourceIsDatabase && !selectedSourceType.equals(DBChoice.Azure.name()));
         sourceDelimiterField.setEnabled(sourceIsFiles);
-        panelsManager.getAddAllButton().setEnabled(sourceIsDatabase);
+        if (panelsManager.getAddAllButton() != null) {
+            panelsManager.getAddAllButton().setEnabled(sourceIsDatabase);
+        }
 
         if (sourceIsDatabase && selectedSourceType.equals(DBChoice.Oracle.name())) {
             sourceServerField.setToolTipText("For Oracle servers this field contains the SID, servicename, and optionally the port: '<host>/<sid>', '<host>:<port>/<sid>', '<host>/<service name>', or '<host>:<port>/<service name>'");
@@ -161,44 +213,21 @@ public class LocationsPanel extends JPanel {
             }
         }
     }
-    private JPanel createSourcePanel() {
-        JPanel sourcePanel = new JPanel();
+    private SourcePanel createSourcePanel() {
+        SourcePanel sourcePanel = new SourcePanel();
         sourcePanel.setLayout(new GridLayout(0, 2));
         sourcePanel.setBorder(BorderFactory.createTitledBorder("Source data location"));
         sourcePanel.add(new JLabel("Data type"));
         sourceType = new JComboBox<>(DBChoice.choices());
         sourceType.setName("SourceType");
         sourceType.setToolTipText("Select the type of source data available");
-        sourceType.addItemListener(this::createDatabaseFields);
+        System.out.println("createDatabaseFields (addListener)...");
+        sourceType.addItemListener(event -> {
+            if (event.getStateChange() == ItemEvent.SELECTED) {
+                createDatabaseFields(event);
+            }
+        });
         sourcePanel.add(sourceType);
-
-        sourcePanel.add(new JLabel(LABEL_SERVER_LOCATION));
-        sourceServerField = new JTextField("127.0.0.1");
-        sourceServerField.setName(LABEL_SERVER_LOCATION);
-        sourceServerField.setEnabled(false);
-        sourcePanel.add(sourceServerField);
-        sourcePanel.add(new JLabel(LABEL_USER_NAME));
-        sourceUserField = new JTextField("");
-        sourceUserField.setName(LABEL_USER_NAME);
-        sourceUserField.setEnabled(false);
-        sourcePanel.add(sourceUserField);
-        sourcePanel.add(new JLabel(LABEL_PASSWORD));
-        sourcePasswordField = new JPasswordField("");
-        sourcePasswordField.setName(LABEL_PASSWORD);
-        sourcePasswordField.setEnabled(false);
-        sourcePanel.add(sourcePasswordField);
-        sourcePanel.add(new JLabel(LABEL_DATABASE_NAME));
-        sourceDatabaseField = new JTextField("");
-        sourceDatabaseField.setName(LABEL_DATABASE_NAME);
-        sourceDatabaseField.setEnabled(false);
-        sourcePanel.add(sourceDatabaseField);
-
-        sourcePanel.add(new JLabel(LABEL_DELIMITER));
-        JTextField delimiterField = new JTextField(",");
-        delimiterField.setName(LABEL_DELIMITER);
-        sourceDelimiterField = delimiterField;
-        sourceDelimiterField.setToolTipText("The delimiter that separates values. Enter 'tab' for tab.");
-        sourcePanel.add(sourceDelimiterField);
 
         return sourcePanel;
     }

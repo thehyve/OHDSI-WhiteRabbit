@@ -27,7 +27,8 @@ public class ConfigurationField {
         this.name = name;
         this.label = label;
         this.toolTip = toolTip;
-        this.defaultValue = "";
+        this.defaultValue = null;
+        this.value = null;
     }
 
     public static ConfigurationField create(String name, String label, String toolTip) {
@@ -68,6 +69,15 @@ public class ConfigurationField {
 
     public String getDefaultValue() {
         return this.defaultValue;
+    }
+
+    public String getValueOrDefault() {
+        if (this.value != null) {
+            return this.value;
+        } else if (this.defaultValue != null){
+            return this.defaultValue;
+        }
+        return null;
     }
 
     private static class FieldRequiredValidator implements FieldValidator {
