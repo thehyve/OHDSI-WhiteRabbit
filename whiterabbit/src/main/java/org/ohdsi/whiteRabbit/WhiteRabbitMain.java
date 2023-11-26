@@ -46,11 +46,13 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.io.output.TeeOutputStream;
 import org.ohdsi.databases.*;
+import org.ohdsi.databases.configuration.DBConfigurationException;
 import org.ohdsi.utilities.DirectoryUtilities;
 import org.ohdsi.utilities.StringUtilities;
 import org.ohdsi.utilities.Version;
 import org.ohdsi.utilities.files.IniFile;
 import org.ohdsi.whiteRabbit.fakeDataGenerator.FakeDataGenerator;
+import org.ohdsi.whiteRabbit.gui.LocationsPanel;
 import org.ohdsi.whiteRabbit.scan.SourceDataScan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +60,7 @@ import org.slf4j.LoggerFactory;
 /**
  * This is the WhiteRabbit main class
  */
-public class WhiteRabbitMain implements ActionListener {
+public class WhiteRabbitMain implements ActionListener, PanelsManager {
 
 	Logger logger = LoggerFactory.getLogger(WhiteRabbitMain.class);
 
@@ -67,11 +69,6 @@ public class WhiteRabbitMain implements ActionListener {
 
 	public static final String DELIMITED_TEXT_FILES = "Delimited text files";
 
-	public static final String LABEL_SERVER_LOCATION = "Server location";
-	public static final String LABEL_USER_NAME = "User name";
-	public static final String LABEL_PASSWORD = "Password";
-	public static final String LABEL_DATABASE_NAME = "Database name";
-	public static final String LABEL_DELIMITER = "Delimiter";
 	public static final String LABEL_TEST_CONNECTION = "Test connection";
 	public static final String LABEL_CONNECTION_SUCCESSFUL = "Connection successful";
 	public static final String NAME_TABBED_PANE = "TabbedPane";
@@ -82,7 +79,6 @@ public class WhiteRabbitMain implements ActionListener {
 	public static final String LABEL_ADD_ALL_IN_DB = "Add all in DB";
 
 	private JFrame				frame;
-	private JTextField			folderField;
 	private JTextField			scanReportFileField;
 
 	private JComboBox<String>	scanRowCount;
@@ -92,25 +88,18 @@ public class WhiteRabbitMain implements ActionListener {
 	private JComboBox<String>	numericStatsSampleSize;
 	private JSpinner			scanMinCellCount;
 	private JSpinner			generateRowCount;
-	private JComboBox<String>	sourceType;
 	private JComboBox<String>	targetType;
 	private JTextField			targetUserField;
 	private JTextField			targetPasswordField;
 	private JTextField			targetServerField;
 	private JTextField			targetDatabaseField;
-	private JTextField			sourceDelimiterField;
 	private JComboBox<String> 	targetCSVFormat;
 	private JCheckBox		 	doUniformSampling;
-	private JTextField			sourceServerField;
-	private JTextField			sourceUserField;
-	private JTextField			sourcePasswordField;
-	private JTextField			sourceDatabaseField;
 	private JButton				addAllButton;
 	private JList<String>		tableList;
 	private Vector<String>		tables							= new Vector<String>();
-	private boolean				sourceIsFiles					= true;
-	private boolean				sourceIsSas						= false;
 	private boolean				targetIsFiles					= false;
+	private LocationsPanel locationsPanel;
 
 	private Console	console;
 
@@ -150,6 +139,14 @@ public class WhiteRabbitMain implements ActionListener {
 			frame.setVisible(true);
 			ObjectExchange.frame = frame;
 		}
+	}
+
+	public JButton getAddAllButton() {
+		return this.addAllButton;
+	}
+
+	public List<JComponent> getComponentsToDisableWhenRunning() {
+		return this.componentsToDisableWhenRunning;
 	}
 
 	private void launchCommandLine(String iniFileName) throws IOException {
@@ -296,8 +293,8 @@ public class WhiteRabbitMain implements ActionListener {
 		JTabbedPane tabbedPane = new JTabbedPane();
 		tabbedPane.setName(NAME_TABBED_PANE);
 
-		JPanel locationPanel = createLocationsPanel();
-		tabbedPane.addTab(LABEL_LOCATIONS, null, locationPanel, "Specify the location of the source data and the working folder");
+		this.locationsPanel = createLocationsPanel(componentsToDisableWhenRunning);
+		tabbedPane.addTab(LABEL_LOCATIONS, null, locationsPanel, "Specify the location of the source data and the working folder");
 
 		JPanel scanPanel = createScanPanel();
 		tabbedPane.addTab(LABEL_SCAN, null, scanPanel, "Create a scan of the source data");
@@ -308,148 +305,10 @@ public class WhiteRabbitMain implements ActionListener {
 		return tabbedPane;
 	}
 
-	private JPanel createLocationsPanel() {
-		JPanel panel = new JPanel();
-		panel.setName(LABEL_LOCATIONS);
-
-		panel.setLayout(new GridBagLayout());
-		GridBagConstraints c = new GridBagConstraints();
-		c.fill = GridBagConstraints.BOTH;
-		c.weightx = 0.5;
-
-		JPanel folderPanel = new JPanel();
-		folderPanel.setLayout(new BoxLayout(folderPanel, BoxLayout.X_AXIS));
-		folderPanel.setBorder(BorderFactory.createTitledBorder("Working folder"));
-		folderField = new JTextField();
-		folderField.setName("FolderField");
-		folderField.setText((new File("").getAbsolutePath()));
-		folderField.setToolTipText("The folder where all output will be written");
-		folderPanel.add(folderField);
-		JButton pickButton = new JButton("Pick folder");
-		pickButton.setToolTipText("Pick a different working folder");
-		folderPanel.add(pickButton);
-		pickButton.addActionListener(e -> pickFolder());
-		componentsToDisableWhenRunning.add(pickButton);
-		c.gridx = 0;
-		c.gridy = 0;
-		c.gridwidth = 1;
-		panel.add(folderPanel, c);
-
-		JPanel sourcePanel = new JPanel();
-		sourcePanel.setLayout(new GridLayout(0, 2));
-		sourcePanel.setBorder(BorderFactory.createTitledBorder("Source data location"));
-		sourcePanel.add(new JLabel("Data type"));
-		sourceType = new JComboBox<>(DBChoice.choices());
-		sourceType.setName("SourceType");
-		sourceType.setToolTipText("Select the type of source data available");
-		sourceType.addItemListener(itemEvent -> {
-			String selectedSourceType = itemEvent.getItem().toString();
-			sourceIsFiles = selectedSourceType.equals(DELIMITED_TEXT_FILES);
-			sourceIsSas = selectedSourceType.equals("SAS7bdat");
-			boolean sourceIsDatabase = !(sourceIsFiles || sourceIsSas);
-
-			sourceServerField.setEnabled(sourceIsDatabase);
-			sourceUserField.setEnabled(sourceIsDatabase);
-			sourcePasswordField.setEnabled(sourceIsDatabase);
-			sourceDatabaseField.setEnabled(sourceIsDatabase && !selectedSourceType.equals("Azure"));
-			sourceDelimiterField.setEnabled(sourceIsFiles);
-			addAllButton.setEnabled(sourceIsDatabase);
-
-			if (sourceIsDatabase && selectedSourceType.equals("Oracle")) {
-				sourceServerField.setToolTipText("For Oracle servers this field contains the SID, servicename, and optionally the port: '<host>/<sid>', '<host>:<port>/<sid>', '<host>/<service name>', or '<host>:<port>/<service name>'");
-				sourceUserField.setToolTipText("For Oracle servers this field contains the name of the user used to log in");
-				sourcePasswordField.setToolTipText("For Oracle servers this field contains the password corresponding to the user");
-				sourceDatabaseField.setToolTipText("For Oracle servers this field contains the schema (i.e. 'user' in Oracle terms) containing the source tables");
-			} else if (sourceIsDatabase && selectedSourceType.equals("PostgreSQL")) {
-				sourceServerField.setToolTipText("For PostgreSQL servers this field contains the host name and database name (<host>/<database>)");
-				sourceUserField.setToolTipText("The user used to log in to the server");
-				sourcePasswordField.setToolTipText("The password used to log in to the server");
-				sourceDatabaseField.setToolTipText("For PostgreSQL servers this field contains the schema containing the source tables");
-			} else if (sourceIsDatabase && selectedSourceType.equals("BigQuery")) {
-				sourceServerField.setToolTipText("GBQ SA & UA:  ProjectID");
-				sourceUserField.setToolTipText("GBQ SA only: OAuthServiceAccountEMAIL");
-				sourcePasswordField.setToolTipText("GBQ SA only: OAuthPvtKeyPath");
-				sourceDatabaseField.setToolTipText("GBQ SA & UA: Data Set within ProjectID");
-			} else if (sourceIsDatabase && selectedSourceType.equals(("Snowflake"))) {
-
-			} else if (sourceIsDatabase) {
-				if (selectedSourceType.equals("Azure")) {
-					sourceServerField.setToolTipText("For Azure, this field contains the host name and database name (<host>;database=<database>)");
-				} else {
-					sourceServerField.setToolTipText("This field contains the name or IP address of the database server");
-				}
-				if (selectedSourceType.equals("SQL Server")) {
-					sourceUserField.setToolTipText("The user used to log in to the server. Optionally, the domain can be specified as <domain>/<user> (e.g. 'MyDomain/Joe')");
-				} else {
-					sourceUserField.setToolTipText("The user used to log in to the server");
-				}
-				sourcePasswordField.setToolTipText("The password used to log in to the server");
-				if (selectedSourceType.equals("Azure")) {
-					sourceDatabaseField.setToolTipText("For Azure, leave this empty");
-				} else {
-					sourceDatabaseField.setToolTipText("The name of the database containing the source tables");
-				}
-			}
-		});
-		sourcePanel.add(sourceType);
-
-		sourcePanel.add(new JLabel(LABEL_SERVER_LOCATION));
-		sourceServerField = new JTextField("127.0.0.1");
-		sourceServerField.setName(LABEL_SERVER_LOCATION);
-		sourceServerField.setEnabled(false);
-		sourcePanel.add(sourceServerField);
-		sourcePanel.add(new JLabel(LABEL_USER_NAME));
-		sourceUserField = new JTextField("");
-		sourceUserField.setName(LABEL_USER_NAME);
-		sourceUserField.setEnabled(false);
-		sourcePanel.add(sourceUserField);
-		sourcePanel.add(new JLabel(LABEL_PASSWORD));
-		sourcePasswordField = new JPasswordField("");
-		sourcePasswordField.setName(LABEL_PASSWORD);
-		sourcePasswordField.setEnabled(false);
-		sourcePanel.add(sourcePasswordField);
-		sourcePanel.add(new JLabel(LABEL_DATABASE_NAME));
-		sourceDatabaseField = new JTextField("");
-		sourceDatabaseField.setName(LABEL_DATABASE_NAME);
-		sourceDatabaseField.setEnabled(false);
-		sourcePanel.add(sourceDatabaseField);
-
-		sourcePanel.add(new JLabel(LABEL_DELIMITER));
-		JTextField delimiterField = new JTextField(",");
-		delimiterField.setName(LABEL_DELIMITER);
-		sourceDelimiterField = delimiterField;
-		sourceDelimiterField.setToolTipText("The delimiter that separates values. Enter 'tab' for tab.");
-		sourcePanel.add(sourceDelimiterField);
-
-		c.gridx = 0;
-		c.gridy = 1;
-		c.gridwidth = 1;
-		panel.add(sourcePanel, c);
-
-		JPanel testConnectionButtonPanel = new JPanel();
-		testConnectionButtonPanel.setLayout(new BoxLayout(testConnectionButtonPanel, BoxLayout.X_AXIS));
-		testConnectionButtonPanel.add(Box.createHorizontalGlue());
-
-		JButton testConnectionButton = new JButton(LABEL_TEST_CONNECTION);
-		testConnectionButton.setName(LABEL_TEST_CONNECTION);
-		testConnectionButton.setBackground(new Color(151, 220, 141));
-		testConnectionButton.setToolTipText("Test the connection");
-		testConnectionButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				testConnection(getSourceDbSettings());
-			}
-		});
-		componentsToDisableWhenRunning.add(testConnectionButton);
-		testConnectionButtonPanel.add(testConnectionButton);
-
-		c.gridx = 0;
-		c.gridy = 2;
-		c.gridwidth = 1;
-		panel.add(testConnectionButtonPanel, c);
-
-		return panel;
+	private LocationsPanel createLocationsPanel(List<JComponent> componentsToDisableWhenRunning) {
+		return new LocationsPanel(frame, this);
 	}
-
+	
 	private JPanel createScanPanel() {
 		JPanel panel = new JPanel();
 		panel.setLayout(new BorderLayout());
@@ -739,11 +598,9 @@ public class WhiteRabbitMain implements ActionListener {
 
 	private void setOutputStreamsToConsole(Console console) {
 		if (teeOutputStreams) {
-			//logger.info("Teeing out & err to Swing Console console.");
 			System.setOut(new PrintStream(new TeeOutputStream(System.out, new PrintStream(console))));
 			System.setErr(new PrintStream(new TeeOutputStream(System.err, new PrintStream(console))));
 		} else {
-			//logger.info("Setting out & err to Swing Console.");
 			System.setOut(new PrintStream(console));
 			System.setErr(new PrintStream(console));
 		}
@@ -752,7 +609,6 @@ public class WhiteRabbitMain implements ActionListener {
 			System.setOut(new PrintStream(new FileOutputStream(FileDescriptor.out)));
 			System.setErr(new PrintStream(new FileOutputStream(FileDescriptor.err)));
 			logger = LoggerFactory.getLogger(WhiteRabbitMain.class);
-			//logger.info("Resetting out & err to default.");
 		});
 		Runtime.getRuntime().addShutdownHook(resetOutputStreams);
 	}
@@ -781,23 +637,9 @@ public class WhiteRabbitMain implements ActionListener {
 		return null;
 	}
 
-	private void pickFolder() {
-		JFileChooser fileChooser = new JFileChooser(new File(folderField.getText()));
-		fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-		int returnVal = fileChooser.showDialog(frame, "Select folder");
-		if (returnVal == JFileChooser.APPROVE_OPTION) {
-			File selectedDirectory = fileChooser.getSelectedFile();
-			if (!selectedDirectory.exists()) {
-				// When no directory is selected when approving, FileChooser incorrectly appends the current directory to the path.
-				// Take the opened directory instead.
-				selectedDirectory = fileChooser.getCurrentDirectory();
-			}
-			folderField.setText(selectedDirectory.getAbsolutePath());
-		}
-	}
 
 	private void pickScanReportFile() {
-		JFileChooser fileChooser = new JFileChooser(new File(folderField.getText()));
+		JFileChooser fileChooser = new JFileChooser(new File(locationsPanel.getFolderField().getText()));
 		fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 		int returnVal = fileChooser.showDialog(frame, "Select scan report file");
 		if (returnVal == JFileChooser.APPROVE_OPTION)
@@ -829,21 +671,12 @@ public class WhiteRabbitMain implements ActionListener {
 		DbSettings sourceDbSettings = getSourceDbSettings();
 		if (sourceDbSettings != null) {
 			if (sourceDbSettings.sourceType == DbSettings.SourceType.CSV_FILES || sourceDbSettings.sourceType == DbSettings.SourceType.SAS_FILES) {
-				JFileChooser fileChooser = new JFileChooser(new File(folderField.getText()));
-				fileChooser.setName("FileChooser");
-				fileChooser.setMultiSelectionEnabled(true);
-				fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-
-				if (sourceDbSettings.sourceType == DbSettings.SourceType.CSV_FILES) {
-					fileChooser.setFileFilter(new FileNameExtensionFilter(DELIMITED_TEXT_FILES, "csv", "txt"));
-				} else if (sourceDbSettings.sourceType == DbSettings.SourceType.SAS_FILES) {
-					fileChooser.setFileFilter(new FileNameExtensionFilter("SAS Data Files", "sas7bdat"));
-				}
+				JFileChooser fileChooser = getjFileChooser(sourceDbSettings, locationsPanel);
 
 				int returnVal = fileChooser.showDialog(frame, "Select tables");
 				if (returnVal == JFileChooser.APPROVE_OPTION) {
 					for (File table : fileChooser.getSelectedFiles()) {
-						String tableName = DirectoryUtilities.getRelativePath(new File(folderField.getText()), table);
+						String tableName = DirectoryUtilities.getRelativePath(new File(locationsPanel.getFolderField().getText()), table);
 						if (!tables.contains(tableName))
 							tables.add(tableName);
 						tableList.setListData(tables);
@@ -854,7 +687,7 @@ public class WhiteRabbitMain implements ActionListener {
 				RichConnection connection = new RichConnection(sourceDbSettings.server, sourceDbSettings.domain, sourceDbSettings.user,
 						sourceDbSettings.password, sourceDbSettings.dbType);
 				String tableNames = StringUtilities.join(connection.getTableNames(sourceDbSettings.database), "\t");
-				if (tableNames.length() == 0) {
+				if (tableNames.isEmpty()) {
 					JOptionPane.showMessageDialog(frame, "No tables found in database " + sourceDbSettings.database, "Error fetching table names",
 							JOptionPane.ERROR_MESSAGE);
 				} else {
@@ -872,60 +705,77 @@ public class WhiteRabbitMain implements ActionListener {
 		}
 	}
 
+	private static JFileChooser getjFileChooser(DbSettings sourceDbSettings, LocationsPanel locationsPanel) {
+		JFileChooser fileChooser = new JFileChooser(new File(locationsPanel.getFolderField().getText()));
+		fileChooser.setName("FileChooser");
+		fileChooser.setMultiSelectionEnabled(true);
+		fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+
+		if (sourceDbSettings.sourceType == DbSettings.SourceType.CSV_FILES) {
+			fileChooser.setFileFilter(new FileNameExtensionFilter(DELIMITED_TEXT_FILES, "csv", "txt"));
+		} else if (sourceDbSettings.sourceType == DbSettings.SourceType.SAS_FILES) {
+			fileChooser.setFileFilter(new FileNameExtensionFilter("SAS Data Files", "sas7bdat"));
+		}
+		return fileChooser;
+	}
+
 	private DbSettings getSourceDbSettings() {
+		String sourceDelimiterField = locationsPanel.getSourceDelimiterField().getText();
+		String sourceType = locationsPanel.getSelectedSourceType();
 		DbSettings dbSettings = new DbSettings();
-		if (sourceType.getSelectedItem().equals(DELIMITED_TEXT_FILES)) {
+		if (sourceType.equals(DELIMITED_TEXT_FILES)) {
 			dbSettings.sourceType = DbSettings.SourceType.CSV_FILES;
-			if (sourceDelimiterField.getText().length() == 0) {
+			if (sourceDelimiterField.isEmpty()) {
 				JOptionPane.showMessageDialog(frame, "Delimiter field cannot be empty for source database", "Error connecting to server",
 						JOptionPane.ERROR_MESSAGE);
 				return null;
 			}
-			if (sourceDelimiterField.getText().equalsIgnoreCase("tab"))
+			if (sourceDelimiterField.equalsIgnoreCase("tab"))
 				dbSettings.delimiter = '\t';
 			else
-				dbSettings.delimiter = sourceDelimiterField.getText().charAt(0);
-		} else if (sourceType.getSelectedItem().equals("SAS7bdat")) {
+				dbSettings.delimiter = locationsPanel.getSourceDelimiterField().getText().charAt(0);
+		} else if (sourceType.equals("SAS7bdat")) {
 			dbSettings.sourceType = DbSettings.SourceType.SAS_FILES;
 		} else {
 			dbSettings.sourceType = DbSettings.SourceType.DATABASE;
-			dbSettings.user = sourceUserField.getText();
-			dbSettings.password = sourcePasswordField.getText();
-			dbSettings.server = sourceServerField.getText();
-			dbSettings.database = sourceDatabaseField.getText().trim().length() == 0 ? null : sourceDatabaseField.getText();
-			if (sourceType.getSelectedItem().toString().equals("MySQL"))
+			dbSettings.user = locationsPanel.getSourceUserField();
+			dbSettings.password = locationsPanel.getSourcePasswordField();
+			dbSettings.server = locationsPanel.getSourceServerField();
+			String sourceDatabaseField = locationsPanel.getSourceDatabaseField();
+			dbSettings.database = sourceDatabaseField.trim().isEmpty() ? null : sourceDatabaseField;
+			if (sourceType.equals("MySQL"))
 				dbSettings.dbType = DbType.MYSQL;
-			else if (sourceType.getSelectedItem().toString().equals("Oracle"))
+			else if (sourceType.equals("Oracle"))
 				dbSettings.dbType = DbType.ORACLE;
-			else if (sourceType.getSelectedItem().toString().equals("PostgreSQL"))
+			else if (sourceType.equals("PostgreSQL"))
 				dbSettings.dbType = DbType.POSTGRESQL;
-			else if (sourceType.getSelectedItem().toString().equals("BigQuery"))
+			else if (sourceType.equals("BigQuery"))
 				dbSettings.dbType = DbType.BIGQUERY;
-			else if (sourceType.getSelectedItem().toString().equals("Redshift"))
+			else if (sourceType.equals("Redshift"))
 				dbSettings.dbType = DbType.REDSHIFT;
-			else if (sourceType.getSelectedItem().toString().equals("SQL Server")) {
+			else if (sourceType.equals("SQL Server")) {
 				dbSettings.dbType = DbType.MSSQL;
-				if (sourceUserField.getText().length() != 0) { // Not using windows authentication
-					String[] parts = sourceUserField.getText().split("/");
+				if (!dbSettings.user.isEmpty()) { // Not using windows authentication
+					String[] parts = dbSettings.user.split("/");
 					if (parts.length == 2) {
 						dbSettings.user = parts[1];
 						dbSettings.domain = parts[0];
 					}
 				}
-			} else if (sourceType.getSelectedItem().toString().equals("PDW")) {
+			} else if (sourceType.equals("PDW")) {
 				dbSettings.dbType = DbType.PDW;
-				if (sourceUserField.getText().length() != 0) { // Not using windows authentication
-					String[] parts = sourceUserField.getText().split("/");
+				if (!dbSettings.user.isEmpty()) { // Not using windows authentication
+					String[] parts = dbSettings.user.split("/");
 					if (parts.length == 2) {
 						dbSettings.user = parts[1];
 						dbSettings.domain = parts[0];
 					}
 				}
-			} else if (sourceType.getSelectedItem().toString().equals("MS Access"))
+			} else if (sourceType.equals("MS Access"))
 				dbSettings.dbType = DbType.MSACCESS;
-			else if (sourceType.getSelectedItem().toString().equals("Teradata"))
+			else if (sourceType.equals("Teradata"))
 				dbSettings.dbType = DbType.TERADATA;
-			else if (sourceType.getSelectedItem().toString().equals("Azure")) {
+			else if (sourceType.equals("Azure")) {
 				dbSettings.dbType = DbType.AZURE;
 				dbSettings.database = "";
 			}
@@ -933,17 +783,27 @@ public class WhiteRabbitMain implements ActionListener {
 		return dbSettings;
 	}
 
+	public void runConnectionTest() {
+		DbSettings dbSettings = getSourceDbSettings();
+		if (dbSettings != null) {
+			testConnection(dbSettings);
+		} else {
+			throw new DBConfigurationException("Source database settings were not initialized");
+		}
+	}
+
 	private void testConnection(DbSettings dbSettings) {
+		String folder = locationsPanel.getFolderField().getText();
 		if (dbSettings.sourceType == DbSettings.SourceType.CSV_FILES || dbSettings.sourceType == DbSettings.SourceType.SAS_FILES) {
-			if (new File(folderField.getText()).exists()) {
-				String message = "Folder " + folderField.getText() + " found";
+			if (new File(folder).exists()) {
+				String message = "Folder " + folder + " found";
 				JOptionPane.showMessageDialog(frame, StringUtilities.wordWrap(message, 80), "Working folder found", JOptionPane.INFORMATION_MESSAGE);
 			} else {
-				String message = "Folder " + folderField.getText() + " not found";
+				String message = "Folder " + folder + " not found";
 				JOptionPane.showMessageDialog(frame, StringUtilities.wordWrap(message, 80), "Working folder not found", JOptionPane.ERROR_MESSAGE);
 			}
 		} else {
-			if (sourceDatabaseField.isEnabled() && (dbSettings.database == null || dbSettings.database.equals(""))) {
+			if (locationsPanel.isSourceDatabaseFieldEnabled() && (dbSettings.database == null || dbSettings.database.equals(""))) {
 				JOptionPane.showMessageDialog(frame, StringUtilities.wordWrap("Please specify database name", 80), "Error connecting to server",
 						JOptionPane.ERROR_MESSAGE);
 				return;
@@ -964,7 +824,7 @@ public class WhiteRabbitMain implements ActionListener {
 			}
 			try {
 				List<String> tableNames = connection.getTableNames(dbSettings.database);
-				if (tableNames.size() == 0)
+				if (tableNames.isEmpty())
 					throw new RuntimeException("Unable to retrieve table names for database " + dbSettings.database);
 			} catch (Exception e) {
 				String message = "Could not connect to database: " + e.getMessage();
@@ -973,9 +833,8 @@ public class WhiteRabbitMain implements ActionListener {
 			}
 
 			connection.close();
-			String message = "Succesfully connected to " + dbSettings.database + " on server " + dbSettings.server;
+			String message = "Successfully connected to " + dbSettings.database + " on server " + dbSettings.server;
 			JOptionPane.showMessageDialog(frame, StringUtilities.wordWrap(message, 80), LABEL_CONNECTION_SUCCESSFUL, JOptionPane.INFORMATION_MESSAGE);
-
 		}
 	}
 
@@ -1049,7 +908,7 @@ public class WhiteRabbitMain implements ActionListener {
 
 	private void scanRun() {
 		if (tables.size() == 0) {
-			if (sourceIsFiles || sourceIsSas) {
+			if (locationsPanel.sourceIsFiles() || locationsPanel.sourceIsSas()) {
 				String message = "No files selected for scanning";
 				JOptionPane.showMessageDialog(frame, StringUtilities.wordWrap(message, 80), "No files selected", JOptionPane.ERROR_MESSAGE);
 				return;
@@ -1111,10 +970,10 @@ public class WhiteRabbitMain implements ActionListener {
 				if (dbSettings != null) {
 					for (String table : tables) {
 						if (dbSettings.sourceType == DbSettings.SourceType.CSV_FILES || dbSettings.sourceType == DbSettings.SourceType.SAS_FILES)
-							table = folderField.getText() + "/" + table;
+							table = locationsPanel.getFolderField().getText() + "/" + table;
 						dbSettings.tables.add(table);
 					}
-					sourceDataScan.process(dbSettings, folderField.getText() + "/" + SourceDataScan.SCAN_REPORT_FILE_NAME);
+					sourceDataScan.process(dbSettings, locationsPanel.getFolderField().getText() + "/" + SourceDataScan.SCAN_REPORT_FILE_NAME);
 				}
 			} catch (Exception e) {
 				handleError(e);
@@ -1139,7 +998,7 @@ public class WhiteRabbitMain implements ActionListener {
 							dbSettings,
 							Integer.parseInt(generateRowCount.getValue().toString()),
 							scanReportFileField.getText(),
-							folderField.getText(),
+							locationsPanel.getFolderField().getText(),
 							doUniformSampling.isSelected()
 					);
 				}
@@ -1227,7 +1086,7 @@ public class WhiteRabbitMain implements ActionListener {
 
 	private void handleError(Exception e) {
 		System.err.println("Error: " + e.getMessage());
-		String errorReportFilename = ErrorReport.generate(folderField.getText(), e);
+		String errorReportFilename = ErrorReport.generate(locationsPanel.getFolderField().getText(), e);
 		String message = "Error: " + e.getLocalizedMessage();
 		message += "\nAn error report has been generated:\n" + errorReportFilename;
 		System.out.println(message);
@@ -1257,41 +1116,5 @@ public class WhiteRabbitMain implements ActionListener {
 
 	public Console getConsole() {
 		return console;
-	}
-
-	public enum DBChoice {
-
-		DelimitedTextFiles("Delimited text files"),
-		SAS7bdat("SAS7bdat"),
-		MySQL("MySQL"),
-		Oracle("Oracle"),
-		SQLServer("SQL Server"),
-		PostgreSQL("PostgreSQL"),
-		MSAccess("MS Access"),
-		PDW("PDW"),
-		Redshift("Redshift"),
-		Teradata("Teradata"),
-		BigQuery("BigQuery"),
-		Azure("Azure");
-
-		private final String name;
-
-		DBChoice(String s) {
-			name = s;
-		}
-
-		public boolean equalsName(String otherName) {
-			// (otherName == null) check is not needed because name.equals(null) returns false
-			return name.equals(otherName);
-		}
-
-		@Override
-		public String toString() {
-			return this.name;
-		}
-
-		public static String[] choices() {
-			return Arrays.stream(DBChoice.values()).map(Enum::toString).toArray(String[]::new);
-		}
 	}
 }

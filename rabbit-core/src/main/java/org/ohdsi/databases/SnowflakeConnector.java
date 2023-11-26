@@ -245,7 +245,7 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         public static final String ERROR_MUST_SET_PASSWORD_OR_AUTHENTICATOR = "Either password or authenticator must be specified for Snowflake";
         public static final String ERROR_MUST_NOT_SET_PASSWORD_AND_AUTHENTICATOR = "Specify only one of password or authenticator Snowflake";
         public SnowFlakeConfiguration() {
-            super(false,
+            super(
                 ConfigurationField.create(
                         SNOWFLAKE_ACCOUNT,
                         "Account",

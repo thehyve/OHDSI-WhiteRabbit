@@ -28,18 +28,11 @@ public class DBConfiguration {
     }
 
     public DBConfiguration(ConfigurationField... fields) {
-        new DBConfiguration(true, fields);
-    }
-
-    public DBConfiguration(boolean withDefaults, ConfigurationField... fields) {
-        if (withDefaults) {
-            fields = (ConfigurationField[]) ArrayUtils.addAll(fields, defaultConfigurationFields());
-        }
-        checkForDuplicates(fields);
+        this.checkForDuplicates(fields);
         this.configurationFields = new ConfigurationFields(fields);
     }
 
-    private ConfigurationField[] defaultConfigurationFields() {
+    public static ConfigurationField[] createScanConfigurationFields() {
         return new ConfigurationField[]{
                 ConfigurationField.create(DELIMITER_FIELD,
                                 "",

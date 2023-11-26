@@ -10,8 +10,10 @@ import org.assertj.swing.fixture.FrameFixture;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.ohdsi.databases.configuration.DBChoice;
 import org.ohdsi.whiteRabbit.Console;
 import org.ohdsi.whiteRabbit.WhiteRabbitMain;
+import org.ohdsi.whiteRabbit.gui.LocationsPanel;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 
@@ -63,15 +65,15 @@ class SourceDataScanPostgreSQLGuiIT {
         Files.copy(personCsv, tempDir.resolve("person.csv"));
         Files.copy(costCsv, tempDir.resolve("cost.csv"));
         window.tabbedPane(WhiteRabbitMain.NAME_TABBED_PANE).selectTab(WhiteRabbitMain.LABEL_LOCATIONS);
-        window.comboBox("SourceType").selectItem(WhiteRabbitMain.DBChoice.PostgreSQL.toString());
+        window.comboBox("SourceType").selectItem(DBChoice.PostgreSQL.toString());
         window.textBox("FolderField").setText(tempDir.toAbsolutePath().toString());
-        window.textBox(WhiteRabbitMain.LABEL_SERVER_LOCATION).setText(String.format("%s:%s/%s",
+        window.textBox(LocationsPanel.LABEL_SERVER_LOCATION).setText(String.format("%s:%s/%s",
                 postgreSQL.getHost(),
                 postgreSQL.getFirstMappedPort(),
                 postgreSQL.getDatabaseName()));
-        window.textBox(WhiteRabbitMain.LABEL_USER_NAME).setText(postgreSQL.getUsername());
-        window.textBox(WhiteRabbitMain.LABEL_PASSWORD).setText(postgreSQL.getPassword());
-        window.textBox(WhiteRabbitMain.LABEL_DATABASE_NAME).setText("public");
+        window.textBox(LocationsPanel.LABEL_USER_NAME).setText(postgreSQL.getUsername());
+        window.textBox(LocationsPanel.LABEL_PASSWORD).setText(postgreSQL.getPassword());
+        window.textBox(LocationsPanel.LABEL_DATABASE_NAME).setText("public");
         window.button(WhiteRabbitMain.LABEL_TEST_CONNECTION).click();
         GenericTypeMatcher<JDialog> matcher = new GenericTypeMatcher<JDialog>(JDialog.class, true) {
             protected boolean isMatching(JDialog frame) {
