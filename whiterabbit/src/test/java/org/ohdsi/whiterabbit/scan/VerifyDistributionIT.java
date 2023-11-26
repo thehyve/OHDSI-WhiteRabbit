@@ -1,20 +1,13 @@
 package org.ohdsi.whiterabbit.scan;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.io.TempDir;
 import org.ohdsi.databases.DbType;
 import org.ohdsi.utilities.files.IniFile;
-import org.ohdsi.whiteRabbit.WhiteRabbitMain;
-import org.rnorth.ducttape.TimeoutException;
 import org.testcontainers.containers.BindMode;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.containers.ContainerLaunchException;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Container.ExecResult;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;

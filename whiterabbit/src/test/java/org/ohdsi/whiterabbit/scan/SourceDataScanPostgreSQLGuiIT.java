@@ -11,9 +11,9 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.ohdsi.databases.configuration.DBChoice;
-import org.ohdsi.whiteRabbit.Console;
-import org.ohdsi.whiteRabbit.WhiteRabbitMain;
-import org.ohdsi.whiteRabbit.gui.LocationsPanel;
+import org.ohdsi.whiterabbit.Console;
+import org.ohdsi.whiterabbit.WhiteRabbitMain;
+import org.ohdsi.whiterabbit.gui.LocationsPanel;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 

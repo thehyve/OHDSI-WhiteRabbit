@@ -27,7 +27,7 @@
                     <extraJvmArguments>-Xmx1200m</extraJvmArguments>
                     <programs>
                         <program>
-                            <mainClass>org.ohdsi.whiteRabbit.WhiteRabbitMain</mainClass>
+                            <mainClass>org.ohdsi.whiterabbit.WhiteRabbitMain</mainClass>
                             <id>whiteRabbit</id>
                         </program>
                     </programs>
@@ -167,7 +167,7 @@
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>
-                                        org.ohdsi.whiteRabbit.WhiteRabbitMain
+                                        org.ohdsi.whiterabbit.WhiteRabbitMain
                                     </mainClass>
                                 </transformer>
                                 <transformer

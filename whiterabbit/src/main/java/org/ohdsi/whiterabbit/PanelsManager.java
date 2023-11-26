@@ -1,4 +1,4 @@
-package org.ohdsi.whiteRabbit;
+package org.ohdsi.whiterabbit;
 
 
 import javax.swing.*;

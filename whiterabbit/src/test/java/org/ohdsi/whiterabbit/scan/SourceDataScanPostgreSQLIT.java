@@ -5,7 +5,6 @@ import org.junit.jupiter.api.io.TempDir;
 import org.ohdsi.databases.DbSettings;
 import org.ohdsi.databases.DbType;
 import org.ohdsi.databases.RichConnection;
-import org.ohdsi.whiteRabbit.scan.SourceDataScan;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;

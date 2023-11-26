@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package org.ohdsi.whiteRabbit;
+package org.ohdsi.whiterabbit;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -35,7 +35,6 @@ import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Vector;
 
@@ -51,9 +50,9 @@ import org.ohdsi.utilities.DirectoryUtilities;
 import org.ohdsi.utilities.StringUtilities;
 import org.ohdsi.utilities.Version;
 import org.ohdsi.utilities.files.IniFile;
-import org.ohdsi.whiteRabbit.fakeDataGenerator.FakeDataGenerator;
-import org.ohdsi.whiteRabbit.gui.LocationsPanel;
-import org.ohdsi.whiteRabbit.scan.SourceDataScan;
+import org.ohdsi.whiterabbit.fakeDataGenerator.FakeDataGenerator;
+import org.ohdsi.whiterabbit.gui.LocationsPanel;
+import org.ohdsi.whiterabbit.scan.SourceDataScan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

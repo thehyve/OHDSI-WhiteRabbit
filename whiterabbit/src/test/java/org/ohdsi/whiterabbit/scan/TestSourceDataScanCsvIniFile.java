@@ -3,7 +3,7 @@ package org.ohdsi.whiterabbit.scan;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 import org.ohdsi.databases.DbType;
-import org.ohdsi.whiteRabbit.WhiteRabbitMain;
+import org.ohdsi.whiterabbit.WhiteRabbitMain;
 import org.opentest4j.AssertionFailedError;
 
 import java.io.IOException;

@@ -7,8 +7,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 import org.ohdsi.databases.DbType;
-import org.ohdsi.whiteRabbit.Console;
-import org.ohdsi.whiteRabbit.WhiteRabbitMain;
+import org.ohdsi.whiterabbit.Console;
+import org.ohdsi.whiterabbit.WhiteRabbitMain;
 
 import java.io.IOException;
 import java.net.URISyntaxException;

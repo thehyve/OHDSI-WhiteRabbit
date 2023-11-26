@@ -1,8 +1,8 @@
-package org.ohdsi.whiteRabbit.gui;
+package org.ohdsi.whiterabbit.gui;
 
 import org.ohdsi.databases.DBConnectorInterface;
 import org.ohdsi.databases.configuration.DBChoice;
-import org.ohdsi.whiteRabbit.PanelsManager;
+import org.ohdsi.whiterabbit.PanelsManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -10,8 +10,8 @@ import java.awt.event.ItemEvent;
 import java.io.File;
 import java.util.Objects;
 
-import static org.ohdsi.whiteRabbit.WhiteRabbitMain.DELIMITED_TEXT_FILES;
-import static org.ohdsi.whiteRabbit.WhiteRabbitMain.LABEL_TEST_CONNECTION;
+import static org.ohdsi.whiterabbit.WhiteRabbitMain.DELIMITED_TEXT_FILES;
+import static org.ohdsi.whiterabbit.WhiteRabbitMain.LABEL_TEST_CONNECTION;
 
 public class LocationsPanel extends JPanel {
     public static final String LABEL_LOCATIONS = "Locations";

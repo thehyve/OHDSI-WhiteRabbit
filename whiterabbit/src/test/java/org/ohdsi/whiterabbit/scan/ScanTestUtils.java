@@ -5,8 +5,7 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.assertj.swing.timing.Condition;
 import org.ohdsi.databases.DbType;
-import org.ohdsi.whiteRabbit.Console;
-import org.ohdsi.whiteRabbit.scan.SourceDataScan;
+import org.ohdsi.whiterabbit.Console;
 
 import java.io.File;
 import java.io.FileInputStream;

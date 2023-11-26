@@ -1,4 +1,4 @@
-package org.ohdsi.whiteRabbit.gui;
+package org.ohdsi.whiterabbit.gui;
 
 import javax.swing.*;
 import java.util.*;
