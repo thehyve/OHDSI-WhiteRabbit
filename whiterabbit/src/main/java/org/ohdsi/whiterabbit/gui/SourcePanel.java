@@ -6,7 +6,7 @@ import java.util.*;
 public class SourcePanel extends JPanel {
     private List<JComponent> clearableComponents = new ArrayList<>();
 
-    public void addReplacable(String name, JComponent component) {
+    public void addReplacable(JComponent component) {
 
         this.add(component);
         clearableComponents.add(component);

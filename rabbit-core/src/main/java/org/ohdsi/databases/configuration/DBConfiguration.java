@@ -2,6 +2,7 @@ package org.ohdsi.databases.configuration;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
+import org.ohdsi.databases.DbSettings;
 import org.ohdsi.utilities.files.IniFile;
 
 import java.io.PrintStream;
@@ -17,15 +18,11 @@ public class DBConfiguration {
     public static final String CALCULATE_NUMERIC_STATS_FIELD = "CALCULATE_NUMERIC_STATS";
     public static final String NUMERIC_STATS_SAMPLER_SIZE_FIELD = "NUMERIC_STATS_SAMPLER_SIZE";
     public static final String ERROR_DUPLICATE_DEFINITIONS_FOR_FIELD = "Multiple definitions for field ";
-    private IniFile iniFile;
     protected ConfigurationFields configurationFields;
 
     private DBConfiguration() {
     }
 
-    public DBConfiguration(IniFile inifile) {
-        this.iniFile = inifile;
-    }
 
     public DBConfiguration(ConfigurationField... fields) {
         this.checkForDuplicates(fields);
@@ -80,6 +77,19 @@ public class DBConfiguration {
                         .integerValue()
                         .required()
         };
+    }
+
+    public IniFile toIniFile() {
+        IniFile iniFile = new IniFile();
+        this.configurationFields.getFields().forEach(f -> {
+            iniFile.set(f.name, f.getValue());
+        });
+
+        return iniFile;
+    }
+
+    public DbSettings toDbSettings() {
+        throw new DBConfigurationException("Should be implemented by inheriting classes");
     }
 
     private void checkForDuplicates(ConfigurationField... fields) {

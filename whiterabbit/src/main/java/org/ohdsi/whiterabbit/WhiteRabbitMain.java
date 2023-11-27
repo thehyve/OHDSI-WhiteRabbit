@@ -45,6 +45,8 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.io.output.TeeOutputStream;
 import org.ohdsi.databases.*;
+import org.ohdsi.databases.configuration.DBChoice;
+import org.ohdsi.databases.configuration.DBConfiguration;
 import org.ohdsi.databases.configuration.DBConfigurationException;
 import org.ohdsi.utilities.DirectoryUtilities;
 import org.ohdsi.utilities.StringUtilities;
@@ -589,7 +591,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 		setOutputStreamsToConsole(console);
 		JScrollPane consoleScrollPane = new JScrollPane(consoleArea);
 		consoleScrollPane.setBorder(BorderFactory.createTitledBorder("Console"));
-		consoleScrollPane.setPreferredSize(new Dimension(800, 200));
+		consoleScrollPane.setPreferredSize(new Dimension(800, 180));
 		consoleScrollPane.setAutoscrolls(true);
 		ObjectExchange.console = console;
 		return consoleScrollPane;
@@ -789,6 +791,10 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 		} else {
 			throw new DBConfigurationException("Source database settings were not initialized");
 		}
+	}
+
+	public void runConnectionTest(DBConfiguration dbConfiguration) {
+		throw new DBConfigurationException("Not implemented yet");
 	}
 
 	private void testConnection(DbSettings dbSettings) {

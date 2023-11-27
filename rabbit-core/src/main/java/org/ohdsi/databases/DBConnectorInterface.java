@@ -1,6 +1,7 @@
 package org.ohdsi.databases;
 
 import org.ohdsi.databases.configuration.ConfigurationField;
+import org.ohdsi.databases.configuration.DBConfiguration;
 import org.ohdsi.utilities.files.IniFile;
 import org.ohdsi.utilities.files.Row;
 
@@ -78,4 +79,6 @@ public interface DBConnectorInterface {
     DbSettings getDbSettings();
 
     public List<ConfigurationField> getFields();
+
+    public DBConfiguration getDBConfiguration();
 }
