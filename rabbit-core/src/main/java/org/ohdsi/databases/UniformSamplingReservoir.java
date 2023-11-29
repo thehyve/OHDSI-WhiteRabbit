@@ -1,5 +1,8 @@
 package org.ohdsi.databases;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -18,13 +21,15 @@ import java.util.concurrent.ThreadLocalRandom;
  * calculated exactly.
  */
 public class UniformSamplingReservoir {
+    static Logger logger = LoggerFactory.getLogger(UniformSamplingReservoir.class);
+
     private double[] samples;
     private int maxSize;
     private long populationCount;
     private BigDecimal populationSum;
     private double populationMinimum = Double.POSITIVE_INFINITY;
     private double populationMaximum = Double.NEGATIVE_INFINITY;
-    private transient int currentSampleLength;
+    private int currentSampleLength;
 
     /**
      * Create an empty reservoir.
@@ -211,14 +216,16 @@ public class UniformSamplingReservoir {
             us.add(i);
         }
 
-        System.out.println(us.getSamples().toString());
-        System.out.println(us.getCount());
-        System.out.println(us.getSampleQuartiles().toString());
-        System.out.println(us.populationSum.doubleValue());
-        System.out.println(us.getPopulationMean());
-        System.out.println(us.getPopulationMinimum());
-        System.out.println(us.getPopulationMaximum());
-        System.out.println(us.getSampleMean());
-        System.out.println(us.getSampleStandardDeviation());
+        if (logger.isInfoEnabled()) {
+            logger.info(us.getSamples().toString());
+            logger.info(String.valueOf(us.getCount()));
+            logger.info(us.getSampleQuartiles().toString());
+            logger.info(String.valueOf(us.populationSum.doubleValue()));
+            logger.info(String.valueOf(us.getPopulationMean()));
+            logger.info(String.valueOf(us.getPopulationMinimum()));
+            logger.info(String.valueOf(us.getPopulationMaximum()));
+            logger.info(String.valueOf(us.getSampleMean()));
+            logger.info(String.valueOf(us.getSampleStandardDeviation()));
+        }
     }
 }

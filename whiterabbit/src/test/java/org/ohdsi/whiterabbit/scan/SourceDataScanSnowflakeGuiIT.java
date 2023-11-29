@@ -7,14 +7,18 @@ import org.assertj.swing.edt.GuiActionRunner;
 import org.assertj.swing.finder.WindowFinder;
 import org.assertj.swing.fixture.DialogFixture;
 import org.assertj.swing.fixture.FrameFixture;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.ohdsi.databases.SnowflakeConnector;
+import org.ohdsi.databases.SnowflakeTestUtils;
 import org.ohdsi.databases.configuration.DBChoice;
 import org.ohdsi.whiterabbit.Console;
 import org.ohdsi.whiterabbit.WhiteRabbitMain;
-import org.ohdsi.whiterabbit.gui.LocationsPanel;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 
 import javax.swing.*;
@@ -26,12 +30,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.ohdsi.databases.DbType.POSTGRESQL;
-import static org.ohdsi.whiterabbit.scan.SourceDataScanPostgreSQLIT.createPostgreSQLContainer;
+import static org.ohdsi.databases.DbType.SNOWFLAKE;
+import static org.ohdsi.whiterabbit.scan.SourceDataScanSnowflakeIT.*;
 
 @ExtendWith(GUITestExtension.class)
 @CacioTest
-class SourceDataScanPostgreSQLGuiIT {
+class SourceDataScanSnowflakeGuiIT {
 
     private static FrameFixture window;
     private static Console console;
@@ -43,8 +47,17 @@ class SourceDataScanPostgreSQLGuiIT {
         System.setProperty("cacio.managed.screensize", String.format("%sx%s", WIDTH, HEIGHT));
     }
 
+    @Container
+    public static GenericContainer<?> testContainer;
+
     @BeforeEach
     public void onSetUp() {
+        try {
+            testContainer = createPythonContainer();
+            prepareTestData();
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException("Creating python container failed.");
+        }
         String[] args = {};
         WhiteRabbitMain whiteRabbitMain = GuiActionRunner.execute(() -> new WhiteRabbitMain(true, args));
         console = whiteRabbitMain.getConsole();
@@ -52,11 +65,9 @@ class SourceDataScanPostgreSQLGuiIT {
         window.show(); // shows the frame to test
     }
 
-    @Container
-    public static PostgreSQLContainer<?> postgreSQL = createPostgreSQLContainer();
-
     @GUITest
     @Test
+    @EnabledIfEnvironmentVariable(named = SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE, matches = ".+")
     void testConnectionAndSourceDataScan(@TempDir Path tempDir) throws IOException, URISyntaxException {
         URL referenceScanReport = TestSourceDataScanCsvGui.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
         Path personCsv = Paths.get(TestSourceDataScanCsvGui.class.getClassLoader().getResource("scan_data/person-no-header.csv").toURI());
@@ -64,15 +75,14 @@ class SourceDataScanPostgreSQLGuiIT {
         Files.copy(personCsv, tempDir.resolve("person.csv"));
         Files.copy(costCsv, tempDir.resolve("cost.csv"));
         window.tabbedPane(WhiteRabbitMain.NAME_TABBED_PANE).selectTab(WhiteRabbitMain.LABEL_LOCATIONS);
-        window.comboBox("SourceType").selectItem(DBChoice.PostgreSQL.toString());
+        window.comboBox("SourceType").selectItem(DBChoice.Snowflake.toString());
         window.textBox("FolderField").setText(tempDir.toAbsolutePath().toString());
-        window.textBox(LocationsPanel.LABEL_SERVER_LOCATION).setText(String.format("%s:%s/%s",
-                postgreSQL.getHost(),
-                postgreSQL.getFirstMappedPort(),
-                postgreSQL.getDatabaseName()));
-        window.textBox(LocationsPanel.LABEL_USER_NAME).setText(postgreSQL.getUsername());
-        window.textBox(LocationsPanel.LABEL_PASSWORD).setText(postgreSQL.getPassword());
-        window.textBox(LocationsPanel.LABEL_DATABASE_NAME).setText("public");
+        window.textBox(SnowflakeConnector.SnowflakeConfiguration.SNOWFLAKE_ACCOUNT).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_ACCOUNT"));
+        window.textBox(SnowflakeConnector.SnowflakeConfiguration.SNOWFLAKE_USER).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_USER"));
+        window.textBox(SnowflakeConnector.SnowflakeConfiguration.SNOWFLAKE_PASSWORD).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_PASSWORD"));
+        window.textBox(SnowflakeConnector.SnowflakeConfiguration.SNOWFLAKE_WAREHOUSE).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_WAREHOUSE"));
+        window.textBox(SnowflakeConnector.SnowflakeConfiguration.SNOWFLAKE_DATABASE).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_DATABASE"));
+        window.textBox(SnowflakeConnector.SnowflakeConfiguration.SNOWFLAKE_SCHEMA).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_SCHEMA"));
 
         // use the "Test connection" button
         window.button(WhiteRabbitMain.LABEL_TEST_CONNECTION).click();
@@ -84,7 +94,7 @@ class SourceDataScanPostgreSQLGuiIT {
         DialogFixture frame = WindowFinder.findDialog(matcher).using(window.robot());
         frame.button().click();
 
-        // switch to the scan pannel, add all tables found and run the scan
+        // switch to the scan panel, add all tables found and run the scan
         window.tabbedPane(WhiteRabbitMain.NAME_TABBED_PANE).selectTab(WhiteRabbitMain.LABEL_SCAN).click();
         window.button(WhiteRabbitMain.LABEL_ADD_ALL_IN_DB).click();
         window.button(WhiteRabbitMain.LABEL_SCAN_TABLES).click();
@@ -94,8 +104,6 @@ class SourceDataScanPostgreSQLGuiIT {
                 console,
                 tempDir.resolve("ScanReport.xlsx"),
                 Paths.get(referenceScanReport.toURI()),
-                POSTGRESQL));
-
-        //window.close();
+                SNOWFLAKE));
     }
 }

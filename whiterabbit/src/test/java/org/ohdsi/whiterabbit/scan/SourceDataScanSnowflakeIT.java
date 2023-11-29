@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class SourceDataScanSnowflakeIT {
 
     public final static String SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE = "SNOWFLAKE_WR_TEST_ACCOUNT";
-    Logger logger = LoggerFactory.getLogger(SourceDataScanSnowflakeIT.class);
+    static Logger logger = LoggerFactory.getLogger(SourceDataScanSnowflakeIT.class);
 
     final static String CONTAINER_DATA_PATH = "/scan_data";
     @Container
@@ -94,7 +94,7 @@ public class SourceDataScanSnowflakeIT {
         assertTrue(ScanTestUtils.scanResultsSheetMatchesReference(tempDir.resolve("ScanReport.xlsx"), Paths.get(referenceScanReport.toURI()), DbType.SNOWFLAKE));
     }
 
-    private static void prepareTestData() throws IOException, InterruptedException {
+    static void prepareTestData() throws IOException, InterruptedException {
         // snowsql is used for initializing the database
 
         // add some packages needed for the installation of snowsql
@@ -140,8 +140,8 @@ public class SourceDataScanSnowflakeIT {
 
         result = container.execInContainer(command);
         if (result.getExitCode() != expectedExitValue) {
-            System.out.println("stdout: " + result.getStdout());
-            System.out.println("stderr: " + result.getStderr());
+            logger.error("stdout: {}", result.getStdout());
+            logger.error("stderr: {}", result.getStderr());
             // hide the password, if present, so it won't appear in logs (pragmatic)
             String message = ("Command failed: " + String.join(" ", command))
                     .replace(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_PASSWORD"), "xxxxx");

@@ -35,7 +35,7 @@ class TestSnowflakeConnector {
     public void testUninitializedSnowflakeConnection() throws SQLException {
         INSTANCE.resetConnection(); // make sure the connection is not available from running another test first
         Exception exception = assertThrows(RuntimeException.class, () -> {
-            INSTANCE.getInstance().getConnection();
+            INSTANCE.getInstance().getDBConnection();
         });
 
         assertEquals(ERROR_CONNECTION_NOT_INITIALIZED, exception.getMessage());
@@ -68,7 +68,7 @@ class TestSnowflakeConnector {
         Exception exception = assertThrows(DBConfigurationException.class, () -> {
             assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
         });
-        assertTrue(exception.getMessage().contains(SnowFlakeConfiguration.ERROR_MUST_SET_PASSWORD_OR_AUTHENTICATOR));
+        assertTrue(exception.getMessage().contains(SnowflakeConfiguration.ERROR_MUST_SET_PASSWORD_OR_AUTHENTICATOR));
 
         iniFile.set("SNOWFLAKE_AUTHENTICATOR", "externalbrowser");
         assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
@@ -77,14 +77,14 @@ class TestSnowflakeConnector {
         exception = assertThrows(DBConfigurationException.class, () -> {
             assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
         });
-        assertTrue(exception.getMessage().contains(SnowFlakeConfiguration.ERROR_MUST_NOT_SET_PASSWORD_AND_AUTHENTICATOR));
+        assertTrue(exception.getMessage().contains(SnowflakeConfiguration.ERROR_MUST_NOT_SET_PASSWORD_AND_AUTHENTICATOR));
     }
 
     @Test
     void testPrintIniFileTemplate() throws IOException {
         String output;
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream(); PrintStream printStream = new PrintStream(outputStream)) {
-            DBConfiguration configuration = new SnowflakeConnector.SnowFlakeConfiguration();
+            DBConfiguration configuration = new SnowflakeConfiguration();
             configuration.printIniFileTemplate(printStream);
             output = outputStream.toString();
             for (ConfigurationField field: configuration.getFields()) {

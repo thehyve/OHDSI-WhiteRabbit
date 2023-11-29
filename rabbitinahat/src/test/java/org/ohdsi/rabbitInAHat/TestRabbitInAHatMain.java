@@ -148,11 +148,6 @@ public class TestRabbitInAHatMain {
             if (rectangles.length > 1) {
                 window.robot().releaseKey(KeyEvent.VK_SHIFT);
             }
-//            if (!r.isSelected()) {
-//                ScreenshotTaker screenshotTaker = new ScreenshotTaker();
-//                screenshotTaker.saveDesktopAsPng("problem.png");
-//                System.out.println("Problem!");
-//            }
             assertTrue(r.isSelected());
         });
     }

@@ -50,6 +50,10 @@ public class RichConnection implements Closeable {
 		this.dbType = dbType;
 	}
 
+	public RichConnection(DbSettings dbSettings) {
+		this.connection = DBConnector.connect(dbSettings, verbose);
+	}
+
 	/**
 	 * Execute the given SQL statement.
 	 * 
@@ -79,7 +83,11 @@ public class RichConnection implements Closeable {
 	}
 
 	public List<String> getTableNames(String database) {
-		return connection.getTableNames(database);
+		if (connection.hasDBConnectorInterface()) {
+			return connection.getDBConnectorInterface().getTableNames();
+		} else {
+			return connection.getTableNames(database);
+		}
 	}
 
 	public List<FieldInfo> fetchTableStructure(RichConnection connection, String database, String table, ScanParameters scanParameters) {

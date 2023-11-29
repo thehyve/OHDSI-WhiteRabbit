@@ -18,7 +18,7 @@ import java.util.List;
  *  - a DBConnectionInterface implementing object is provided, and used to create a java.sql.Connection interface
  *  - if neither of the above is valid at construction, a RuntimeException is thrown
  *
- * DBConnection provides a partial subset of the java.sql.Connection interface, just enough to satisfy the]
+ * DBConnection provides a partial subset of the java.sql.Connection interface, just enough to satisfy the
  * needs of WhiteRabbit
  */
 public class DBConnection {
@@ -27,21 +27,21 @@ public class DBConnection {
     private final Connection connection;
     private final DbType dbType;
     private boolean verbose;
-    private final DBConnectorInterface connector;
+    private final DBConnectorInterface connectorInterface;
     private static DecimalFormat decimalFormat		= new DecimalFormat("#.#");
 
 
     public DBConnection(Connection connection, DbType dbType, boolean verbose) {
         this.connection = connection;
         this.dbType = dbType;
-        this.connector = null;
+        this.connectorInterface = null;
         this.verbose = verbose;
     }
 
-    public DBConnection(DBConnectorInterface connector, DbType dbType, boolean verbose) {
-        this.connector = connector;
-        connector.checkInitialised();
-        this.connection = connector.getConnection();
+    public DBConnection(DBConnectorInterface connectorInterface, DbType dbType, boolean verbose) {
+        this.connectorInterface = connectorInterface;
+        connectorInterface.checkInitialised();
+        this.connection = connectorInterface.getDBConnection().getConnection();
         this.dbType = dbType;
         this.verbose = verbose;
     }
@@ -50,9 +50,9 @@ public class DBConnection {
         return this.connection;
     }
 
-    public DBConnectorInterface getDBConnector() {
-        this.connector.checkInitialised();
-        return this.connector;
+    public DBConnectorInterface getDBConnectorInterface() {
+        this.connectorInterface.checkInitialised();
+        return this.connectorInterface;
     }
 
     public void setVerbose(boolean verbose) {
@@ -63,8 +63,8 @@ public class DBConnection {
         return verbose;
     }
 
-    public boolean hasDBConnector() {
-        return this.connector != null;
+    public boolean hasDBConnectorInterface() {
+        return this.connectorInterface != null;
     }
 
     public Statement createStatement(int typeForwardOnly, int concurReadOnly) throws SQLException {
@@ -76,8 +76,8 @@ public class DBConnection {
     }
 
     public void use(String database, DbType dbType) {
-        if (this.hasDBConnector()) {
-            this.getDBConnector().use(database);
+        if (this.hasDBConnectorInterface()) {
+            this.getDBConnectorInterface().use(database);
         } else {
             if (database == null || dbType == DbType.MSACCESS || dbType == DbType.BIGQUERY || dbType == DbType.AZURE) {
                 return;
@@ -156,8 +156,8 @@ public class DBConnection {
     }
 
     public List<String> getTableNames(String database) {
-        if (this.hasDBConnector()) {
-            return this.getDBConnector().getTableNames(database, this);
+        if (this.hasDBConnectorInterface()) {
+            return this.getDBConnectorInterface().getTableNames();
         } else {
             return getTableNamesClassic(database);
         }
@@ -201,8 +201,8 @@ public class DBConnection {
     }
 
     public void close() throws SQLException {
-        if (this.hasDBConnector()) {
-            this.getDBConnector().close();
+        if (this.hasDBConnectorInterface()) {
+            this.getDBConnectorInterface().close();
         } else {
             this.connection.close();
         }

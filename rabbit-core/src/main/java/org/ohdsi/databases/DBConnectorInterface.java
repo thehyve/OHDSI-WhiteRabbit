@@ -5,14 +5,17 @@ import org.ohdsi.databases.configuration.DBConfiguration;
 import org.ohdsi.utilities.files.IniFile;
 import org.ohdsi.utilities.files.Row;
 
-import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 public interface DBConnectorInterface {
 
-    Connection getConnection();
+    DBConnection getDBConnection();
+
+    DbType getDbType();
 
     String getTableSizeQuery(String tableName);
 
@@ -29,9 +32,9 @@ public interface DBConnectorInterface {
      * @param tableName
      * @return
      */
-    default long getTableSize(String tableName, RichConnection connectionInterface) {
+    default long getTableSize(String tableName ) {
         long returnVal;
-        QueryResult qr = SQLUtils.query(getTableSizeQuery(tableName), connectionInterface.getConnection());
+        QueryResult qr = SQLUtils.query(getTableSizeQuery(tableName), getDBConnection());
         try {
             returnVal = Long.parseLong(qr.iterator().next().getCells().get(0));
         } catch (Exception e) {
@@ -50,16 +53,46 @@ public interface DBConnectorInterface {
         // no-op by default, so singletons don't need to implement it
     }
 
-    default List<String> getTableNames(String database, DBConnection connection) {
-        List<String> names = new ArrayList<>();
-        String query = this.getTablesQuery(database);
+    String getDatabase();
 
-		for (Row row : SQLUtils.query(query, connection)) {
+    default List<String> getTableNames() {
+        List<String> names = new ArrayList<>();
+        String query = this.getTablesQuery(getDatabase());
+
+		for (Row row : SQLUtils.query(query, new DBConnection(this, getDbType(), false))) {
             names.add(row.getCells().get(0));
         }
 
         return names;
     }
+
+    List<FieldInfo> fetchTableStructure(String table, ScanParameters scanParameters);
+    default List<FieldInfo> fetchTableStructureThroughJdbc(String table, ScanParameters scanParameters) {
+        List<FieldInfo> fieldInfos = new ArrayList<>();
+        ResultSet rs = getFieldNamesFromJDBC(table);
+        try {
+            while (rs.next()) {
+                FieldInfo fieldInfo = new FieldInfo(scanParameters, rs.getString("COLUMN_NAME"));
+                fieldInfo.type = rs.getString("TYPE_NAME");
+                fieldInfo.rowCount = getTableSize(table);
+                fieldInfos.add(fieldInfo);
+            }
+        } catch (
+                SQLException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+        return fieldInfos;
+    }
+
+    default ResultSet getFieldNamesFromJDBC(String table) {
+        try {
+            DatabaseMetaData metadata = getDBConnection().getMetaData();
+            return metadata.getColumns(null, null, table, null);
+        } catch (SQLException e) {
+            throw new RuntimeException(e.getMessage());
+            }
+    }
+
 
     default int getNameIndex() {
         return 0;
@@ -76,9 +109,12 @@ public interface DBConnectorInterface {
         return null;
     }
 
-    DbSettings getDbSettings();
+    default DbSettings getDbSettings() {
+        return getDBConfiguration().toDbSettings();
+    }
 
     public List<ConfigurationField> getFields();
 
     public DBConfiguration getDBConfiguration();
+    public void setDBConfiguration(DBConfiguration dbConfiguration);
 }

@@ -1,8 +1,7 @@
 package org.ohdsi.whiterabbit;
 
 
-import org.ohdsi.databases.DBConnectorInterface;
-import org.ohdsi.databases.configuration.DBConfiguration;
+import org.ohdsi.databases.DbSettings;
 
 import javax.swing.*;
 import java.util.List;
@@ -12,7 +11,6 @@ import java.util.List;
  */
 public interface PanelsManager {
     void runConnectionTest();
-    void runConnectionTest(DBConfiguration dbConfiguration);
 
     JButton getAddAllButton();
 

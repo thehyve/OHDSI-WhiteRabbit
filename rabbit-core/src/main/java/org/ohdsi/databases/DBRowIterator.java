@@ -1,6 +1,8 @@
 package org.ohdsi.databases;
 
 import org.ohdsi.utilities.files.Row;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -11,6 +13,7 @@ import java.util.Iterator;
 import java.util.Set;
 
 class DBRowIterator implements Iterator<Row> {
+    static Logger logger = LoggerFactory.getLogger(DBRowIterator.class);
 
     private ResultSet resultSet;
 
@@ -31,7 +34,7 @@ class DBRowIterator implements Iterator<Row> {
                 String abbrSQL = sql.replace('\n', ' ').replace('\t', ' ').trim();
                 if (abbrSQL.length() > 100)
                     abbrSQL = abbrSQL.substring(0, 100).trim() + "...";
-                System.out.println("Executing query: " + abbrSQL);
+                logger.info("Executing query: {}", abbrSQL);
             }
             long start = System.currentTimeMillis();
             statement = dbConnection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
@@ -40,8 +43,7 @@ class DBRowIterator implements Iterator<Row> {
             if (verbose)
                 dbConnection.outputQueryStats(statement, System.currentTimeMillis() - start);
         } catch (SQLException e) {
-            System.err.println(sql);
-            System.err.println(e.getMessage());
+            logger.error(sql, e.getMessage());
             throw new RuntimeException(e);
         }
     }

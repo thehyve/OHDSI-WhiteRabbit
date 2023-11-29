@@ -50,7 +50,7 @@ import org.slf4j.LoggerFactory;
 import static java.lang.Long.max;
 
 public class SourceDataScan implements ScanParameters {
-	Logger logger = LoggerFactory.getLogger(SourceDataScan.class);
+	static Logger logger = LoggerFactory.getLogger(SourceDataScan.class);
 	public final static String SCAN_REPORT_FILE_NAME = "ScanReport.xlsx";
 
 	public static final String POI_TMP_DIR_ENVIRONMENT_VARIABLE_NAME = "ORG_OHDSI_WHITERABBIT_POI_TMPDIR";
@@ -145,6 +145,7 @@ public class SourceDataScan implements ScanParameters {
 		} else if (sourceType == DbSettings.SourceType.SAS_FILES) {
 			processSasFiles(dbSettings);
 		} else {
+			// TODO split for classic and DBConnectorInterface approach
 			processDatabase(dbSettings);
 		}
 
@@ -195,7 +196,7 @@ public class SourceDataScan implements ScanParameters {
 	private static void checkWritableTmpDir(String dir) {
 		if (isNotWritable(Paths.get(dir))) {
 			String message = String.format("Directory %s is not writable! (used for tmp files for Apache POI)", dir);
-			System.out.println(message);
+			logger.warn(message);
 			throw new RuntimeException(message);
 		}
 	}
@@ -228,7 +229,7 @@ public class SourceDataScan implements ScanParameters {
 		if (dbSettings.dbType == DbType.BIGQUERY) {
 			dbSettings.domain = dbSettings.database;
 		}
-
+		// TODO how should this be handled for
 		try (RichConnection connection = new RichConnection(dbSettings.server, dbSettings.domain, dbSettings.user, dbSettings.password, dbSettings.dbType)) {
 			connection.setVerbose(false);
 			connection.use(dbSettings.database);
@@ -499,8 +500,8 @@ public class SourceDataScan implements ScanParameters {
 		StringUtilities.outputWithTime("Scanning table " + table);
 
 		long rowCount;
-		if (connection.getConnection().hasDBConnector()) {
-			rowCount = connection.getConnection().getDBConnector().getTableSize(table, connection);
+		if (connection.getConnection().hasDBConnectorInterface()) {
+			rowCount = connection.getConnection().getDBConnectorInterface().getTableSize(table);
 		} else {
 			rowCount = connection.getTableSize(table);
 		}
@@ -516,14 +517,14 @@ public class SourceDataScan implements ScanParameters {
 					}
 					actualCount++;
 					if (sampleSize != -1 && actualCount >= sampleSize) {
-						System.out.println("Stopped after " + actualCount + " rows");
+						logger.info("Stopped after {} rows", actualCount);
 						break;
 					}
 				}
 				for (FieldInfo fieldInfo : fieldInfos)
 					fieldInfo.trim();
 			} catch (Exception e) {
-				System.out.println("Error: " + e.getMessage());
+				logger.error(e.getMessage(), e);
 			} finally {
 				if (queryResult != null) {
 					queryResult.close();

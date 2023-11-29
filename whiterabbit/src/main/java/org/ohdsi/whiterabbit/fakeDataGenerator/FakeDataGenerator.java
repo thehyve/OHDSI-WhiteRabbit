@@ -21,6 +21,7 @@ import java.util.*;
 
 import org.ohdsi.databases.DbSettings;
 import org.ohdsi.databases.RichConnection;
+import org.ohdsi.databases.UniformSamplingReservoir;
 import org.ohdsi.rabbitInAHat.dataModel.Database;
 import org.ohdsi.rabbitInAHat.dataModel.Field;
 import org.ohdsi.rabbitInAHat.dataModel.Table;
@@ -28,8 +29,11 @@ import org.ohdsi.rabbitInAHat.dataModel.ValueCounts;
 import org.ohdsi.utilities.StringUtilities;
 import org.ohdsi.utilities.files.Row;
 import org.ohdsi.utilities.files.WriteCSVFileWithHeader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FakeDataGenerator {
+	static Logger logger = LoggerFactory.getLogger(FakeDataGenerator.class);
 
 	private RichConnection connection;
 	private int maxRowsPerTable = 1000;
@@ -49,7 +53,7 @@ public class FakeDataGenerator {
 		this.doUniformSampling = doUniformSampling;
 
 		StringUtilities.outputWithTime("Starting creation of fake data");
-		System.out.println("Loading scan report from " + filename);
+		logger.info("Loading scan report from {}", filename);
 		Database database = Database.generateModelFromScanReport(filename);
 
 		if (targetType == DbSettings.SourceType.DATABASE) {
@@ -58,7 +62,7 @@ public class FakeDataGenerator {
 			for (Table table : database.getTables()) {
 				if (table.getName().toLowerCase().endsWith(".csv"))
 					table.setName(table.getName().substring(0, table.getName().length() - 4));
-				System.out.println("Generating table " + table.getName());
+				logger.info("Generating table {}", table.getName());
 				createTable(table);
 				connection.insertIntoTable(generateRows(table).iterator(), table.getName(), false);
 			}
@@ -68,7 +72,7 @@ public class FakeDataGenerator {
 				String name = folder + "/" + table.getName();
 				if (!name.toLowerCase().endsWith(".csv"))
 					name = name + ".csv";
-				System.out.println("Generating table " + name);
+				logger.info("Generating table {}", name);
 				WriteCSVFileWithHeader out = new WriteCSVFileWithHeader(name, dbSettings.csvFormat);
 				for (Row row : generateRows(table))
 					out.write(row);

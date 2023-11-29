@@ -7,6 +7,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.ItemEvent;
 import java.io.File;
@@ -39,7 +41,7 @@ public class LocationsPanel extends JPanel {
     private JTextField sourceUserField;
     private JTextField sourcePasswordField;
     private JTextField sourceDatabaseField;
-    private DBConfiguration currentDBConfiguration = null;
+    private DBChoice currentDbChoice = null;
 
 
     private SourcePanel sourcePanel;
@@ -103,7 +105,7 @@ public class LocationsPanel extends JPanel {
         testConnectionButton.setName(LABEL_TEST_CONNECTION);
         testConnectionButton.setBackground(new Color(151, 220, 141));
         testConnectionButton.setToolTipText("Test the connection");
-        testConnectionButton.addActionListener(e -> panelsManager.runConnectionTest());
+        testConnectionButton.addActionListener(e -> this.runConnectionTest());
         panelsManager.getComponentsToDisableWhenRunning().add(testConnectionButton);
         testConnectionButtonPanel.add(testConnectionButton);
 
@@ -111,6 +113,11 @@ public class LocationsPanel extends JPanel {
         c.gridy = 2;
         c.gridwidth = 1;
         panel.add(testConnectionButtonPanel, c);
+    }
+
+    private void runConnectionTest() {
+            panelsManager.runConnectionTest();
+
     }
 
     private void createDatabaseFields(ItemEvent itemEvent) {
@@ -121,30 +128,67 @@ public class LocationsPanel extends JPanel {
 
         DBChoice dbChoice = DBChoice.getDBChoice(selectedSourceType);
         if (dbChoice.supportsDBConnectorInterface()) {
-            this.currentDBConfiguration = dbChoice.getDbConnectorInterface().getDBConfiguration();
+            this.currentDbChoice = dbChoice;
             createDatabaseFields();
         } else {
-            this.currentDBConfiguration = null;
+            this.currentDbChoice = null;
             createDatabaseFields(selectedSourceType);
+        }
+        if (panelsManager.getAddAllButton() != null) {
+            panelsManager.getAddAllButton().setEnabled(sourceIsDatabase(selectedSourceType));
         }
     }
 
+    @FunctionalInterface
+    public interface SimpleDocumentListener extends DocumentListener {
+        void update(DocumentEvent e);
+
+        @Override
+        default void insertUpdate(DocumentEvent e) {
+            update(e);
+        }
+        @Override
+        default void removeUpdate(DocumentEvent e) {
+            update(e);
+        }
+        @Override
+        default void changedUpdate(DocumentEvent e) {
+            update(e);
+        }
+    }
     private void createDatabaseFields() {
-        this.currentDBConfiguration.getFields().forEach(f -> {
+        DBConfiguration currentConfiguration = this.currentDbChoice.getDbConnectorInterface().getDBConfiguration();
+        logger.warn(String.format("There are %s fields in the current configuration", currentConfiguration.getFields().size()));
+        currentConfiguration.getFields().forEach(f -> {
             sourcePanel.addReplacable(new JLabel(f.label));
             JTextField field = new JTextField(f.getValueOrDefault());
             field.setName(f.name);
             field.setToolTipText(f.toolTip);
             sourcePanel.addReplacable(field);
             field.setEnabled(true);
+            field.getDocument().addDocumentListener((SimpleDocumentListener) e -> {
+                f.setValue(field.getText());
+            });
         });
+    }
+
+    private boolean sourceIsFiles(String sourceType) {
+        return sourceType.equalsIgnoreCase(DELIMITED_TEXT_FILES);
+    }
+
+    private boolean sourceIsSas(String sourceType) {
+        return sourceType.equalsIgnoreCase(DBChoice.SAS7bdat.name());
+    }
+
+    private boolean sourceIsDatabase(String sourceType) {
+        return (!sourceIsFiles(sourceType) && !sourceIsSas(sourceType));
     }
 
     @Deprecated // use a DBConfiguration based approach, see SnowflakeConnector as an example
     private void createDatabaseFields(String selectedSourceType) {
-        sourceIsFiles = selectedSourceType.equals(DELIMITED_TEXT_FILES);
-        sourceIsSas = selectedSourceType.equals("SAS7bdat");
-        boolean sourceIsDatabase = !(sourceIsFiles || sourceIsSas);
+        sourceIsFiles = sourceIsFiles(selectedSourceType);
+        sourceIsSas = sourceIsSas(selectedSourceType);
+        boolean sourceIsDatabase = sourceIsDatabase(selectedSourceType);
 
         sourcePanel.addReplacable(new JLabel(LABEL_SERVER_LOCATION));
         sourceServerField = new JTextField("127.0.0.1");
@@ -178,41 +222,40 @@ public class LocationsPanel extends JPanel {
         sourcePasswordField.setEnabled(sourceIsDatabase);
         sourceDatabaseField.setEnabled(sourceIsDatabase && !selectedSourceType.equals(DBChoice.Azure.name()));
         sourceDelimiterField.setEnabled(sourceIsFiles);
-        if (panelsManager.getAddAllButton() != null) {
-            panelsManager.getAddAllButton().setEnabled(sourceIsDatabase);
-        }
 
-        if (sourceIsDatabase && selectedSourceType.equals(DBChoice.Oracle.name())) {
-            sourceServerField.setToolTipText("For Oracle servers this field contains the SID, servicename, and optionally the port: '<host>/<sid>', '<host>:<port>/<sid>', '<host>/<service name>', or '<host>:<port>/<service name>'");
-            sourceUserField.setToolTipText("For Oracle servers this field contains the name of the user used to log in");
-            sourcePasswordField.setToolTipText("For Oracle servers this field contains the password corresponding to the user");
-            sourceDatabaseField.setToolTipText("For Oracle servers this field contains the schema (i.e. 'user' in Oracle terms) containing the source tables");
-        } else if (sourceIsDatabase && selectedSourceType.equals("PostgreSQL")) {
-            sourceServerField.setToolTipText("For PostgreSQL servers this field contains the host name and database name (<host>/<database>)");
-            sourceUserField.setToolTipText("The user used to log in to the server");
-            sourcePasswordField.setToolTipText("The password used to log in to the server");
-            sourceDatabaseField.setToolTipText("For PostgreSQL servers this field contains the schema containing the source tables");
-        } else if (sourceIsDatabase && selectedSourceType.equals("BigQuery")) {
-            sourceServerField.setToolTipText("GBQ SA & UA:  ProjectID");
-            sourceUserField.setToolTipText("GBQ SA only: OAuthServiceAccountEMAIL");
-            sourcePasswordField.setToolTipText("GBQ SA only: OAuthPvtKeyPath");
-            sourceDatabaseField.setToolTipText("GBQ SA & UA: Data Set within ProjectID");
-        } else if (sourceIsDatabase) {
-            if (selectedSourceType.equals("Azure")) {
-                sourceServerField.setToolTipText("For Azure, this field contains the host name and database name (<host>;database=<database>)");
-            } else {
-                sourceServerField.setToolTipText("This field contains the name or IP address of the database server");
-            }
-            if (selectedSourceType.equals("SQL Server")) {
-                sourceUserField.setToolTipText("The user used to log in to the server. Optionally, the domain can be specified as <domain>/<user> (e.g. 'MyDomain/Joe')");
-            } else {
+        if (sourceIsDatabase) {
+            if (selectedSourceType.equals(DBChoice.Oracle.name())) {
+                sourceServerField.setToolTipText("For Oracle servers this field contains the SID, servicename, and optionally the port: '<host>/<sid>', '<host>:<port>/<sid>', '<host>/<service name>', or '<host>:<port>/<service name>'");
+                sourceUserField.setToolTipText("For Oracle servers this field contains the name of the user used to log in");
+                sourcePasswordField.setToolTipText("For Oracle servers this field contains the password corresponding to the user");
+                sourceDatabaseField.setToolTipText("For Oracle servers this field contains the schema (i.e. 'user' in Oracle terms) containing the source tables");
+            } else if (selectedSourceType.equals("PostgreSQL")) {
+                sourceServerField.setToolTipText("For PostgreSQL servers this field contains the host name and database name (<host>/<database>)");
                 sourceUserField.setToolTipText("The user used to log in to the server");
-            }
-            sourcePasswordField.setToolTipText("The password used to log in to the server");
-            if (selectedSourceType.equals("Azure")) {
-                sourceDatabaseField.setToolTipText("For Azure, leave this empty");
+                sourcePasswordField.setToolTipText("The password used to log in to the server");
+                sourceDatabaseField.setToolTipText("For PostgreSQL servers this field contains the schema containing the source tables");
+            } else if (selectedSourceType.equals("BigQuery")) {
+                sourceServerField.setToolTipText("GBQ SA & UA:  ProjectID");
+                sourceUserField.setToolTipText("GBQ SA only: OAuthServiceAccountEMAIL");
+                sourcePasswordField.setToolTipText("GBQ SA only: OAuthPvtKeyPath");
+                sourceDatabaseField.setToolTipText("GBQ SA & UA: Data Set within ProjectID");
             } else {
-                sourceDatabaseField.setToolTipText("The name of the database containing the source tables");
+                if (selectedSourceType.equals("Azure")) {
+                    sourceServerField.setToolTipText("For Azure, this field contains the host name and database name (<host>;database=<database>)");
+                } else {
+                    sourceServerField.setToolTipText("This field contains the name or IP address of the database server");
+                }
+                if (selectedSourceType.equals("SQL Server")) {
+                    sourceUserField.setToolTipText("The user used to log in to the server. Optionally, the domain can be specified as <domain>/<user> (e.g. 'MyDomain/Joe')");
+                } else {
+                    sourceUserField.setToolTipText("The user used to log in to the server");
+                }
+                sourcePasswordField.setToolTipText("The password used to log in to the server");
+                if (selectedSourceType.equals("Azure")) {
+                    sourceDatabaseField.setToolTipText("For Azure, leave this empty");
+                } else {
+                    sourceDatabaseField.setToolTipText("The name of the database containing the source tables");
+                }
             }
         }
     }
@@ -272,6 +315,10 @@ public class LocationsPanel extends JPanel {
 
     public boolean isSourceDatabaseFieldEnabled() {
         return sourceDatabaseField.isEnabled();
+    }
+
+    public DBChoice getCurrentDbChoice() {
+        return this.currentDbChoice;
     }
 
     private void pickFolder() {

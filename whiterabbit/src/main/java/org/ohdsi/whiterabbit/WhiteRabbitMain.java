@@ -655,13 +655,12 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 	}
 
 	private void addAllTables() {
-		DbSettings sourceDbSettings = getSourceDbSettings();
-		if (sourceDbSettings != null) {
-			RichConnection connection = new RichConnection(sourceDbSettings.server, sourceDbSettings.domain, sourceDbSettings.user, sourceDbSettings.password,
-					sourceDbSettings.dbType);
-			for (String table : connection.getTableNames(sourceDbSettings.database)) {
+		DbSettings dbSettings = getSourceDbSettings();
+		if (dbSettings != null) {
+			RichConnection connection = new RichConnection(dbSettings);
+			for (String table : connection.getTableNames(dbSettings.database)) {
 				if (!tables.contains(table))
-					tables.add((String) table);
+					tables.add(table);
 				tableList.setListData(tables);
 			}
 			connection.close();
@@ -685,8 +684,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 
 				}
 			} else if (sourceDbSettings.sourceType == DbSettings.SourceType.DATABASE) {
-				RichConnection connection = new RichConnection(sourceDbSettings.server, sourceDbSettings.domain, sourceDbSettings.user,
-						sourceDbSettings.password, sourceDbSettings.dbType);
+				RichConnection connection = new RichConnection(sourceDbSettings);
 				String tableNames = StringUtilities.join(connection.getTableNames(sourceDbSettings.database), "\t");
 				if (tableNames.isEmpty()) {
 					JOptionPane.showMessageDialog(frame, "No tables found in database " + sourceDbSettings.database, "Error fetching table names",
@@ -721,67 +719,72 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 	}
 
 	private DbSettings getSourceDbSettings() {
-		String sourceDelimiterField = locationsPanel.getSourceDelimiterField().getText();
-		String sourceType = locationsPanel.getSelectedSourceType();
-		DbSettings dbSettings = new DbSettings();
-		if (sourceType.equals(DELIMITED_TEXT_FILES)) {
-			dbSettings.sourceType = DbSettings.SourceType.CSV_FILES;
-			if (sourceDelimiterField.isEmpty()) {
-				JOptionPane.showMessageDialog(frame, "Delimiter field cannot be empty for source database", "Error connecting to server",
-						JOptionPane.ERROR_MESSAGE);
-				return null;
-			}
-			if (sourceDelimiterField.equalsIgnoreCase("tab"))
-				dbSettings.delimiter = '\t';
-			else
-				dbSettings.delimiter = locationsPanel.getSourceDelimiterField().getText().charAt(0);
-		} else if (sourceType.equals("SAS7bdat")) {
-			dbSettings.sourceType = DbSettings.SourceType.SAS_FILES;
+		DBChoice dbChoice = locationsPanel.getCurrentDbChoice();
+		if (dbChoice != null && dbChoice.supportsDBConnectorInterface()) {
+			return locationsPanel.getCurrentDbChoice().getDbConnectorInterface().getDbSettings();
 		} else {
-			dbSettings.sourceType = DbSettings.SourceType.DATABASE;
-			dbSettings.user = locationsPanel.getSourceUserField();
-			dbSettings.password = locationsPanel.getSourcePasswordField();
-			dbSettings.server = locationsPanel.getSourceServerField();
-			String sourceDatabaseField = locationsPanel.getSourceDatabaseField();
-			dbSettings.database = sourceDatabaseField.trim().isEmpty() ? null : sourceDatabaseField;
-			if (sourceType.equals("MySQL"))
-				dbSettings.dbType = DbType.MYSQL;
-			else if (sourceType.equals("Oracle"))
-				dbSettings.dbType = DbType.ORACLE;
-			else if (sourceType.equals("PostgreSQL"))
-				dbSettings.dbType = DbType.POSTGRESQL;
-			else if (sourceType.equals("BigQuery"))
-				dbSettings.dbType = DbType.BIGQUERY;
-			else if (sourceType.equals("Redshift"))
-				dbSettings.dbType = DbType.REDSHIFT;
-			else if (sourceType.equals("SQL Server")) {
-				dbSettings.dbType = DbType.MSSQL;
-				if (!dbSettings.user.isEmpty()) { // Not using windows authentication
-					String[] parts = dbSettings.user.split("/");
-					if (parts.length == 2) {
-						dbSettings.user = parts[1];
-						dbSettings.domain = parts[0];
-					}
+			String sourceDelimiterField = locationsPanel.getSourceDelimiterField().getText();
+			String sourceType = locationsPanel.getSelectedSourceType();
+			DbSettings dbSettings = new DbSettings();
+			if (sourceType.equals(DELIMITED_TEXT_FILES)) {
+				dbSettings.sourceType = DbSettings.SourceType.CSV_FILES;
+				if (sourceDelimiterField.isEmpty()) {
+					JOptionPane.showMessageDialog(frame, "Delimiter field cannot be empty for source database", "Error connecting to server",
+							JOptionPane.ERROR_MESSAGE);
+					return null;
 				}
-			} else if (sourceType.equals("PDW")) {
-				dbSettings.dbType = DbType.PDW;
-				if (!dbSettings.user.isEmpty()) { // Not using windows authentication
-					String[] parts = dbSettings.user.split("/");
-					if (parts.length == 2) {
-						dbSettings.user = parts[1];
-						dbSettings.domain = parts[0];
+				if (sourceDelimiterField.equalsIgnoreCase("tab"))
+					dbSettings.delimiter = '\t';
+				else
+					dbSettings.delimiter = locationsPanel.getSourceDelimiterField().getText().charAt(0);
+			} else if (sourceType.equals("SAS7bdat")) {
+				dbSettings.sourceType = DbSettings.SourceType.SAS_FILES;
+			} else {
+				dbSettings.sourceType = DbSettings.SourceType.DATABASE;
+				dbSettings.user = locationsPanel.getSourceUserField();
+				dbSettings.password = locationsPanel.getSourcePasswordField();
+				dbSettings.server = locationsPanel.getSourceServerField();
+				String sourceDatabaseField = locationsPanel.getSourceDatabaseField();
+				dbSettings.database = sourceDatabaseField.trim().isEmpty() ? null : sourceDatabaseField;
+				if (sourceType.equals("MySQL"))
+					dbSettings.dbType = DbType.MYSQL;
+				else if (sourceType.equals("Oracle"))
+					dbSettings.dbType = DbType.ORACLE;
+				else if (sourceType.equals("PostgreSQL"))
+					dbSettings.dbType = DbType.POSTGRESQL;
+				else if (sourceType.equals("BigQuery"))
+					dbSettings.dbType = DbType.BIGQUERY;
+				else if (sourceType.equals("Redshift"))
+					dbSettings.dbType = DbType.REDSHIFT;
+				else if (sourceType.equals("SQL Server")) {
+					dbSettings.dbType = DbType.MSSQL;
+					if (!dbSettings.user.isEmpty()) { // Not using windows authentication
+						String[] parts = dbSettings.user.split("/");
+						if (parts.length == 2) {
+							dbSettings.user = parts[1];
+							dbSettings.domain = parts[0];
+						}
 					}
+				} else if (sourceType.equals("PDW")) {
+					dbSettings.dbType = DbType.PDW;
+					if (!dbSettings.user.isEmpty()) { // Not using windows authentication
+						String[] parts = dbSettings.user.split("/");
+						if (parts.length == 2) {
+							dbSettings.user = parts[1];
+							dbSettings.domain = parts[0];
+						}
+					}
+				} else if (sourceType.equals("MS Access"))
+					dbSettings.dbType = DbType.MSACCESS;
+				else if (sourceType.equals("Teradata"))
+					dbSettings.dbType = DbType.TERADATA;
+				else if (sourceType.equals("Azure")) {
+					dbSettings.dbType = DbType.AZURE;
+					dbSettings.database = "";
 				}
-			} else if (sourceType.equals("MS Access"))
-				dbSettings.dbType = DbType.MSACCESS;
-			else if (sourceType.equals("Teradata"))
-				dbSettings.dbType = DbType.TERADATA;
-			else if (sourceType.equals("Azure")) {
-				dbSettings.dbType = DbType.AZURE;
-				dbSettings.database = "";
 			}
+			return dbSettings;
 		}
-		return dbSettings;
 	}
 
 	public void runConnectionTest() {
@@ -791,10 +794,6 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 		} else {
 			throw new DBConfigurationException("Source database settings were not initialized");
 		}
-	}
-
-	public void runConnectionTest(DBConfiguration dbConfiguration) {
-		throw new DBConfigurationException("Not implemented yet");
 	}
 
 	private void testConnection(DbSettings dbSettings) {
@@ -1090,11 +1089,11 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 	}
 
 	private void handleError(Exception e) {
-		System.err.println("Error: " + e.getMessage());
+		logger.error(e.getMessage(), e);
 		String errorReportFilename = ErrorReport.generate(locationsPanel.getFolderField().getText(), e);
 		String message = "Error: " + e.getLocalizedMessage();
 		message += "\nAn error report has been generated:\n" + errorReportFilename;
-		System.out.println(message);
+		logger.error(message);
 		JOptionPane.showMessageDialog(frame, StringUtilities.wordWrap(message, 80), "Error", JOptionPane.ERROR_MESSAGE);
 	}
 

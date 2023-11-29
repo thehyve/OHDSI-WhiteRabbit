@@ -7,11 +7,12 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import org.ohdsi.databases.configuration.*;
+import org.ohdsi.utilities.collections.Pair;
 import org.ohdsi.utilities.files.IniFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.ohdsi.databases.SnowflakeConnector.SnowFlakeConfiguration.*;
+import static org.ohdsi.databases.SnowflakeConnector.SnowflakeConfiguration.*;
 
 /*
  * SnowflakeDB implements all Snowflake specific logic required to connect to, and query, a Snowflake instance.
@@ -23,13 +24,8 @@ public enum SnowflakeConnector implements DBConnectorInterface {
 
     static Logger logger = LoggerFactory.getLogger(SnowflakeConnector.class);
 
-    private DbSettings dbSettings = null;
-
-    SnowFlakeConfiguration configuration = null;
-    private Connection snowflakeConnection = null;
-    private String database;
-    private String schema;
-
+    DBConfiguration configuration = new SnowflakeConfiguration();
+    private DBConnection snowflakeConnection = null;
 
     private final DbType dbType = DbType.SNOWFLAKE;
     public static final String ERROR_NO_FIELD_OF_TYPE = "No value was specified for type";
@@ -51,39 +47,13 @@ public enum SnowflakeConnector implements DBConnectorInterface {
     }
 
     public DBConnectorInterface getInstance(IniFile iniFile) {
-        getConfiguration(iniFile, null);
+        DbSettings dbSettings = loadConfiguration(iniFile, null);
 
-        return getInstance(dbSettings.server, dbSettings.database, dbSettings.user, dbSettings.password);
+        return getInstance(dbSettings);
     }
 
-    public DbSettings getConfiguration(IniFile iniFile, PrintStream stream) {
-        this.configuration = new SnowFlakeConfiguration();
-        ValidationFeedback feedBack = this.configuration.loadAndValidateConfiguration(iniFile);
-
-        if (feedBack.hasErrors()) {
-            throw new DBConfigurationException(String.format("There are errors in the configuration:%n\t%s", String.join("\n\t", feedBack.getErrors().keySet())));
-        }
-
-        if (feedBack.hasWarnings() && stream != null) {
-            stream.printf("The validation of the configuration generated warnings:%n\t%s", String.join("\n\t", feedBack.getWarnings().keySet()));
-        }
-
-        String warehouse = configuration.getValue(SNOWFLAKE_WAREHOUSE);
-        this.database = configuration.getValue(SNOWFLAKE_DATABASE);
-        this.schema = configuration.getValue(SNOWFLAKE_SCHEMA);
-        dbSettings = new DbSettings();
-        dbSettings.dbType = DbType.SNOWFLAKE;
-        dbSettings.server = String.format("https://%s.snowflakecomputing.com", configuration.getValue(SNOWFLAKE_ACCOUNT));
-        dbSettings.database = String.format("%s.%s.%s",
-                warehouse,
-                this.database,
-                this.schema);
-        dbSettings.domain = dbSettings.database;
-        dbSettings.user = configuration.getValue(SNOWFLAKE_USER);
-        dbSettings.password = configuration.getValue(SNOWFLAKE_PASSWORD);
-        dbSettings.sourceType = DbSettings.SourceType.DATABASE;
-
-        return dbSettings;
+    public DBConnectorInterface getInstance(DbSettings dbSettings) {
+        return getInstance(dbSettings.server, dbSettings.database, dbSettings.user, dbSettings.password);
     }
 
     @Override
@@ -104,14 +74,49 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         return INSTANCE;
     }
 
-    public Connection getConnection() {
+    public DbSettings loadConfiguration(IniFile iniFile, PrintStream stream) {
+        Pair<SnowflakeConfiguration, DbSettings> configurationDbSettingsPair = getConfiguration(iniFile, stream);
+        this.configuration = configurationDbSettingsPair.getItem1();
+
+        return configurationDbSettingsPair.getItem2();
+    }
+
+    public static Pair<SnowflakeConfiguration, DbSettings> getConfiguration(IniFile iniFile, PrintStream stream) {
+        SnowflakeConfiguration configuration = new SnowflakeConfiguration();
+        ValidationFeedback feedBack = configuration.loadAndValidateConfiguration(iniFile);
+
+        if (feedBack.hasErrors()) {
+            throw new DBConfigurationException(String.format("There are errors in the configuration:%n\t%s", String.join("\n\t", feedBack.getErrors().keySet())));
+        }
+
+        if (feedBack.hasWarnings() && stream != null) {
+            stream.printf("The validation of the configuration generated warnings:%n\t%s", String.join("\n\t", feedBack.getWarnings().keySet()));
+        }
+
+        String warehouse = configuration.getValue(SNOWFLAKE_WAREHOUSE);
+        DbSettings dbSettings = new DbSettings();
+        dbSettings.dbType = DbType.SNOWFLAKE;
+        dbSettings.server = String.format("https://%s.snowflakecomputing.com", configuration.getValue(SNOWFLAKE_ACCOUNT));
+        dbSettings.database = String.format("%s.%s.%s",
+                warehouse,
+                configuration.getValue(SNOWFLAKE_DATABASE),
+                configuration.getValue(SNOWFLAKE_SCHEMA));
+        dbSettings.domain = dbSettings.database;
+        dbSettings.user = configuration.getValue(SNOWFLAKE_USER);
+        dbSettings.password = configuration.getValue(SNOWFLAKE_PASSWORD);
+        dbSettings.sourceType = DbSettings.SourceType.DATABASE;
+
+        return new Pair<>(configuration, dbSettings);
+    }
+
+    public DBConnection getDBConnection() {
         this.checkInitialised();
         return this.snowflakeConnection;
     }
 
     @Override
     public String getTableSizeQuery(String tableName) {
-        return String.format("SELECT COUNT(*) FROM %s.%s.%s;",this.database, this.schema, tableName);
+        return String.format("SELECT COUNT(*) FROM %s.%s.%s;", this.getDatabase(), this.getSchema(), tableName);
     }
 
     @Override
@@ -120,7 +125,7 @@ public enum SnowflakeConnector implements DBConnectorInterface {
     }
 
     public String getTablesQuery(String database) {
-        return String.format("SELECT TABLE_NAME FROM %s.INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '%s'", this.database.toUpperCase(), schema.toUpperCase());
+        return String.format("SELECT TABLE_NAME FROM %s.INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '%s'", this.getDatabase().toUpperCase(), this.getSchema().toUpperCase());
     }
 
     @Override
@@ -130,12 +135,8 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         }
     }
 
-    public DbSettings getDbSettings() {
-        if (dbSettings == null) {
-            throw new RuntimeException(String.format("dbSettings were never initialized for class %s", this.getClass().getName()));
-        }
-
-        return dbSettings;
+    public DbType getDbType() {
+        return this.dbType;
     }
 
     @Override
@@ -144,7 +145,7 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         return new ArrayList<>();
     }
 
-    private static Connection connectToSnowflake(String server, String schema, String user, String password) {
+    private static DBConnection connectToSnowflake(String server, String schema, String user, String password) {
         try {
             Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
         } catch (ClassNotFoundException ex) {
@@ -152,7 +153,7 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         }
         String url = buildUrl(server, schema, user, password, INSTANCE.configuration.getValue(SNOWFLAKE_AUTHENTICATOR));
         try {
-            return DriverManager.getConnection(url);
+            return new DBConnection(DriverManager.getConnection(url), DbType.SNOWFLAKE, false);
         } catch (SQLException ex) {
             throw new RuntimeException("Cannot connect to Snowflake server: " + ex.getMessage());
         }
@@ -168,10 +169,14 @@ public enum SnowflakeConnector implements DBConnectorInterface {
     }
 
     public DBConfiguration getDBConfiguration() {
-        return new SnowFlakeConfiguration();
+
+        return this.configuration;
+    }
+    public void setDBConfiguration(DBConfiguration dbConfiguration) {
+        this.configuration = dbConfiguration;
     }
 
-    public static class SnowFlakeConfiguration extends DBConfiguration {
+    public static class SnowflakeConfiguration extends DBConfiguration {
         public static final String SNOWFLAKE_ACCOUNT = "SNOWFLAKE_ACCOUNT";
         public static final String SNOWFLAKE_USER = "SNOWFLAKE_USER";
         public static final String SNOWFLAKE_PASSWORD = "SNOWFLAKE_PASSWORD";
@@ -181,7 +186,7 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         public static final String SNOWFLAKE_SCHEMA = "SNOWFLAKE_SCHEMA";
         public static final String ERROR_MUST_SET_PASSWORD_OR_AUTHENTICATOR = "Either password or authenticator must be specified for Snowflake";
         public static final String ERROR_MUST_NOT_SET_PASSWORD_AND_AUTHENTICATOR = "Specify only one of password or authenticator Snowflake";
-        public SnowFlakeConfiguration() {
+        public SnowflakeConfiguration() {
             super(
                 ConfigurationField.create(
                         SNOWFLAKE_ACCOUNT,
@@ -238,6 +243,11 @@ public enum SnowflakeConnector implements DBConnectorInterface {
                 return feedback;
             }
         }
+        @Override
+        public DbSettings toDbSettings() {
+            return getConfiguration(this.toIniFile(),null ).getItem2();
+        }
+
     }
 
     private static String buildUrl(String server, String schema, String user, String password, String authenticator) {
@@ -275,5 +285,19 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         }
 
         return parts;
+    }
+
+    public String getDatabase() {
+        return this.configuration.getValue(SNOWFLAKE_DATABASE);
+    }
+
+    @Override
+    public List<FieldInfo> fetchTableStructure(String table, ScanParameters scanParameters) {
+        // use the default JDBC method provided by DBConnectorInterface
+        return fetchTableStructureThroughJdbc(table, scanParameters);
+    }
+
+    private String getSchema() {
+        return this.configuration.getValue(SNOWFLAKE_SCHEMA);
     }
 }

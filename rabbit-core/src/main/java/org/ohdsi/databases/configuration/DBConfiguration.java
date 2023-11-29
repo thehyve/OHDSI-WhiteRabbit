@@ -7,6 +7,7 @@ import org.ohdsi.utilities.files.IniFile;
 
 import java.io.PrintStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class DBConfiguration {
     public static final String DELIMITER_FIELD = "DELIMITER";
@@ -133,8 +134,12 @@ public class DBConfiguration {
     }
 
     public String getValue(String fieldName) {
-        Optional<String> value = getFields().stream().filter(f -> fieldName.equalsIgnoreCase(f.name)).map(ConfigurationField::getValue).findFirst();
-        return (value.orElse(""));
+        Optional<ConfigurationField> field = getFields().stream().filter(f -> fieldName.equalsIgnoreCase(f.name)).findFirst();
+        if (field.isPresent()) {
+            return field.get().getValue();
+        } else {
+            return "";
+        }
     }
 
     public void printIniFileTemplate(PrintStream stream) {

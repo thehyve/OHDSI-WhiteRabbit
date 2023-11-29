@@ -27,16 +27,10 @@ import org.ohdsi.utilities.files.WriteTextFile;
 
 public class Console extends OutputStream {
 	
-	private StringBuffer	buffer	= new StringBuffer();
+	private StringBuilder	buffer	= new StringBuilder();
 	private WriteTextFile	debug	= null;
 	private JTextArea		textArea;
-	
-	public void println(String string) {
-		textArea.append(string + "\n");
-		textArea.repaint();
-		System.out.println(string);
-	}
-	
+
 	public void setTextArea(JTextArea textArea) {
 		this.textArea = textArea;
 	}
@@ -66,8 +60,7 @@ public class Console extends OutputStream {
 				debug.writeln(buffer.toString());
 				debug.flush();
 			}
-			buffer = new StringBuffer();
+			buffer = new StringBuilder();
 		}
 	}
-	
 }

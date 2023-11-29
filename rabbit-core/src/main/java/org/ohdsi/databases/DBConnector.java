@@ -31,8 +31,15 @@ public class DBConnector {
 	public static void main(String[] args) {
 	}
 
+	public static DBConnection connect(DbSettings dbSettings, boolean verbose) {
+		return connect(dbSettings.server, dbSettings.domain, dbSettings.user, dbSettings.password, dbSettings.dbType, verbose);
+	}
+
 	// If dbType.BIGQUERY: domain field has been replaced with  database field
 	public static DBConnection connect(String server, String domain, String user, String password, DbType dbType, boolean verbose) {
+		if (dbType == null) {
+			System.err.println("DbType is null!");
+		}
 		if (dbType.equals(DbType.MYSQL))
 			return new DBConnection(DBConnector.connectToMySQL(server, user, password), dbType, verbose);
 		else if (dbType.equals(DbType.MSSQL) || dbType.equals(DbType.PDW) || dbType.equals(DbType.AZURE))
