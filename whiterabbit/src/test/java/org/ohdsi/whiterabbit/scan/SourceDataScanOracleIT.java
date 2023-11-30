@@ -53,7 +53,7 @@ class SourceDataScanOracleIT {
     public void connectToDatabase() {
         // this is also implicitly tested by testSourceDataScan(), but having it fail separately helps identify problems quicker
         DbSettings dbSettings = getTestDbSettings();
-        try (RichConnection richConnection = new RichConnection(dbSettings.server, dbSettings.domain, dbSettings.user, dbSettings.password, dbSettings.dbType)) {
+        try (RichConnection richConnection = new RichConnection(dbSettings)) {
             // do nothing, connection will be closed automatically because RichConnection implements interface Closeable
         }
     }
@@ -85,7 +85,7 @@ class SourceDataScanOracleIT {
 
     private void insertDataFromCsv(String tableName) {
         DbSettings dbSettings = getTestDbSettings();
-        try (RichConnection richConnection = new RichConnection(dbSettings.server, dbSettings.domain, dbSettings.user, dbSettings.password, dbSettings.dbType)) {
+        try (RichConnection richConnection = new RichConnection(dbSettings)) {
             try (BufferedReader reader = new BufferedReader(getResourcePath(tableName))) {
                 String line = null;
                 while ((line = reader.readLine()) != null) {
@@ -113,7 +113,7 @@ class SourceDataScanOracleIT {
     }
 
     private List<String> getTableNames(DbSettings dbSettings) {
-        try (RichConnection richConnection = new RichConnection(dbSettings.server, dbSettings.domain, dbSettings.user, dbSettings.password, dbSettings.dbType)) {
+        try (RichConnection richConnection = new RichConnection(dbSettings)) {
             return richConnection.getTableNames(SCHEMA_NAME);
         }
     }

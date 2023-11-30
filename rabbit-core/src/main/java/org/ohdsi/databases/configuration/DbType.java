@@ -54,9 +54,6 @@ public enum DbType {
 	AZURE("Azure"),
 	SNOWFLAKE("Snowflake", SnowflakeConnector.INSTANCE),
 	SAS7BDAT("Sas7bdat");
-//	private enum Type {
-//		MYSQL, SQL_SERVER, PDW, ORACLE, POSTGRESQL, MS_ACCESS, REDSHIFT, TERADATA, BIGQUERY, AZURE, SNOWFLAKE, DELIMITED_TEXT_FILES, SAS7BDAT
-//	};
 
 	private final String label;
 	private final DBConnectorInterface implementingClass;

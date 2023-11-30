@@ -56,7 +56,7 @@ public class FakeDataGenerator {
 		Database database = Database.generateModelFromScanReport(filename);
 
 		if (targetType == DbSettings.SourceType.DATABASE) {
-			connection = new RichConnection(dbSettings.server, dbSettings.domain, dbSettings.user, dbSettings.password, dbSettings.dbType);
+			connection = new RichConnection(dbSettings);
 			connection.use(dbSettings.database);
 			for (Table table : database.getTables()) {
 				if (table.getName().toLowerCase().endsWith(".csv"))

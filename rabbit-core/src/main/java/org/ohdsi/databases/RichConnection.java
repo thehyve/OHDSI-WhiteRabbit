@@ -54,6 +54,7 @@ public class RichConnection implements Closeable {
 
 	public RichConnection(DbSettings dbSettings) {
 		this.connection = DBConnector.connect(dbSettings, verbose);
+		this.dbType = dbSettings.dbType;
 	}
 
 	/**

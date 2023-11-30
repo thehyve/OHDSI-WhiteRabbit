@@ -231,7 +231,7 @@ public class SourceDataScan implements ScanParameters {
 			dbSettings.domain = dbSettings.database;
 		}
 		// TODO how should this be handled for
-		try (RichConnection connection = new RichConnection(dbSettings.server, dbSettings.domain, dbSettings.user, dbSettings.password, dbSettings.dbType)) {
+		try (RichConnection connection = new RichConnection(dbSettings)) {
 			connection.setVerbose(false);
 			connection.use(dbSettings.database);
 

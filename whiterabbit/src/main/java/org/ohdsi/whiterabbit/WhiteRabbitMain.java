@@ -232,7 +232,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 	private void findTablesToScan(IniFile iniFile, DbSettings dbSettings) {
 		if (iniFile.get("TABLES_TO_SCAN").equalsIgnoreCase("*")) {
 			if (dbSettings.sourceType == DbSettings.SourceType.DATABASE) {
-				try (RichConnection connection = new RichConnection(dbSettings.server, dbSettings.domain, dbSettings.user, dbSettings.password, dbSettings.dbType)) {
+				try (RichConnection connection = new RichConnection(dbSettings)) {
 					dbSettings.tables.addAll(connection.getTableNames(dbSettings.database));
 				}
 			} else {
@@ -823,7 +823,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 
 			RichConnection connection;
 			try {
-			    connection = new RichConnection(dbSettings.server, dbSettings.domain, dbSettings.user, dbSettings.password, dbSettings.dbType);
+			    connection = new RichConnection(dbSettings);
 			} catch (Exception e) {
 				String message = "Could not connect: " + e.getMessage();
 				JOptionPane.showMessageDialog(frame, StringUtilities.wordWrap(message, 80), "Error connecting to server", JOptionPane.ERROR_MESSAGE);
