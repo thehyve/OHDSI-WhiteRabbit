@@ -78,7 +78,7 @@ public class ScanTestUtils {
                                 if (tabName.equals("Field Overview") && j == 3 && !scanValue.equalsIgnoreCase(referenceValue)) {
                                     assertTrue(matchTypeName(scanValue, referenceValue, dbType),
                                             String.format("Field type '%s' cannot be matched with reference type '%s' for DbType %s",
-                                                    scanValue, referenceValue, dbType.getTypeName()));
+                                                    scanValue, referenceValue, dbType.name()));
                                 } else {
                                     assertTrue(scanValue.equalsIgnoreCase(referenceValue),
                                             String.format("In sheet %s, value '%s' in scan results does not match '%s' in reference",
@@ -100,17 +100,17 @@ public class ScanTestUtils {
                 case "FLOAT": return reference.equals("numeric");
                 // seems a mismatch in the OMOP CMD v5.2 (Oracle defaults to WITH time zone):
                 case "TIMESTAMP(6) WITH TIME ZONE": return reference.equals("timestamp without time zone");
-                default: throw new RuntimeException(String.format("Unsupported column type '%s' for DbType %s ", type, dbType.getTypeName()));
+                default: throw new RuntimeException(String.format("Unsupported column type '%s' for DbType %s ", type, dbType.name()));
             }
         } else if (dbType == DbType.SNOWFLAKE) {
             switch (type) {
                 case "NUMBER": return reference.equals("integer") || reference.equals("numeric");
                 case "VARCHAR": return reference.equals("character varying");
                 case "TIMESTAMPNTZ": return reference.equals("timestamp without time zone");
-                default: throw new RuntimeException(String.format("Unsupported column type '%s' for DbType %s ", type, dbType.getTypeName()));
+                default: throw new RuntimeException(String.format("Unsupported column type '%s' for DbType %s ", type, dbType.name()));
             }
         } else {
-            throw new RuntimeException("Unsupported DbType: " + dbType.getTypeName());
+            throw new RuntimeException("Unsupported DbType: " + dbType.name());
         }
     }
 

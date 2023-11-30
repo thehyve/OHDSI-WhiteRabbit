@@ -19,6 +19,7 @@ import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.ohdsi.whiterabbit.gui.LocationsPanel;
 
 @ExtendWith(GUITestExtension.class)
 @CacioTest
@@ -50,8 +51,8 @@ public class TestSourceDataScanCsvGui {
         Files.copy(personCsv, tempDir.resolve("person.csv"));
         Files.copy(costCsv, tempDir.resolve("cost.csv"));
         window.tabbedPane("TabbedPane").selectTab(WhiteRabbitMain.LABEL_LOCATIONS);
-        window.comboBox("SourceType").selectItem(WhiteRabbitMain.DELIMITED_TEXT_FILES);
-        window.textBox("Delimiter").setText(",");
+        window.comboBox("SourceType").selectItem(DbType.DELIMITED_TEXT_FILES.label());
+        window.textBox(LocationsPanel.NAME_DELIMITER).setText(",");
         window.textBox("FolderField").setText(tempDir.toAbsolutePath().toString());
         window.tabbedPane("TabbedPane").selectTab("Scan");
         window.button("Add").click();

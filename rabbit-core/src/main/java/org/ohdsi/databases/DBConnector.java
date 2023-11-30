@@ -24,7 +24,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import oracle.jdbc.pool.OracleDataSource;
-import org.apache.tools.ant.types.selectors.SelectSelector;
 
 public class DBConnector {
 
@@ -40,23 +39,23 @@ public class DBConnector {
 		if (dbType == null) {
 			System.err.println("DbType is null!");
 		}
-		if (dbType.equals(DbType.MYSQL))
+		if (dbType.equalsDbType(DbType.MYSQL))
 			return new DBConnection(DBConnector.connectToMySQL(server, user, password), dbType, verbose);
-		else if (dbType.equals(DbType.MSSQL) || dbType.equals(DbType.PDW) || dbType.equals(DbType.AZURE))
+		else if (dbType.equalsDbType(DbType.SQL_SERVER) || dbType.equalsDbType(DbType.PDW) || dbType.equalsDbType(DbType.AZURE))
 			return new DBConnection(DBConnector.connectToMSSQL(server, domain, user, password), dbType, verbose);
-		else if (dbType.equals(DbType.ORACLE))
+		else if (dbType.equalsDbType(DbType.ORACLE))
 			return new DBConnection(DBConnector.connectToOracle(server, domain, user, password), dbType, verbose);
-		else if (dbType.equals(DbType.POSTGRESQL))
+		else if (dbType.equalsDbType(DbType.POSTGRESQL))
 			return new DBConnection(DBConnector.connectToPostgreSQL(server, user, password), dbType, verbose);
-		else if (dbType.equals(DbType.MSACCESS))
+		else if (dbType.equalsDbType(DbType.MS_ACCESS))
 			return new DBConnection(DBConnector.connectToMsAccess(server, user, password), dbType, verbose);
-		else if (dbType.equals(DbType.REDSHIFT))
+		else if (dbType.equalsDbType(DbType.REDSHIFT))
 			return new DBConnection(DBConnector.connectToRedshift(server, user, password), dbType, verbose);
-		else if (dbType.equals(DbType.TERADATA))
+		else if (dbType.equalsDbType(DbType.TERADATA))
 			return new DBConnection(DBConnector.connectToTeradata(server, user, password), dbType, verbose);
-		else if (dbType.equals(DbType.BIGQUERY))
+		else if (dbType.equalsDbType(DbType.BIGQUERY))
 			return new DBConnection(DBConnector.connectToBigQuery(server, domain, user, password), dbType, verbose);
-		else if (dbType.equals(DbType.SNOWFLAKE)) {
+		else if (dbType.equalsDbType(DbType.SNOWFLAKE)) {
 			return new DBConnection(SnowflakeConnector.INSTANCE.getInstance(server, domain, user, password), dbType, verbose);
 		}
 		else

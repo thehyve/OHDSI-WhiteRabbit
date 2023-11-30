@@ -1,6 +1,6 @@
 package org.ohdsi.whiterabbit.gui;
 
-import org.ohdsi.databases.configuration.DBChoice;
+import org.ohdsi.databases.DbType;
 import org.ohdsi.databases.configuration.DBConfiguration;
 import org.ohdsi.whiterabbit.PanelsManager;
 import org.slf4j.Logger;
@@ -14,7 +14,6 @@ import java.awt.event.ItemEvent;
 import java.io.File;
 import java.util.Objects;
 
-import static org.ohdsi.whiterabbit.WhiteRabbitMain.DELIMITED_TEXT_FILES;
 import static org.ohdsi.whiterabbit.WhiteRabbitMain.LABEL_TEST_CONNECTION;
 
 public class LocationsPanel extends JPanel {
@@ -41,7 +40,7 @@ public class LocationsPanel extends JPanel {
     private JTextField sourceUserField;
     private JTextField sourcePasswordField;
     private JTextField sourceDatabaseField;
-    private DBChoice currentDbChoice = null;
+    private DbType currentDbType = null;
 
 
     private SourcePanel sourcePanel;
@@ -92,8 +91,8 @@ public class LocationsPanel extends JPanel {
         this.sourcePanel = createSourcePanel();
 
         // make sure the sourcePanel has usable content by default
-        sourceType.setSelectedItem(DBChoice.DelimitedTextFiles);
-        createDatabaseFields(DBChoice.DelimitedTextFiles.toString());
+        createDatabaseFields(DbType.DELIMITED_TEXT_FILES.label());
+        sourceType.setSelectedItem(DbType.DELIMITED_TEXT_FILES.label());
 
         panel.add(this.sourcePanel, c);
 
@@ -126,12 +125,13 @@ public class LocationsPanel extends JPanel {
         // remove existing DB related fields in sourcePanel
         sourcePanel.clear();
 
-        DBChoice dbChoice = DBChoice.getDBChoice(selectedSourceType);
-        if (dbChoice.supportsDBConnectorInterface()) {
-            this.currentDbChoice = dbChoice;
+        DbType dbType = DbType.getDbType(selectedSourceType);
+        System.out.println("selected: " + selectedSourceType + ", dbType: " + dbType.name());
+        if (dbType.supportsDBConnectorInterface()) {
+            this.currentDbType = dbType;
             createDatabaseFields();
         } else {
-            this.currentDbChoice = null;
+            this.currentDbType = null;
             createDatabaseFields(selectedSourceType);
         }
         if (panelsManager.getAddAllButton() != null) {
@@ -156,8 +156,9 @@ public class LocationsPanel extends JPanel {
             update(e);
         }
     }
+
     private void createDatabaseFields() {
-        DBConfiguration currentConfiguration = this.currentDbChoice.getDbConnectorInterface().getDBConfiguration();
+        DBConfiguration currentConfiguration = this.currentDbType.getDbConnectorInterface().getDBConfiguration();
         logger.warn(String.format("There are %s fields in the current configuration", currentConfiguration.getFields().size()));
         currentConfiguration.getFields().forEach(f -> {
             sourcePanel.addReplacable(new JLabel(f.label));
@@ -173,18 +174,17 @@ public class LocationsPanel extends JPanel {
     }
 
     private boolean sourceIsFiles(String sourceType) {
-        return sourceType.equalsIgnoreCase(DELIMITED_TEXT_FILES);
+        return sourceType.equalsIgnoreCase(DbType.DELIMITED_TEXT_FILES.label());
     }
 
     private boolean sourceIsSas(String sourceType) {
-        return sourceType.equalsIgnoreCase(DBChoice.SAS7bdat.name());
+        return sourceType.equalsIgnoreCase(DbType.SAS7BDAT.label());
     }
 
     private boolean sourceIsDatabase(String sourceType) {
         return (!sourceIsFiles(sourceType) && !sourceIsSas(sourceType));
     }
 
-    @Deprecated // use a DBConfiguration based approach, see SnowflakeConnector as an example
     private void createDatabaseFields(String selectedSourceType) {
         sourceIsFiles = sourceIsFiles(selectedSourceType);
         sourceIsSas = sourceIsSas(selectedSourceType);
@@ -213,45 +213,45 @@ public class LocationsPanel extends JPanel {
 
         sourcePanel.addReplacable(new JLabel(LABEL_DELIMITER));
         JTextField delimiterField = new JTextField(",");
-        delimiterField.setName(LABEL_DELIMITER);
+        delimiterField.setName(NAME_DELIMITER);
         sourceDelimiterField = delimiterField;
         sourceDelimiterField.setToolTipText("The delimiter that separates values. Enter 'tab' for tab.");
         sourcePanel.addReplacable(sourceDelimiterField);
         sourceServerField.setEnabled(sourceIsDatabase);
         sourceUserField.setEnabled(sourceIsDatabase);
         sourcePasswordField.setEnabled(sourceIsDatabase);
-        sourceDatabaseField.setEnabled(sourceIsDatabase && !selectedSourceType.equals(DBChoice.Azure.name()));
+        sourceDatabaseField.setEnabled(sourceIsDatabase && !selectedSourceType.equals(DbType.AZURE.label()));
         sourceDelimiterField.setEnabled(sourceIsFiles);
 
         if (sourceIsDatabase) {
-            if (selectedSourceType.equals(DBChoice.Oracle.name())) {
+            if (selectedSourceType.equals(DbType.ORACLE.label())) {
                 sourceServerField.setToolTipText("For Oracle servers this field contains the SID, servicename, and optionally the port: '<host>/<sid>', '<host>:<port>/<sid>', '<host>/<service name>', or '<host>:<port>/<service name>'");
                 sourceUserField.setToolTipText("For Oracle servers this field contains the name of the user used to log in");
                 sourcePasswordField.setToolTipText("For Oracle servers this field contains the password corresponding to the user");
                 sourceDatabaseField.setToolTipText("For Oracle servers this field contains the schema (i.e. 'user' in Oracle terms) containing the source tables");
-            } else if (selectedSourceType.equals("PostgreSQL")) {
+            } else if (selectedSourceType.equals(DbType.POSTGRESQL.label())) {
                 sourceServerField.setToolTipText("For PostgreSQL servers this field contains the host name and database name (<host>/<database>)");
                 sourceUserField.setToolTipText("The user used to log in to the server");
                 sourcePasswordField.setToolTipText("The password used to log in to the server");
                 sourceDatabaseField.setToolTipText("For PostgreSQL servers this field contains the schema containing the source tables");
-            } else if (selectedSourceType.equals("BigQuery")) {
+            } else if (selectedSourceType.equals(DbType.BIGQUERY.label())) {
                 sourceServerField.setToolTipText("GBQ SA & UA:  ProjectID");
                 sourceUserField.setToolTipText("GBQ SA only: OAuthServiceAccountEMAIL");
                 sourcePasswordField.setToolTipText("GBQ SA only: OAuthPvtKeyPath");
                 sourceDatabaseField.setToolTipText("GBQ SA & UA: Data Set within ProjectID");
             } else {
-                if (selectedSourceType.equals("Azure")) {
+                if (selectedSourceType.equals(DbType.AZURE.label())) {
                     sourceServerField.setToolTipText("For Azure, this field contains the host name and database name (<host>;database=<database>)");
                 } else {
                     sourceServerField.setToolTipText("This field contains the name or IP address of the database server");
                 }
-                if (selectedSourceType.equals("SQL Server")) {
+                if (selectedSourceType.equals(DbType.SQL_SERVER.label())) {
                     sourceUserField.setToolTipText("The user used to log in to the server. Optionally, the domain can be specified as <domain>/<user> (e.g. 'MyDomain/Joe')");
                 } else {
                     sourceUserField.setToolTipText("The user used to log in to the server");
                 }
                 sourcePasswordField.setToolTipText("The password used to log in to the server");
-                if (selectedSourceType.equals("Azure")) {
+                if (selectedSourceType.equals(DbType.AZURE.label())) {
                     sourceDatabaseField.setToolTipText("For Azure, leave this empty");
                 } else {
                     sourceDatabaseField.setToolTipText("The name of the database containing the source tables");
@@ -265,7 +265,7 @@ public class LocationsPanel extends JPanel {
         sourcePanel.setLayout(new GridLayout(0, 2));
         sourcePanel.setBorder(BorderFactory.createTitledBorder("Source data location"));
         sourcePanel.add(new JLabel("Data type"));
-        sourceType = new JComboBox<>(DBChoice.choices());
+        sourceType = new JComboBox<>(DbType.choices());
         sourceType.setName("SourceType");
         sourceType.setToolTipText("Select the type of source data available");
         sourceType.addItemListener(event -> {
@@ -317,8 +317,8 @@ public class LocationsPanel extends JPanel {
         return sourceDatabaseField.isEnabled();
     }
 
-    public DBChoice getCurrentDbChoice() {
-        return this.currentDbChoice;
+    public DbType getCurrentDbChoice() {
+        return this.currentDbType;
     }
 
     private void pickFolder() {

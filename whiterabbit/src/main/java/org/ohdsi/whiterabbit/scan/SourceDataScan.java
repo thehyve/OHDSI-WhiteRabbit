@@ -480,7 +480,7 @@ public class SourceDataScan implements ScanParameters {
 		addRow(metaSheet, "N_FOR_FREE_TEXT_CHECK", SourceDataScan.N_FOR_FREE_TEXT_CHECK);
 		addRow(metaSheet, "MIN_AVERAGE_LENGTH_FOR_FREE_TEXT", SourceDataScan.MIN_AVERAGE_LENGTH_FOR_FREE_TEXT);
 		addRow(metaSheet, "sourceType", this.sourceType.toString());
-		addRow(metaSheet, "dbType", this.dbType != null ? this.dbType.getTypeName() : "");
+		addRow(metaSheet, "dbType", this.dbType != null ? this.dbType.name() : "");
 		addRow(metaSheet, "delimiter", this.delimiter);
 		addRow(metaSheet, "sampleSize", this.sampleSize);
 		addRow(metaSheet, "scanValues", this.scanValues);

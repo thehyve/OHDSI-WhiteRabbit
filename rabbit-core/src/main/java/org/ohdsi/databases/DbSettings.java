@@ -46,6 +46,6 @@ public class DbSettings {
 
     public String toString() {
         return String.format("sourceType: %s; dbType: %s; user: %s; password: xxxx; database:%s; tables: %s",
-                sourceType, (dbType == null) ? "null" : dbType.getTypeName(), user, database, tables);
+                sourceType, (dbType == null) ? "null" : dbType.name(), user, database, tables);
     }
 }

@@ -79,7 +79,7 @@ public class DBConnection {
         if (this.hasDBConnectorInterface()) {
             this.getDBConnectorInterface().use(database);
         } else {
-            if (database == null || dbType == DbType.MSACCESS || dbType == DbType.BIGQUERY || dbType == DbType.AZURE) {
+            if (database == null || dbType == DbType.MS_ACCESS || dbType == DbType.BIGQUERY || dbType == DbType.AZURE) {
                 return;
             }
 
@@ -168,7 +168,7 @@ public class DBConnection {
         String query = null;
         if (dbType == DbType.MYSQL) {
             query = "SHOW TABLES IN " + database;
-        } else if (dbType == DbType.MSSQL || dbType == DbType.PDW || dbType == DbType.AZURE) {
+        } else if (dbType == DbType.SQL_SERVER || dbType == DbType.PDW || dbType == DbType.AZURE) {
             query = "SELECT CONCAT(schemas.name, '.', tables_views.name) FROM " +
                     "(SELECT schema_id, name FROM %1$s.sys.tables UNION ALL SELECT schema_id, name FROM %1$s.sys.views) tables_views " +
                     "INNER JOIN %1$s.sys.schemas ON tables_views.schema_id = schemas.schema_id " +
@@ -181,7 +181,7 @@ public class DBConnection {
                     "WHERE owner='" + database.toUpperCase() + "'";
         } else if (dbType == DbType.POSTGRESQL || dbType == DbType.REDSHIFT) {
             query = "SELECT table_name FROM information_schema.tables WHERE table_schema = '" + database.toLowerCase() + "' ORDER BY table_name";
-        } else if (dbType == DbType.MSACCESS) {
+        } else if (dbType == DbType.MS_ACCESS) {
             query = "SELECT Name FROM sys.MSysObjects WHERE (Type=1 OR Type=5) AND Flags=0;";
         } else if (dbType == DbType.TERADATA) {
             query = "SELECT TableName from dbc.tables WHERE tablekind IN ('T','V') and databasename='" + database + "'";

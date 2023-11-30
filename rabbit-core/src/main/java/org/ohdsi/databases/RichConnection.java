@@ -93,7 +93,7 @@ public class RichConnection implements Closeable {
 	public List<FieldInfo> fetchTableStructure(RichConnection connection, String database, String table, ScanParameters scanParameters) {
 		List<FieldInfo> fieldInfos = new ArrayList<>();
 
-		if (dbType == DbType.MSACCESS || dbType == DbType.SNOWFLAKE) {
+		if (dbType == DbType.MS_ACCESS || dbType == DbType.SNOWFLAKE) {
 			ResultSet rs = getFieldNamesFromJDBC(table);
 			try {
 				while (rs.next()) {
@@ -109,7 +109,7 @@ public class RichConnection implements Closeable {
 			String query = null;
 			if (dbType == DbType.ORACLE)
 				query = "SELECT COLUMN_NAME,DATA_TYPE FROM ALL_TAB_COLUMNS WHERE table_name = '" + table + "' AND owner = '" + database.toUpperCase() + "'";
-			else if (dbType == DbType.MSSQL || dbType == DbType.PDW) {
+			else if (dbType == DbType.SQL_SERVER || dbType == DbType.PDW) {
 				String trimmedDatabase = database;
 				if (database.startsWith("[") && database.endsWith("]"))
 					trimmedDatabase = database.substring(1, database.length() - 1);
@@ -135,7 +135,7 @@ public class RichConnection implements Closeable {
 			}
 
 			if (StringUtils.isEmpty(query)) {
-				throw new RuntimeException("No query was specified to obtain the table structure for DbType = " + dbType.getTypeName());
+				throw new RuntimeException("No query was specified to obtain the table structure for DbType = " + dbType.name());
 			}
 
 			for (org.ohdsi.utilities.files.Row row : connection.query(query)) {
@@ -163,14 +163,14 @@ public class RichConnection implements Closeable {
 		int sampleSize = scanParameters.getSampleSize();
 
 		if (sampleSize == -1) {
-			if (dbType == DbType.MSACCESS)
+			if (dbType == DbType.MS_ACCESS)
 				query = "SELECT * FROM [" + table + "]";
-			else if (dbType == DbType.MSSQL || dbType == DbType.PDW || dbType == DbType.AZURE)
+			else if (dbType == DbType.SQL_SERVER || dbType == DbType.PDW || dbType == DbType.AZURE)
 				query = "SELECT * FROM [" + table.replaceAll("\\.", "].[") + "]";
 			else
 				query = "SELECT * FROM " + table;
 		} else {
-			if (dbType == DbType.MSSQL || dbType == DbType.AZURE)
+			if (dbType == DbType.SQL_SERVER || dbType == DbType.AZURE)
 				query = "SELECT * FROM [" + table.replaceAll("\\.", "].[") + "] TABLESAMPLE (" + sampleSize + " ROWS)";
 			else if (dbType == DbType.MYSQL)
 				query = "SELECT * FROM " + table + " ORDER BY RAND() LIMIT " + sampleSize;
@@ -186,7 +186,7 @@ public class RichConnection implements Closeable {
 				}
 			} else if (dbType == DbType.POSTGRESQL || dbType == DbType.REDSHIFT)
 				query = "SELECT * FROM " + table + " ORDER BY RANDOM() LIMIT " + sampleSize;
-			else if (dbType == DbType.MSACCESS)
+			else if (dbType == DbType.MS_ACCESS)
 				query = "SELECT " + "TOP " + sampleSize + " * FROM [" + table + "]";
 			else if (dbType == DbType.BIGQUERY)
 				query = "SELECT * FROM " + table + " ORDER BY RAND() LIMIT " + sampleSize;
@@ -196,7 +196,7 @@ public class RichConnection implements Closeable {
 		}
 
 		if (StringUtils.isEmpty(query)) {
-			throw new RuntimeException("No query was generated for database type " + dbType.getTypeName());
+			throw new RuntimeException("No query was generated for database type " + dbType.name());
 		}
 		return query(query);
 
@@ -204,7 +204,7 @@ public class RichConnection implements Closeable {
 
 
 	public ResultSet getFieldNamesFromJDBC(String table) {
-		if (dbType == DbType.MSACCESS || dbType == DbType.SNOWFLAKE) {
+		if (dbType == DbType.MS_ACCESS || dbType == DbType.SNOWFLAKE) {
 			try {
 				DatabaseMetaData metadata = connection.getMetaData();
 				return metadata.getColumns(null, null, table, null);
@@ -225,9 +225,9 @@ public class RichConnection implements Closeable {
 	public long getTableSize(String tableName) {
 		QueryResult qr;
 		long returnVal;
-		if (dbType == DbType.MSSQL || dbType == DbType.PDW || dbType == DbType.AZURE)
+		if (dbType == DbType.SQL_SERVER || dbType == DbType.PDW || dbType == DbType.AZURE)
 			qr = query("SELECT COUNT_BIG(*) FROM [" + tableName.replaceAll("\\.", "].[") + "];");
-		else if (dbType == DbType.MSACCESS)
+		else if (dbType == DbType.MS_ACCESS)
 			qr = query("SELECT COUNT(*) FROM [" + tableName + "];");
 		else
 			qr = query("SELECT COUNT(*) FROM " + tableName + ";");
@@ -418,7 +418,7 @@ public class RichConnection implements Closeable {
 					return columnNameToSqlName(name) + " text";
 				else
 					return columnNameToSqlName(name) + " varchar(255)";
-			} else if (dbType == DbType.MSSQL || dbType == DbType.PDW || dbType == DbType.AZURE) {
+			} else if (dbType == DbType.SQL_SERVER || dbType == DbType.PDW || dbType == DbType.AZURE) {
 				if (isNumeric) {
 					if (maxLength < 10)
 						return columnNameToSqlName(name) + " int";

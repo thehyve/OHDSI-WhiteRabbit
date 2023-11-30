@@ -15,7 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.ohdsi.databases.SnowflakeConnector;
 import org.ohdsi.databases.SnowflakeTestUtils;
-import org.ohdsi.databases.configuration.DBChoice;
+import org.ohdsi.databases.DbType;
 import org.ohdsi.whiterabbit.Console;
 import org.ohdsi.whiterabbit.WhiteRabbitMain;
 import org.testcontainers.containers.GenericContainer;
@@ -75,7 +75,7 @@ class SourceDataScanSnowflakeGuiIT {
         Files.copy(personCsv, tempDir.resolve("person.csv"));
         Files.copy(costCsv, tempDir.resolve("cost.csv"));
         window.tabbedPane(WhiteRabbitMain.NAME_TABBED_PANE).selectTab(WhiteRabbitMain.LABEL_LOCATIONS);
-        window.comboBox("SourceType").selectItem(DBChoice.Snowflake.toString());
+        window.comboBox("SourceType").selectItem(DbType.SNOWFLAKE.label());
         window.textBox("FolderField").setText(tempDir.toAbsolutePath().toString());
         window.textBox(SnowflakeConnector.SnowflakeConfiguration.SNOWFLAKE_ACCOUNT).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_ACCOUNT"));
         window.textBox(SnowflakeConnector.SnowflakeConfiguration.SNOWFLAKE_USER).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_USER"));

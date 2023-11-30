@@ -10,7 +10,7 @@ import org.assertj.swing.fixture.FrameFixture;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
-import org.ohdsi.databases.configuration.DBChoice;
+import org.ohdsi.databases.DbType;
 import org.ohdsi.whiterabbit.Console;
 import org.ohdsi.whiterabbit.WhiteRabbitMain;
 import org.ohdsi.whiterabbit.gui.LocationsPanel;
@@ -64,7 +64,7 @@ class SourceDataScanPostgreSQLGuiIT {
         Files.copy(personCsv, tempDir.resolve("person.csv"));
         Files.copy(costCsv, tempDir.resolve("cost.csv"));
         window.tabbedPane(WhiteRabbitMain.NAME_TABBED_PANE).selectTab(WhiteRabbitMain.LABEL_LOCATIONS);
-        window.comboBox("SourceType").selectItem(DBChoice.PostgreSQL.toString());
+        window.comboBox("SourceType").selectItem(DbType.POSTGRESQL.label());
         window.textBox("FolderField").setText(tempDir.toAbsolutePath().toString());
         window.textBox(LocationsPanel.LABEL_SERVER_LOCATION).setText(String.format("%s:%s/%s",
                 postgreSQL.getHost(),
