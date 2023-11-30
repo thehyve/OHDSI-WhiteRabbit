@@ -1,6 +1,7 @@
 package org.ohdsi.databases;
 
 import org.apache.commons.lang.StringUtils;
+import org.ohdsi.databases.configuration.DbType;
 import org.ohdsi.utilities.files.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

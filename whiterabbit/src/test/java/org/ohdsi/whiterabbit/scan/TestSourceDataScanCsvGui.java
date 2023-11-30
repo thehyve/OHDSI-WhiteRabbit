@@ -6,7 +6,7 @@ import org.assertj.swing.fixture.FrameFixture;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
-import org.ohdsi.databases.DbType;
+import org.ohdsi.databases.configuration.DbType;
 import org.ohdsi.whiterabbit.Console;
 import org.ohdsi.whiterabbit.WhiteRabbitMain;
 

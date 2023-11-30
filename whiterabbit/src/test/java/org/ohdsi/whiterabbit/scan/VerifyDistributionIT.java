@@ -3,7 +3,7 @@ package org.ohdsi.whiterabbit.scan;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.io.TempDir;
-import org.ohdsi.databases.DbType;
+import org.ohdsi.databases.configuration.DbType;
 import org.ohdsi.utilities.files.IniFile;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;

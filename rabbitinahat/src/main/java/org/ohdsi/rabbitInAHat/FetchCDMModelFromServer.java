@@ -17,7 +17,7 @@
  ******************************************************************************/
 package org.ohdsi.rabbitInAHat;
 
-import org.ohdsi.databases.DbType;
+import org.ohdsi.databases.configuration.DbType;
 import org.ohdsi.databases.RichConnection;
 import org.ohdsi.utilities.files.Row;
 import org.ohdsi.utilities.files.WriteCSVFileWithHeader;

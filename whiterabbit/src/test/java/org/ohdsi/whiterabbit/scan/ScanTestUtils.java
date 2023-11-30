@@ -4,7 +4,7 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.assertj.swing.timing.Condition;
-import org.ohdsi.databases.DbType;
+import org.ohdsi.databases.configuration.DbType;
 import org.ohdsi.whiterabbit.Console;
 
 import java.io.File;
@@ -19,7 +19,7 @@ import java.util.stream.IntStream;
 import static org.assertj.swing.timing.Pause.pause;
 import static org.assertj.swing.timing.Timeout.timeout;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.ohdsi.databases.DbType.*;
+import static org.ohdsi.databases.configuration.DbType.*;
 
 public class ScanTestUtils {
 

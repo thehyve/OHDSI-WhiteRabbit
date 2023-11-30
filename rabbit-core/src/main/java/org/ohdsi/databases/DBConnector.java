@@ -24,6 +24,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import oracle.jdbc.pool.OracleDataSource;
+import org.ohdsi.databases.configuration.DbSettings;
+import org.ohdsi.databases.configuration.DbType;
 
 public class DBConnector {
 

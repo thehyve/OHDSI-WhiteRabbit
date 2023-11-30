@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
+import org.ohdsi.databases.configuration.DbSettings;
+import org.ohdsi.databases.configuration.DbType;
 import org.ohdsi.utilities.SimpleCounter;
 import org.ohdsi.utilities.StringUtilities;
 import org.ohdsi.utilities.files.Row;
@@ -43,7 +45,7 @@ public class RichConnection implements Closeable {
 	public static int				INSERT_BATCH_SIZE	= 100000;
 	private DBConnection			connection;
 	private boolean					verbose				= false;
-	private DbType					dbType;
+	private DbType dbType;
 
 	public RichConnection(String server, String domain, String user, String password, DbType dbType) {
 		this.connection = DBConnector.connect(server, domain, user, password, dbType, verbose);

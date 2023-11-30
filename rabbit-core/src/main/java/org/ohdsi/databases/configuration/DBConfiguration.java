@@ -1,13 +1,10 @@
 package org.ohdsi.databases.configuration;
 
-import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
-import org.ohdsi.databases.DbSettings;
 import org.ohdsi.utilities.files.IniFile;
 
 import java.io.PrintStream;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class DBConfiguration {
     public static final String DELIMITER_FIELD = "DELIMITER";

@@ -1,6 +1,6 @@
 package org.ohdsi.whiterabbit.gui;
 
-import org.ohdsi.databases.DbType;
+import org.ohdsi.databases.configuration.DbType;
 import org.ohdsi.databases.configuration.DBConfiguration;
 import org.ohdsi.whiterabbit.PanelsManager;
 import org.slf4j.Logger;

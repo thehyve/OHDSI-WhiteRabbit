@@ -19,9 +19,8 @@ package org.ohdsi.whiterabbit.fakeDataGenerator;
 
 import java.util.*;
 
-import org.ohdsi.databases.DbSettings;
+import org.ohdsi.databases.configuration.DbSettings;
 import org.ohdsi.databases.RichConnection;
-import org.ohdsi.databases.UniformSamplingReservoir;
 import org.ohdsi.rabbitInAHat.dataModel.Database;
 import org.ohdsi.rabbitInAHat.dataModel.Field;
 import org.ohdsi.rabbitInAHat.dataModel.Table;

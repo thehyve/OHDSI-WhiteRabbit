@@ -15,9 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package org.ohdsi.databases;
+package org.ohdsi.databases.configuration;
 
-import org.ohdsi.databases.configuration.DBConfigurationException;
+import org.ohdsi.databases.DBConnectorInterface;
+import org.ohdsi.databases.SnowflakeConnector;
 
 import java.util.Arrays;
 

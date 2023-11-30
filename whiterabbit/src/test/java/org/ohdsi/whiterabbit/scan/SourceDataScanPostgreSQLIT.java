@@ -2,8 +2,8 @@ package org.ohdsi.whiterabbit.scan;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.ohdsi.databases.DbSettings;
-import org.ohdsi.databases.DbType;
+import org.ohdsi.databases.configuration.DbSettings;
+import org.ohdsi.databases.configuration.DbType;
 import org.ohdsi.databases.RichConnection;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.PostgreSQLContainer;

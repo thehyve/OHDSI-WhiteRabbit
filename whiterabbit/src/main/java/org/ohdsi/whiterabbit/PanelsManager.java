@@ -1,8 +1,6 @@
 package org.ohdsi.whiterabbit;
 
 
-import org.ohdsi.databases.DbSettings;
-
 import javax.swing.*;
 import java.util.List;
 

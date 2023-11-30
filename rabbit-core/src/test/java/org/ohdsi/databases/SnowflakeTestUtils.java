@@ -1,6 +1,8 @@
 package org.ohdsi.databases;
 
 import org.apache.commons.lang.StringUtils;
+import org.ohdsi.databases.configuration.DbSettings;
+import org.ohdsi.databases.configuration.DbType;
 
 import java.util.Arrays;
 

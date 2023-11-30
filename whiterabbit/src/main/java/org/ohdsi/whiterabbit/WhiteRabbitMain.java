@@ -45,7 +45,8 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.io.output.TeeOutputStream;
 import org.ohdsi.databases.*;
-import org.ohdsi.databases.DbType;
+import org.ohdsi.databases.configuration.DbSettings;
+import org.ohdsi.databases.configuration.DbType;
 import org.ohdsi.databases.configuration.DBConfigurationException;
 import org.ohdsi.utilities.DirectoryUtilities;
 import org.ohdsi.utilities.StringUtilities;
@@ -179,15 +180,15 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 				dbSettings.server = iniFile.get("SERVER_LOCATION");
 				dbSettings.database = iniFile.get("DATABASE_NAME");
 				if (iniFile.get("DATA_TYPE").equalsIgnoreCase("MySQL"))
-					dbSettings.dbType = org.ohdsi.databases.DbType.MYSQL;
+					dbSettings.dbType = DbType.MYSQL;
 				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Oracle"))
-					dbSettings.dbType = org.ohdsi.databases.DbType.ORACLE;
+					dbSettings.dbType = DbType.ORACLE;
 				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("PostgreSQL"))
-					dbSettings.dbType = org.ohdsi.databases.DbType.POSTGRESQL;
+					dbSettings.dbType = DbType.POSTGRESQL;
 				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Redshift"))
-					dbSettings.dbType = org.ohdsi.databases.DbType.REDSHIFT;
+					dbSettings.dbType = DbType.REDSHIFT;
 				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("SQL Server")) {
-					dbSettings.dbType = org.ohdsi.databases.DbType.SQL_SERVER;
+					dbSettings.dbType = DbType.SQL_SERVER;
 					if (!iniFile.get("USER_NAME").isEmpty()) { // Not using windows authentication
 						String[] parts = iniFile.get("USER_NAME").split("/");
 						if (parts.length == 2) {
@@ -196,7 +197,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 						}
 					}
 				} else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Azure")) {
-					dbSettings.dbType = org.ohdsi.databases.DbType.AZURE;
+					dbSettings.dbType = DbType.AZURE;
 					if (!iniFile.get("USER_NAME").isEmpty()) { // Not using windows authentication
 						String[] parts = iniFile.get("USER_NAME").split("/");
 						if (parts.length == 2) {
@@ -205,7 +206,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 						}
 					}
 				} else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("PDW")) {
-					dbSettings.dbType = org.ohdsi.databases.DbType.PDW;
+					dbSettings.dbType = DbType.PDW;
 					if (!iniFile.get("USER_NAME").isEmpty()) { // Not using windows authentication
 						String[] parts = iniFile.get("USER_NAME").split("/");
 						if (parts.length == 2) {
@@ -214,11 +215,11 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 						}
 					}
 				} else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("MS Access"))
-					dbSettings.dbType = org.ohdsi.databases.DbType.MS_ACCESS;
+					dbSettings.dbType = DbType.MS_ACCESS;
 				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Teradata"))
-					dbSettings.dbType = org.ohdsi.databases.DbType.TERADATA;
+					dbSettings.dbType = DbType.TERADATA;
 				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("BigQuery")) {
-					dbSettings.dbType = org.ohdsi.databases.DbType.BIGQUERY;
+					dbSettings.dbType = DbType.BIGQUERY;
 					/* GBQ requires database. Putting database into domain var for connect() */
 					dbSettings.domain = dbSettings.database;
 				}
@@ -749,17 +750,17 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 				dbSettings.database = sourceDatabaseField.trim().isEmpty() ? null : sourceDatabaseField;
 				// TODO simplify?
 				if (sourceType.equals(DbType.MYSQL.label()))
-					dbSettings.dbType = org.ohdsi.databases.DbType.MYSQL;
+					dbSettings.dbType = DbType.MYSQL;
 				else if (sourceType.equals(DbType.ORACLE.label()))
-					dbSettings.dbType = org.ohdsi.databases.DbType.ORACLE;
+					dbSettings.dbType = DbType.ORACLE;
 				else if (sourceType.equals(DbType.POSTGRESQL.label()))
-					dbSettings.dbType = org.ohdsi.databases.DbType.POSTGRESQL;
+					dbSettings.dbType = DbType.POSTGRESQL;
 				else if (sourceType.equals(DbType.BIGQUERY.label()))
-					dbSettings.dbType = org.ohdsi.databases.DbType.BIGQUERY;
+					dbSettings.dbType = DbType.BIGQUERY;
 				else if (sourceType.equals(DbType.REDSHIFT.label()))
-					dbSettings.dbType = org.ohdsi.databases.DbType.REDSHIFT;
+					dbSettings.dbType = DbType.REDSHIFT;
 				else if (sourceType.equals(DbType.SQL_SERVER.label())) {
-					dbSettings.dbType = org.ohdsi.databases.DbType.SQL_SERVER;
+					dbSettings.dbType = DbType.SQL_SERVER;
 					if (!dbSettings.user.isEmpty()) { // Not using windows authentication
 						String[] parts = dbSettings.user.split("/");
 						if (parts.length == 2) {
@@ -768,7 +769,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 						}
 					}
 				} else if (sourceType.equals(DbType.PDW.label())) {
-					dbSettings.dbType = org.ohdsi.databases.DbType.PDW;
+					dbSettings.dbType = DbType.PDW;
 					if (!dbSettings.user.isEmpty()) { // Not using windows authentication
 						String[] parts = dbSettings.user.split("/");
 						if (parts.length == 2) {
@@ -777,11 +778,11 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 						}
 					}
 				} else if (sourceType.equals(DbType.MS_ACCESS.label()))
-					dbSettings.dbType = org.ohdsi.databases.DbType.MS_ACCESS;
+					dbSettings.dbType = DbType.MS_ACCESS;
 				else if (sourceType.equals(DbType.TERADATA.label()))
-					dbSettings.dbType = org.ohdsi.databases.DbType.TERADATA;
+					dbSettings.dbType = DbType.TERADATA;
 				else if (sourceType.equals(DbType.AZURE.label())) {
-					dbSettings.dbType = org.ohdsi.databases.DbType.AZURE;
+					dbSettings.dbType = DbType.AZURE;
 					dbSettings.database = "";
 				}
 			}
@@ -873,16 +874,16 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 			dbSettings.database = targetDatabaseField.getText();
 			switch(targetType.getSelectedItem().toString()) {
 				case "MySQL":
-					dbSettings.dbType = org.ohdsi.databases.DbType.MYSQL;
+					dbSettings.dbType = DbType.MYSQL;
 					break;
 				case "Oracle":
-					dbSettings.dbType = org.ohdsi.databases.DbType.ORACLE;
+					dbSettings.dbType = DbType.ORACLE;
 					break;
 				case "PostgreSQL":
-					dbSettings.dbType = org.ohdsi.databases.DbType.POSTGRESQL;
+					dbSettings.dbType = DbType.POSTGRESQL;
 					break;
 				case "SQL Server":
-					dbSettings.dbType = org.ohdsi.databases.DbType.SQL_SERVER;
+					dbSettings.dbType = DbType.SQL_SERVER;
 					if (targetUserField.getText().length() != 0) { // Not using windows authentication
 						String[] parts = targetUserField.getText().split("/");
 						if (parts.length == 2) {
@@ -892,7 +893,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 					}
 					break;
 				case "PDW":
-					dbSettings.dbType = org.ohdsi.databases.DbType.PDW;
+					dbSettings.dbType = DbType.PDW;
 					if (targetUserField.getText().length() != 0) { // Not using windows authentication
 						String[] parts = targetUserField.getText().split("/");
 						if (parts.length == 2) {

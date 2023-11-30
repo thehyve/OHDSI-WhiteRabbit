@@ -15,12 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package org.ohdsi.databases;
+package org.ohdsi.databases.configuration;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.csv.CSVFormat;
+import org.ohdsi.databases.configuration.DbType;
 
 public class DbSettings {
     public enum SourceType {

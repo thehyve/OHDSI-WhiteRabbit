@@ -4,7 +4,7 @@ import org.apache.commons.lang.StringUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.io.TempDir;
-import org.ohdsi.databases.DbType;
+import org.ohdsi.databases.configuration.DbType;
 import org.ohdsi.databases.SnowflakeTestUtils;
 import org.ohdsi.whiterabbit.WhiteRabbitMain;
 import org.slf4j.Logger;
