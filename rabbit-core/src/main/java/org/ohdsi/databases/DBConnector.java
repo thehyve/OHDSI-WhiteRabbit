@@ -38,10 +38,9 @@ public class DBConnector {
 
 	// If dbType.BIGQUERY: domain field has been replaced with  database field
 	public static DBConnection connect(String server, String domain, String user, String password, DbType dbType, boolean verbose) {
-		if (dbType == null) {
-			System.err.println("DbType is null!");
-		}
-		if (dbType.equalsDbType(DbType.MYSQL))
+		if (dbType.supportsDBConnectorInterface()) {
+			return new DBConnection(dbType.getDbConnectorInterface().getInstance(server, domain, user, password), dbType, verbose);
+		} else if (dbType.equalsDbType(DbType.MYSQL))
 			return new DBConnection(DBConnector.connectToMySQL(server, user, password), dbType, verbose);
 		else if (dbType.equalsDbType(DbType.SQL_SERVER) || dbType.equalsDbType(DbType.PDW) || dbType.equalsDbType(DbType.AZURE))
 			return new DBConnection(DBConnector.connectToMSSQL(server, domain, user, password), dbType, verbose);
@@ -57,9 +56,6 @@ public class DBConnector {
 			return new DBConnection(DBConnector.connectToTeradata(server, user, password), dbType, verbose);
 		else if (dbType.equalsDbType(DbType.BIGQUERY))
 			return new DBConnection(DBConnector.connectToBigQuery(server, domain, user, password), dbType, verbose);
-		else if (dbType.equalsDbType(DbType.SNOWFLAKE)) {
-			return new DBConnection(SnowflakeConnector.INSTANCE.getInstance(server, domain, user, password), dbType, verbose);
-		}
 		else
 			return null;
 	}

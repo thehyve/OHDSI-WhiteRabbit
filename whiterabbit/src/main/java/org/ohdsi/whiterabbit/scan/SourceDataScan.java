@@ -132,7 +132,6 @@ public class SourceDataScan implements ScanParameters {
 	}
 
 	public void process(DbSettings dbSettings, String outputFileName) throws IOException {
-		logger.info("Processing source data scan from dbSettings: " + dbSettings);
 		startTimeStamp = LocalDateTime.now();
 		sourceType = dbSettings.sourceType;
 		dbType = dbSettings.dbType;
@@ -146,7 +145,6 @@ public class SourceDataScan implements ScanParameters {
 		} else if (sourceType == DbSettings.SourceType.SAS_FILES) {
 			processSasFiles(dbSettings);
 		} else {
-			// TODO split for classic and DBConnectorInterface approach
 			processDatabase(dbSettings);
 		}
 
@@ -230,7 +228,6 @@ public class SourceDataScan implements ScanParameters {
 		if (dbSettings.dbType == DbType.BIGQUERY) {
 			dbSettings.domain = dbSettings.database;
 		}
-		// TODO how should this be handled for
 		try (RichConnection connection = new RichConnection(dbSettings)) {
 			connection.setVerbose(false);
 			connection.use(dbSettings.database);

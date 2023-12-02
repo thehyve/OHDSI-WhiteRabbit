@@ -160,9 +160,9 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 	private DbSettings getDbSettings(IniFile iniFile) {
 		DbSettings dbSettings;
 
-		DBConnectorInterface dbConnectorInstance = DBConnectorInterface.getDBConnectorInstance(iniFile);
-		if (dbConnectorInstance != null) {
-			dbSettings = dbConnectorInstance.getDbSettings();
+		DbType dbType = DbType.getDbType(iniFile.getDataType());
+		if (dbType.supportsDBConnectorInterface()) {
+			dbSettings = dbType.getDbConnectorInterface().getDbSettings(iniFile);
 		} else {
 			dbSettings = new DbSettings();
 			if (iniFile.get("DATA_TYPE").equalsIgnoreCase(DELIMITED_TEXT_FILES)) {

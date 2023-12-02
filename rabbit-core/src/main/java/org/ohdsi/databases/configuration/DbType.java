@@ -65,9 +65,6 @@ public enum DbType {
 	DbType(String label, DBConnectorInterface implementingClass) {
 		this.label = label;
 		this.implementingClass = implementingClass;
-		if (this.implementingClass != null) {
-			System.out.println(String.format("%s Supports DBInterFace: %s", this.implementingClass.getClass().getName(), this.supportsDBConnectorInterface()));
-		}
 		if (!this.name().equals(normalizedName(label))) {
 			throw new DBConfigurationException(String.format(
 					"%s: the normalized value of label '%s' (%s) must match the name of the enum constant (%s)",

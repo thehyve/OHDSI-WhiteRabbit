@@ -42,9 +42,9 @@ import org.slf4j.LoggerFactory;
 public class RichConnection implements Closeable {
 	Logger logger = LoggerFactory.getLogger(RichConnection.class);
 
-	public static int				INSERT_BATCH_SIZE	= 100000;
-	private DBConnection			connection;
-	private boolean					verbose				= false;
+	public static int INSERT_BATCH_SIZE = 100000;
+	private DBConnection connection;
+	private boolean verbose = false;
 	private DbType dbType;
 
 	public RichConnection(String server, String domain, String user, String password, DbType dbType) {
@@ -59,7 +59,7 @@ public class RichConnection implements Closeable {
 
 	/**
 	 * Execute the given SQL statement.
-	 * 
+	 *
 	 * @param sql
 	 */
 	public void execute(String sql) {
@@ -68,7 +68,7 @@ public class RichConnection implements Closeable {
 
 	/**
 	 * Query the database using the provided SQL statement.
-	 * 
+	 *
 	 * @param sql
 	 * @return
 	 */
@@ -78,7 +78,7 @@ public class RichConnection implements Closeable {
 
 	/**
 	 * Switch the database to use.
-	 * 
+	 *
 	 * @param database
 	 */
 	public void use(String database) {
@@ -96,7 +96,9 @@ public class RichConnection implements Closeable {
 	public List<FieldInfo> fetchTableStructure(RichConnection connection, String database, String table, ScanParameters scanParameters) {
 		List<FieldInfo> fieldInfos = new ArrayList<>();
 
-		if (dbType == DbType.MS_ACCESS || dbType == DbType.SNOWFLAKE) {
+		if (dbType.supportsDBConnectorInterface()) {
+			fieldInfos = dbType.getDbConnectorInterface().fetchTableStructure(table, scanParameters);
+		} else if (dbType == DbType.MS_ACCESS) {
 			ResultSet rs = getFieldNamesFromJDBC(table);
 			try {
 				while (rs.next()) {
@@ -118,11 +120,11 @@ public class RichConnection implements Closeable {
 					trimmedDatabase = database.substring(1, database.length() - 1);
 				String[] parts = table.split("\\.");
 				query = "SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_CATALOG='" + trimmedDatabase + "' AND TABLE_SCHEMA='" + parts[0] +
-						"' AND TABLE_NAME='" + parts[1]	+ "';";
+						"' AND TABLE_NAME='" + parts[1] + "';";
 			} else if (dbType == DbType.AZURE) {
 				String[] parts = table.split("\\.");
 				query = "SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='" + parts[0] +
-						"' AND TABLE_NAME='" + parts[1]	+ "';";
+						"' AND TABLE_NAME='" + parts[1] + "';";
 			} else if (dbType == DbType.MYSQL)
 				query = "SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '" + database + "' AND TABLE_NAME = '" + table
 						+ "';";
@@ -132,8 +134,7 @@ public class RichConnection implements Closeable {
 			else if (dbType == DbType.TERADATA) {
 				query = "SELECT ColumnName, ColumnType FROM dbc.columns WHERE DatabaseName= '" + database.toLowerCase() + "' AND TableName = '"
 						+ table.toLowerCase() + "';";
-			}
-			else if (dbType == DbType.BIGQUERY) {
+			} else if (dbType == DbType.BIGQUERY) {
 				query = "SELECT column_name AS COLUMN_NAME, data_type as DATA_TYPE FROM " + database + ".INFORMATION_SCHEMA.COLUMNS WHERE table_name = \"" + table + "\";";
 			}
 
@@ -165,7 +166,9 @@ public class RichConnection implements Closeable {
 		String query = null;
 		int sampleSize = scanParameters.getSampleSize();
 
-		if (sampleSize == -1) {
+		if (dbType.supportsDBConnectorInterface()) {
+			query = dbType.getDbConnectorInterface().getRowSampleQuery(table, rowCount, sampleSize);
+		} else if (sampleSize == -1) {
 			if (dbType == DbType.MS_ACCESS)
 				query = "SELECT * FROM [" + table + "]";
 			else if (dbType == DbType.SQL_SERVER || dbType == DbType.PDW || dbType == DbType.AZURE)
@@ -187,16 +190,17 @@ public class RichConnection implements Closeable {
 				} else {
 					query = "SELECT * FROM " + table;
 				}
-			} else if (dbType == DbType.POSTGRESQL || dbType == DbType.REDSHIFT)
+			} else if (dbType == DbType.POSTGRESQL || dbType == DbType.REDSHIFT) {
 				query = "SELECT * FROM " + table + " ORDER BY RANDOM() LIMIT " + sampleSize;
-			else if (dbType == DbType.MS_ACCESS)
+			}
+			else if (dbType == DbType.MS_ACCESS) {
 				query = "SELECT " + "TOP " + sampleSize + " * FROM [" + table + "]";
-			else if (dbType == DbType.BIGQUERY)
+			}
+			else if (dbType == DbType.BIGQUERY) {
 				query = "SELECT * FROM " + table + " ORDER BY RAND() LIMIT " + sampleSize;
-			else if (dbType == DbType.SNOWFLAKE) {
-				query = String.format("SELECT * FROM %s ORDER BY RANDOM() LIMIT %s", table, sampleSize);
 			}
 		}
+
 
 		if (StringUtils.isEmpty(query)) {
 			throw new RuntimeException("No query was generated for database type " + dbType.name());
@@ -207,7 +211,7 @@ public class RichConnection implements Closeable {
 
 
 	public ResultSet getFieldNamesFromJDBC(String table) {
-		if (dbType == DbType.MS_ACCESS || dbType == DbType.SNOWFLAKE) {
+		if (dbType == DbType.MS_ACCESS) {
 			try {
 				DatabaseMetaData metadata = connection.getMetaData();
 				return metadata.getColumns(null, null, table, null);

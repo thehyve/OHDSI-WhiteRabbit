@@ -126,7 +126,6 @@ public class LocationsPanel extends JPanel {
         sourcePanel.clear();
 
         DbType dbType = DbType.getDbType(selectedSourceType);
-        System.out.println("selected: " + selectedSourceType + ", dbType: " + dbType.name());
         if (dbType.supportsDBConnectorInterface()) {
             this.currentDbType = dbType;
             createDatabaseFields();
@@ -159,7 +158,6 @@ public class LocationsPanel extends JPanel {
 
     private void createDatabaseFields() {
         DBConfiguration currentConfiguration = this.currentDbType.getDbConnectorInterface().getDBConfiguration();
-        logger.warn(String.format("There are %s fields in the current configuration", currentConfiguration.getFields().size()));
         currentConfiguration.getFields().forEach(f -> {
             sourcePanel.addReplacable(new JLabel(f.label));
             JTextField field = new JTextField(f.getValueOrDefault());

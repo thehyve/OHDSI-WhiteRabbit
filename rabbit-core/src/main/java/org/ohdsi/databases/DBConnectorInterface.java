@@ -1,6 +1,5 @@
 package org.ohdsi.databases;
 
-import org.ohdsi.databases.configuration.ConfigurationField;
 import org.ohdsi.databases.configuration.DBConfiguration;
 import org.ohdsi.databases.configuration.DbSettings;
 import org.ohdsi.databases.configuration.DbType;
@@ -24,15 +23,13 @@ public interface DBConnectorInterface {
     void checkInitialised();
 
     DBConnectorInterface getInstance();
-//    default DBConnectorInterface getInstance(DbSettings dbSettings) {
-//        return getInstance(dbSettings.server, dbSettings.database, dbSettings.user, dbSettings.password);
-//    }
+
     DBConnectorInterface getInstance(String server, String database, String user, String password);
     /**
      * Returns the row count of the specified table.
      *
-     * @param tableName
-     * @return
+     * @param tableName name of table
+     * @return size of table in rows
      */
     default long getTableSize(String tableName ) {
         long returnVal;
@@ -47,9 +44,7 @@ public interface DBConnectorInterface {
         return returnVal;
     }
 
-    default void use(String database) {
-        return;
-    }
+    default void use(String ignoredDatabase) {}
 
     default void close() {
         // no-op by default, so singletons don't need to implement it
@@ -68,8 +63,7 @@ public interface DBConnectorInterface {
         return names;
     }
 
-    List<FieldInfo> fetchTableStructure(String table, ScanParameters scanParameters);
-    default List<FieldInfo> fetchTableStructureThroughJdbc(String table, ScanParameters scanParameters) {
+    default List<FieldInfo> fetchTableStructure(String table, ScanParameters scanParameters) {
         List<FieldInfo> fieldInfos = new ArrayList<>();
         ResultSet rs = getFieldNamesFromJDBC(table);
         try {
@@ -92,31 +86,21 @@ public interface DBConnectorInterface {
             return metadata.getColumns(null, null, table, null);
         } catch (SQLException e) {
             throw new RuntimeException(e.getMessage());
-            }
+        }
     }
 
-
-    default int getNameIndex() {
-        return 0;
-    }
     String getTablesQuery(String database);
 
-    public ResultSet getFieldNames(String table);
-
-    static DBConnectorInterface getDBConnectorInstance(IniFile iniFile) {
-        if (iniFile.getDataType().equalsIgnoreCase("snowflake")) {
-            return SnowflakeConnector.INSTANCE.getInstance(iniFile);
-        }
-
-        return null;
-    }
+    String getRowSampleQuery(String table, long rowCount, long sampleSize);
 
     default DbSettings getDbSettings() {
         return getDBConfiguration().toDbSettings();
     }
 
-    public List<ConfigurationField> getFields();
+    default DbSettings getDbSettings(IniFile iniFile) {
+        getDBConfiguration().loadAndValidateConfiguration(iniFile);
+        return getDBConfiguration().toDbSettings();
+    }
 
-    public DBConfiguration getDBConfiguration();
-    public void setDBConfiguration(DBConfiguration dbConfiguration);
+    DBConfiguration getDBConfiguration();
 }

@@ -4,8 +4,6 @@ import org.apache.commons.lang.StringUtils;
 
 import java.io.PrintStream;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
 import org.ohdsi.databases.configuration.*;
 import org.ohdsi.utilities.collections.Pair;
 import org.ohdsi.utilities.files.IniFile;
@@ -22,14 +20,13 @@ import static org.ohdsi.databases.SnowflakeConnector.SnowflakeConfiguration.*;
 public enum SnowflakeConnector implements DBConnectorInterface {
     INSTANCE();
 
-    static Logger logger = LoggerFactory.getLogger(SnowflakeConnector.class);
+    final static Logger logger = LoggerFactory.getLogger(SnowflakeConnector.class);
 
     DBConfiguration configuration = new SnowflakeConfiguration();
     private DBConnection snowflakeConnection = null;
 
     private final DbType dbType = DbType.SNOWFLAKE;
     public static final String ERROR_NO_FIELD_OF_TYPE = "No value was specified for type";
-    public static final String ERROR_INVALID_SERVER_STRING = "Server string is not valid";
     public static final String ERROR_INCORRECT_SCHEMA_SPECIFICATION =
             "Database should be specified as 'warehouse.database.schema', " +
                     "e.g. 'computewh.snowflake_sample_data.weather";
@@ -44,16 +41,6 @@ public enum SnowflakeConnector implements DBConnectorInterface {
             this.snowflakeConnection.close();
         }
         this.snowflakeConnection = null;
-    }
-
-    public DBConnectorInterface getInstance(IniFile iniFile) {
-        DbSettings dbSettings = loadConfiguration(iniFile, null);
-
-        return getInstance(dbSettings);
-    }
-
-    public DBConnectorInterface getInstance(DbSettings dbSettings) {
-        return getInstance(dbSettings.server, dbSettings.database, dbSettings.user, dbSettings.password);
     }
 
     @Override
@@ -72,13 +59,6 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         }
 
         return INSTANCE;
-    }
-
-    public DbSettings loadConfiguration(IniFile iniFile, PrintStream stream) {
-        Pair<SnowflakeConfiguration, DbSettings> configurationDbSettingsPair = getConfiguration(iniFile, stream);
-        this.configuration = configurationDbSettingsPair.getItem1();
-
-        return configurationDbSettingsPair.getItem2();
     }
 
     public static Pair<SnowflakeConfiguration, DbSettings> getConfiguration(IniFile iniFile, PrintStream stream) {
@@ -119,9 +99,8 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         return String.format("SELECT COUNT(*) FROM %s.%s.%s;", this.getDatabase(), this.getSchema(), tableName);
     }
 
-    @Override
-    public int getNameIndex() {
-        return 1;
+    public String getRowSampleQuery(String table, long rowCount, long sampleSize) {
+        return String.format("SELECT * FROM %s ORDER BY RANDOM() LIMIT %s", table, sampleSize);
     }
 
     public String getTablesQuery(String database) {
@@ -137,12 +116,6 @@ public enum SnowflakeConnector implements DBConnectorInterface {
 
     public DbType getDbType() {
         return this.dbType;
-    }
-
-    @Override
-    public List<ConfigurationField> getFields() {
-        //SnowFlakeConfiguration[] iets = SnowFlakeConfiguration.values();
-        return new ArrayList<>();
     }
 
     private static DBConnection connectToSnowflake(String server, String schema, String user, String password) {
@@ -172,10 +145,6 @@ public enum SnowflakeConnector implements DBConnectorInterface {
 
         return this.configuration;
     }
-    public void setDBConfiguration(DBConfiguration dbConfiguration) {
-        this.configuration = dbConfiguration;
-    }
-
     public static class SnowflakeConfiguration extends DBConfiguration {
         public static final String SNOWFLAKE_ACCOUNT = "SNOWFLAKE_ACCOUNT";
         public static final String SNOWFLAKE_USER = "SNOWFLAKE_USER";
@@ -225,7 +194,7 @@ public enum SnowflakeConnector implements DBConnectorInterface {
             this.configurationFields.addValidator(new PasswordXORAuthenticatorValidator());
         }
 
-        class PasswordXORAuthenticatorValidator implements ConfigurationValidator {
+        static class PasswordXORAuthenticatorValidator implements ConfigurationValidator {
 
             @Override
             public ValidationFeedback validate(ConfigurationFields fields) {
@@ -289,12 +258,6 @@ public enum SnowflakeConnector implements DBConnectorInterface {
 
     public String getDatabase() {
         return this.configuration.getValue(SNOWFLAKE_DATABASE);
-    }
-
-    @Override
-    public List<FieldInfo> fetchTableStructure(String table, ScanParameters scanParameters) {
-        // use the default JDBC method provided by DBConnectorInterface
-        return fetchTableStructureThroughJdbc(table, scanParameters);
     }
 
     private String getSchema() {

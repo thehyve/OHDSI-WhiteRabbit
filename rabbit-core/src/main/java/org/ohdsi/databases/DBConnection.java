@@ -188,8 +188,6 @@ public class DBConnection {
             query = "SELECT TableName from dbc.tables WHERE tablekind IN ('T','V') and databasename='" + database + "'";
         } else if (dbType == DbType.BIGQUERY) {
             query = "SELECT table_name from " + database + ".INFORMATION_SCHEMA.TABLES ORDER BY table_name;";
-        } else if (dbType == DbType.SNOWFLAKE) {
-
         }
 
         for (Row row : query(query))
