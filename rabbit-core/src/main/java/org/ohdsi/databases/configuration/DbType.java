@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2019 Observational Health Data Sciences and Informatics
+ * Copyright 2023 Observational Health Data Sciences and Informatics & The Hyve
  * 
  * This file is part of WhiteRabbit
  * 
