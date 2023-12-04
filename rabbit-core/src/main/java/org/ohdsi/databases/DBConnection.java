@@ -30,7 +30,7 @@ public class DBConnection {
     private final Connection connection;
     private final DbType dbType;
     private boolean verbose;
-    private final DBConnectorInterface connectorInterface;
+    private final DBConnectionInterface connectorInterface;
     private static DecimalFormat decimalFormat		= new DecimalFormat("#.#");
 
 
@@ -41,7 +41,7 @@ public class DBConnection {
         this.verbose = verbose;
     }
 
-    public DBConnection(DBConnectorInterface connectorInterface, DbType dbType, boolean verbose) {
+    public DBConnection(DBConnectionInterface connectorInterface, DbType dbType, boolean verbose) {
         this.connectorInterface = connectorInterface;
         connectorInterface.checkInitialised();
         this.connection = connectorInterface.getDBConnection().getConnection();
@@ -53,7 +53,7 @@ public class DBConnection {
         return this.connection;
     }
 
-    public DBConnectorInterface getDBConnectorInterface() {
+    public DBConnectionInterface getDBConnectorInterface() {
         this.connectorInterface.checkInitialised();
         return this.connectorInterface;
     }

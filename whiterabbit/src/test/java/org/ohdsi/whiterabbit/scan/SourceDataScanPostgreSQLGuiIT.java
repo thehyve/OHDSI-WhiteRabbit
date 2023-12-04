@@ -25,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ohdsi.databases.configuration.DbType.POSTGRESQL;
 import static org.ohdsi.whiterabbit.scan.SourceDataScanPostgreSQLIT.createPostgreSQLContainer;
@@ -66,6 +67,8 @@ class SourceDataScanPostgreSQLGuiIT {
         window.tabbedPane(WhiteRabbitMain.NAME_TABBED_PANE).selectTab(WhiteRabbitMain.LABEL_LOCATIONS);
         window.comboBox("SourceType").selectItem(DbType.POSTGRESQL.label());
         window.textBox("FolderField").setText(tempDir.toAbsolutePath().toString());
+        // verify one tooltip text, assume that all other tooltip texts will be fine too (fingers crossed)
+        assertEquals(LocationsPanel.TOOLTIP_POSTGRESQL_SERVER, window.textBox(LocationsPanel.LABEL_SERVER_LOCATION).target().getToolTipText());
         window.textBox(LocationsPanel.LABEL_SERVER_LOCATION).setText(String.format("%s:%s/%s",
                 postgreSQL.getHost(),
                 postgreSQL.getFirstMappedPort(),

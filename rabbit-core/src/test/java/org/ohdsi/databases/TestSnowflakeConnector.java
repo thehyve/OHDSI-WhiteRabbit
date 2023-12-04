@@ -12,10 +12,9 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.sql.SQLException;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.ohdsi.databases.SnowflakeConnector.*;
+import static org.ohdsi.databases.SnowflakeConnection.*;
 
 class TestSnowflakeConnector {
 
@@ -25,20 +24,20 @@ class TestSnowflakeConnector {
     void testIniFileAuthenticatorMethod() {
         IniFile iniFile = new IniFile(TestSnowflakeConnector.class.getClassLoader().getResource("snowflake.ini").getFile());
 
-        assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
+        assertNotNull(SnowflakeConnection.INSTANCE.getConfiguration(iniFile, null));
 
         iniFile.set("SNOWFLAKE_PASSWORD", "");
         Exception exception = assertThrows(DBConfigurationException.class, () -> {
-            assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
+            assertNotNull(SnowflakeConnection.INSTANCE.getConfiguration(iniFile, null));
         });
         assertTrue(exception.getMessage().contains(SnowflakeConfiguration.ERROR_MUST_SET_PASSWORD_OR_AUTHENTICATOR));
 
         iniFile.set("SNOWFLAKE_AUTHENTICATOR", "externalbrowser");
-        assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
+        assertNotNull(SnowflakeConnection.INSTANCE.getConfiguration(iniFile, null));
 
         iniFile.set("SNOWFLAKE_PASSWORD", "some-password");
         exception = assertThrows(DBConfigurationException.class, () -> {
-            assertNotNull(SnowflakeConnector.INSTANCE.getConfiguration(iniFile, null));
+            assertNotNull(SnowflakeConnection.INSTANCE.getConfiguration(iniFile, null));
         });
         assertTrue(exception.getMessage().contains(SnowflakeConfiguration.ERROR_MUST_NOT_SET_PASSWORD_AND_AUTHENTICATOR));
     }

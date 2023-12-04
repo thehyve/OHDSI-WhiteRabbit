@@ -10,17 +10,17 @@ import org.ohdsi.utilities.files.IniFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.ohdsi.databases.SnowflakeConnector.SnowflakeConfiguration.*;
+import static org.ohdsi.databases.SnowflakeConnection.SnowflakeConfiguration.*;
 
 /*
  * SnowflakeDB implements all Snowflake specific logic required to connect to, and query, a Snowflake instance.
  *
  * It is implemented as a Singleton, using the enum pattern es described here: https://www.baeldung.com/java-singleton
  */
-public enum SnowflakeConnector implements DBConnectorInterface {
+public enum SnowflakeConnection implements DBConnectionInterface {
     INSTANCE();
 
-    final static Logger logger = LoggerFactory.getLogger(SnowflakeConnector.class);
+    final static Logger logger = LoggerFactory.getLogger(SnowflakeConnection.class);
 
     DBConfiguration configuration = new SnowflakeConfiguration();
     private DBConnection snowflakeConnection = null;
@@ -33,7 +33,7 @@ public enum SnowflakeConnector implements DBConnectorInterface {
     public static final String ERROR_CONNECTION_NOT_INITIALIZED =
             "Snowflake Database connection has not been initialized.";
 
-    SnowflakeConnector() {
+    SnowflakeConnection() {
     }
 
     public void resetConnection() throws SQLException {
@@ -44,7 +44,7 @@ public enum SnowflakeConnector implements DBConnectorInterface {
     }
 
     @Override
-    public DBConnectorInterface getInstance(DbSettings dbSettings) {
+    public DBConnectionInterface getInstance(DbSettings dbSettings) {
         if (snowflakeConnection == null) {
             snowflakeConnection = connectToSnowflake(dbSettings);
         }
@@ -99,9 +99,9 @@ public enum SnowflakeConnector implements DBConnectorInterface {
     }
 
     @Override
-    public void checkInitialised() {
+    public void checkInitialised() throws DBConfigurationException {
         if (this.snowflakeConnection == null) {
-            throw new RuntimeException("Snowflake DB/connection was not initialized");
+            throw new DBConfigurationException("Snowflake DB/connection was not initialized");
         }
     }
 

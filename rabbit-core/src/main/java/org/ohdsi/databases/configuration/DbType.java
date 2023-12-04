@@ -17,8 +17,8 @@
  ******************************************************************************/
 package org.ohdsi.databases.configuration;
 
-import org.ohdsi.databases.DBConnectorInterface;
-import org.ohdsi.databases.SnowflakeConnector;
+import org.ohdsi.databases.DBConnectionInterface;
+import org.ohdsi.databases.SnowflakeConnection;
 
 import java.util.Arrays;
 
@@ -38,7 +38,7 @@ public enum DbType {
 //	public static final DbType TERADATA = new DbType("Teradata");
 //	public static final DbType BIGQUERY = new DbType("BigQuery");
 //	public static final DbType AZURE = new DbType("Azure");
-//	public static final DbType SNOWFLAKE = new DbType("Snowflake", SnowflakeConnector.INSTANCE);
+//	public static final DbType SNOWFLAKE = new DbType("Snowflake", SnowflakeConnection.INSTANCE);
 //
 //	public static final DbType SAS7BDAT = new DbType("Sas7bdat");
 	DELIMITED_TEXT_FILES("Delimited text files"),
@@ -52,17 +52,17 @@ public enum DbType {
 	TERADATA("Teradata"),
 	BIGQUERY("BigQuery"),
 	AZURE("Azure"),
-	SNOWFLAKE("Snowflake", SnowflakeConnector.INSTANCE),
+	SNOWFLAKE("Snowflake", SnowflakeConnection.INSTANCE),
 	SAS7BDAT("Sas7bdat");
 
 	private final String label;
-	private final DBConnectorInterface implementingClass;
+	private final DBConnectionInterface implementingClass;
 
 	DbType(String type) {
 		this(type, null);
 	}
 
-	DbType(String label, DBConnectorInterface implementingClass) {
+	DbType(String label, DBConnectionInterface implementingClass) {
 		this.label = label;
 		this.implementingClass = implementingClass;
 		if (!this.name().equals(normalizedName(label))) {
@@ -84,13 +84,13 @@ public enum DbType {
 		return this.implementingClass != null;
 	}
 
-	public DBConnectorInterface getDbConnectorInterface() throws DBConfigurationException {
+	public DBConnectionInterface getDbConnectorInterface() throws DBConfigurationException {
 		if (this.supportsDBConnectorInterface()) {
 			return this.implementingClass;
 		} else {
 			throw new DBConfigurationException(String.format("Class %s does not implement interface %s",
 					this.implementingClass.getClass().getName(),
-					DBConnectorInterface.class.getName()));
+					DBConnectionInterface.class.getName()));
 		}
 	}
 

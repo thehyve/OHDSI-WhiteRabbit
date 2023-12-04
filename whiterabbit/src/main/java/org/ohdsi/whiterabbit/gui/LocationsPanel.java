@@ -32,6 +32,8 @@ public class LocationsPanel extends JPanel {
     public static final String LABEL_DELIMITER = "Delimiter";
     public static final String NAME_DELIMITER = "DelimiterName";
 
+    public static final String TOOLTIP_POSTGRESQL_SERVER = "For PostgreSQL servers this field contains the host name and database name (<host>/<database>)";
+
     private final JFrame parentFrame;
     private JTextField folderField;
     private JComboBox<String> sourceType;
@@ -228,7 +230,7 @@ public class LocationsPanel extends JPanel {
                 sourcePasswordField.setToolTipText("For Oracle servers this field contains the password corresponding to the user");
                 sourceDatabaseField.setToolTipText("For Oracle servers this field contains the schema (i.e. 'user' in Oracle terms) containing the source tables");
             } else if (selectedSourceType.equals(DbType.POSTGRESQL.label())) {
-                sourceServerField.setToolTipText("For PostgreSQL servers this field contains the host name and database name (<host>/<database>)");
+                sourceServerField.setToolTipText(TOOLTIP_POSTGRESQL_SERVER);
                 sourceUserField.setToolTipText("The user used to log in to the server");
                 sourcePasswordField.setToolTipText("The password used to log in to the server");
                 sourceDatabaseField.setToolTipText("For PostgreSQL servers this field contains the schema containing the source tables");
