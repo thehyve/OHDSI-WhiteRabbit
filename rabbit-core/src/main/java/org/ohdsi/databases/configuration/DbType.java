@@ -20,27 +20,14 @@ package org.ohdsi.databases.configuration;
 import org.ohdsi.databases.DBConnectionInterface;
 import org.ohdsi.databases.SnowflakeConnection;
 
-import java.util.Arrays;
+import java.util.stream.Stream;
 
 public enum DbType {
 	/*
-	 * Please note: the names and strings and the Type enum below must match
-	 * when String.toUpperCase().replace(" ", "_") is applied (see constructor)
+	 * Please note: the names and strings and the Type enum below must match when String.toUpperCase().replace(" ", "_")
+	 * is applied (see constructor and the normalizedName() method). This is enforced when the enum values are constructed,
+	 * and a violation of this rule will result in a DBConfigurationException being thrown.
 	 */
-//	public static final DbType DELIMITED_TEXT_FILES = new DbType("Delimited text files");
-//	public static final DbType MYSQL = new DbType("MySQL");
-//	public static final DbType ORACLE = new DbType("Oracle");
-//	public static final DbType MSSQL = new DbType("SQL Server");
-//	public static final DbType POSTGRESQL = new DbType("PostgreSQL");
-//	public static final DbType MS_ACCESS = new DbType("MS Access");
-//	public static final DbType PDW = new DbType("PDW");
-//	public static final DbType REDSHIFT = new DbType("Redshift");
-//	public static final DbType TERADATA = new DbType("Teradata");
-//	public static final DbType BIGQUERY = new DbType("BigQuery");
-//	public static final DbType AZURE = new DbType("Azure");
-//	public static final DbType SNOWFLAKE = new DbType("Snowflake", SnowflakeConnection.INSTANCE);
-//
-//	public static final DbType SAS7BDAT = new DbType("Sas7bdat");
 	DELIMITED_TEXT_FILES("Delimited text files"),
 	MYSQL("MySQL"),
 	ORACLE("Oracle"),
@@ -98,8 +85,14 @@ public enum DbType {
 		return DbType.valueOf(DbType.class, normalizedName(name));
 	}
 
-	public static String[] choices() {
-		return Arrays.stream(DbType.values()).map(DbType::label).toArray(String[]::new);
+	/**
+	 * Returns the list of supported database in the order that they should appear in the GUI.
+	 *
+	 * @return Array of labels for the supported database, intended for use in a selector (like a Swing JComboBox)
+	 */
+	public static String[] pickList() {
+		return Stream.of(DELIMITED_TEXT_FILES, SAS7BDAT, MYSQL, ORACLE, SQL_SERVER, POSTGRESQL, MS_ACCESS, PDW, REDSHIFT, TERADATA, BIGQUERY, AZURE, SNOWFLAKE)
+				.map(DbType::label).toArray(String[]::new);
 	}
 
 	public String label() {

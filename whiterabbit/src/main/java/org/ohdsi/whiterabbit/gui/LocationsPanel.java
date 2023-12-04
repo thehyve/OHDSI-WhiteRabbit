@@ -265,7 +265,7 @@ public class LocationsPanel extends JPanel {
         sourcePanel.setLayout(new GridLayout(0, 2));
         sourcePanel.setBorder(BorderFactory.createTitledBorder("Source data location"));
         sourcePanel.add(new JLabel("Data type"));
-        sourceType = new JComboBox<>(DbType.choices());
+        sourceType = new JComboBox<>(DbType.pickList());
         sourceType.setName("SourceType");
         sourceType.setToolTipText("Select the type of source data available");
         sourceType.addItemListener(event -> {
