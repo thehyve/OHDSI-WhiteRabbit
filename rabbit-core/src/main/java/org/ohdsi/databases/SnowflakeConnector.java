@@ -31,7 +31,7 @@ public enum SnowflakeConnector implements DBConnectorInterface {
             "Database should be specified as 'warehouse.database.schema', " +
                     "e.g. 'computewh.snowflake_sample_data.weather";
     public static final String ERROR_CONNECTION_NOT_INITIALIZED =
-            "Snowflake Database connections has not been initialized.";
+            "Snowflake Database connection has not been initialized.";
 
     SnowflakeConnector() {
     }

@@ -32,7 +32,7 @@ public interface DBConnectorInterface {
      */
     default long getTableSize(String tableName ) {
         long returnVal;
-        QueryResult qr = SQLUtils.query(getTableSizeQuery(tableName), getDBConnection());
+        QueryResult qr = new QueryResult(getTableSizeQuery(tableName), getDBConnection());
         try {
             returnVal = Long.parseLong(qr.iterator().next().getCells().get(0));
         } catch (Exception e) {
@@ -55,7 +55,7 @@ public interface DBConnectorInterface {
         List<String> names = new ArrayList<>();
         String query = this.getTablesQuery(getDatabase());
 
-		for (Row row : SQLUtils.query(query, new DBConnection(this, getDbType(), false))) {
+		for (Row row : new QueryResult(query, new DBConnection(this, getDbType(), false))) {
             names.add(row.getCells().get(0));
         }
 

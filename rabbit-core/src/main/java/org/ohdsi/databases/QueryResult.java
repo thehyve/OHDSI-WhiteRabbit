@@ -12,6 +12,10 @@ public class QueryResult implements Iterable<Row> {
     private List<DBRowIterator> iterators = new ArrayList<>();
     private DBConnection dbConnection;
 
+    public QueryResult(String sql, DBConnection dbConnection) {
+        this(sql, dbConnection, false);
+    }
+
     public QueryResult(String sql, DBConnection dbConnection, boolean verbose) {
         this.sql = sql;
         this.dbConnection = dbConnection;
