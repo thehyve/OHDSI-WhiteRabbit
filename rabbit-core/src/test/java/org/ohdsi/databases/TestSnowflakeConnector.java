@@ -20,43 +20,6 @@ import static org.ohdsi.databases.SnowflakeConnector.*;
 class TestSnowflakeConnector {
 
     Logger logger = LoggerFactory.getLogger(TestSnowflakeConnector.class);
-//    @Test
-//    @EnabledIfEnvironmentVariable(named = "SNOWFLAKE_WR_TEST_ACCOUNT", matches = ".+")
-//    public void testConnectToSnowflake() throws SQLException {
-//        DbSettings dbSettings = SnowflakeTestUtils.getTestDbSettingsSnowflake();
-//        Connection connection = INSTANCE.getInstance(dbSettings).getConnection();
-//
-//        assertNotNull(connection);
-//        connection.close();
-//        logger.info("Connecting to Snowflake OK");
-//    }
-
-    @Test
-    public void testUninitializedSnowflakeConnection() throws SQLException {
-        INSTANCE.resetConnection(); // make sure the connection is not available from running another test first
-        Exception exception = assertThrows(RuntimeException.class, () -> {
-            INSTANCE.getInstance().getDBConnection();
-        });
-
-        assertEquals(ERROR_CONNECTION_NOT_INITIALIZED, exception.getMessage());
-    }
-
-//    @Test
-//    @EnabledIfEnvironmentVariable(named = "SNOWFLAKE_WR_TEST_ACCOUNT", matches = ".+")
-//    void testGetFieldNames() {
-//        DbSettings dbSettings = SnowflakeTestUtils.getTestDbSettingsSnowflake();
-//        Connection connection = INSTANCE.getInstance(dbSettings).getConnection();
-//        ResultSet resultSet = INSTANCE.getFieldNames("person");
-//        try {
-//            while (resultSet.next()) {
-//                assertEquals(resultSet.getString("COLUMN_NAME"), "iets");
-//                assertEquals(resultSet.getString("TYPE_NAME"), "iets");
-//            }
-//        } catch (SQLException e) {
-//            throw new RuntimeException(e.getMessage());
-//        }
-//        logger.info("Testing field names for Snowflake OK");
-//    }
 
     @Test
     void testIniFileAuthenticatorMethod() {

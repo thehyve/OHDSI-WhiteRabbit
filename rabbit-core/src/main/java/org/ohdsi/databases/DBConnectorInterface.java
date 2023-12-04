@@ -14,6 +14,8 @@ import java.util.List;
 
 public interface DBConnectorInterface {
 
+    DBConnectorInterface getInstance(DbSettings dbSettings);
+
     DBConnection getDBConnection();
 
     DbType getDbType();
@@ -22,9 +24,6 @@ public interface DBConnectorInterface {
 
     void checkInitialised();
 
-    DBConnectorInterface getInstance();
-
-    DBConnectorInterface getInstance(String server, String database, String user, String password);
     /**
      * Returns the row count of the specified table.
      *

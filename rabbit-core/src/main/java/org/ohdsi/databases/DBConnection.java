@@ -12,7 +12,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /*
- * DBConnection is a wrapper for java.sql.Connection and org.ohdsi.databases.DBConnectionInterface
+ * DBConnection is a wrapper for java.sql.Connection
+ *
+ *
  * The latter one instantiates a java.sql.Connection instance itself.
  * The constructors of DBConnection ensure that one of the following is true:
  *  - a java.sql.Connection implementing object is provided, and used it its methods
@@ -164,6 +166,136 @@ public class DBConnection {
         }
     }
 
+    public List<FieldInfo> fetchTableStructure(RichConnection connection, String database, String table, ScanParameters scanParameters) {
+        List<FieldInfo> fieldInfos = new ArrayList<>();
+
+        if (dbType.supportsDBConnectorInterface()) {
+            fieldInfos = dbType.getDbConnectorInterface().fetchTableStructure(table, scanParameters);
+        } else if (dbType == DbType.MS_ACCESS) {
+            ResultSet rs = getFieldNamesFromJDBC(table);
+            try {
+                while (rs.next()) {
+                    FieldInfo fieldInfo = new FieldInfo(scanParameters, rs.getString("COLUMN_NAME"));
+                    fieldInfo.type = rs.getString("TYPE_NAME");
+                    fieldInfo.rowCount = connection.getTableSize(table);
+                    fieldInfos.add(fieldInfo);
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e.getMessage());
+            }
+        } else {
+            String query = null;
+            if (dbType == DbType.ORACLE)
+                query = "SELECT COLUMN_NAME,DATA_TYPE FROM ALL_TAB_COLUMNS WHERE table_name = '" + table + "' AND owner = '" + database.toUpperCase() + "'";
+            else if (dbType == DbType.SQL_SERVER || dbType == DbType.PDW) {
+                String trimmedDatabase = database;
+                if (database.startsWith("[") && database.endsWith("]"))
+                    trimmedDatabase = database.substring(1, database.length() - 1);
+                String[] parts = table.split("\\.");
+                query = "SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_CATALOG='" + trimmedDatabase + "' AND TABLE_SCHEMA='" + parts[0] +
+                        "' AND TABLE_NAME='" + parts[1] + "';";
+            } else if (dbType == DbType.AZURE) {
+                String[] parts = table.split("\\.");
+                query = "SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='" + parts[0] +
+                        "' AND TABLE_NAME='" + parts[1] + "';";
+            } else if (dbType == DbType.MYSQL)
+                query = "SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '" + database + "' AND TABLE_NAME = '" + table
+                        + "';";
+            else if (dbType == DbType.POSTGRESQL || dbType == DbType.REDSHIFT)
+                query = "SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '" + database.toLowerCase() + "' AND TABLE_NAME = '"
+                        + table.toLowerCase() + "' ORDER BY ordinal_position;";
+            else if (dbType == DbType.TERADATA) {
+                query = "SELECT ColumnName, ColumnType FROM dbc.columns WHERE DatabaseName= '" + database.toLowerCase() + "' AND TableName = '"
+                        + table.toLowerCase() + "';";
+            } else if (dbType == DbType.BIGQUERY) {
+                query = "SELECT column_name AS COLUMN_NAME, data_type as DATA_TYPE FROM " + database + ".INFORMATION_SCHEMA.COLUMNS WHERE table_name = \"" + table + "\";";
+            }
+
+            if (StringUtils.isEmpty(query)) {
+                throw new RuntimeException("No query was specified to obtain the table structure for DbType = " + dbType.name());
+            }
+
+            for (org.ohdsi.utilities.files.Row row : connection.query(query)) {
+                row.upperCaseFieldNames();
+                org.ohdsi.databases.FieldInfo fieldInfo;
+                if (dbType == DbType.TERADATA) {
+                    fieldInfo = new org.ohdsi.databases.FieldInfo(scanParameters, row.get("COLUMNNAME"));
+                } else {
+                    fieldInfo = new org.ohdsi.databases.FieldInfo(scanParameters, row.get("COLUMN_NAME"));
+                }
+                if (dbType == DbType.TERADATA) {
+                    fieldInfo.type = row.get("COLUMNTYPE");
+                } else {
+                    fieldInfo.type = row.get("DATA_TYPE");
+                }
+                fieldInfo.rowCount = connection.getTableSize(table);
+                fieldInfos.add(fieldInfo);
+            }
+        }
+        return fieldInfos;
+    }
+
+    public ResultSet getFieldNamesFromJDBC(String table) {
+        if (dbType == DbType.MS_ACCESS) {
+            try {
+                DatabaseMetaData metadata = connection.getMetaData();
+                return metadata.getColumns(null, null, table, null);
+            } catch (SQLException e) {
+                throw new RuntimeException(e.getMessage());
+            }
+        } else {
+            throw new RuntimeException("DB is not of supported type");
+        }
+    }
+
+    public QueryResult fetchRowsFromTable(String table, long rowCount, ScanParameters scanParameters) {
+        String query = null;
+        int sampleSize = scanParameters.getSampleSize();
+
+        if (dbType.supportsDBConnectorInterface()) {
+            query = dbType.getDbConnectorInterface().getRowSampleQuery(table, rowCount, sampleSize);
+        } else if (sampleSize == -1) {
+            if (dbType == DbType.MS_ACCESS)
+                query = "SELECT * FROM [" + table + "]";
+            else if (dbType == DbType.SQL_SERVER || dbType == DbType.PDW || dbType == DbType.AZURE)
+                query = "SELECT * FROM [" + table.replaceAll("\\.", "].[") + "]";
+            else
+                query = "SELECT * FROM " + table;
+        } else {
+            if (dbType == DbType.SQL_SERVER || dbType == DbType.AZURE)
+                query = "SELECT * FROM [" + table.replaceAll("\\.", "].[") + "] TABLESAMPLE (" + sampleSize + " ROWS)";
+            else if (dbType == DbType.MYSQL)
+                query = "SELECT * FROM " + table + " ORDER BY RAND() LIMIT " + sampleSize;
+            else if (dbType == DbType.PDW)
+                query = "SELECT TOP " + sampleSize + " * FROM [" + table.replaceAll("\\.", "].[") + "] ORDER BY RAND()";
+            else if (dbType == DbType.ORACLE) {
+                if (sampleSize < rowCount) {
+                    double percentage = 100 * sampleSize / (double) rowCount;
+                    if (percentage < 100)
+                        query = "SELECT * FROM " + table + " SAMPLE(" + percentage + ")";
+                } else {
+                    query = "SELECT * FROM " + table;
+                }
+            } else if (dbType == DbType.POSTGRESQL || dbType == DbType.REDSHIFT) {
+                query = "SELECT * FROM " + table + " ORDER BY RANDOM() LIMIT " + sampleSize;
+            }
+            else if (dbType == DbType.MS_ACCESS) {
+                query = "SELECT " + "TOP " + sampleSize + " * FROM [" + table + "]";
+            }
+            else if (dbType == DbType.BIGQUERY) {
+                query = "SELECT * FROM " + table + " ORDER BY RAND() LIMIT " + sampleSize;
+            }
+        }
+
+
+        if (StringUtils.isEmpty(query)) {
+            throw new RuntimeException("No query was generated for database type " + dbType.name());
+        }
+
+        return createQueryResult(query);
+    }
+
+
     private List<String> getTableNamesClassic(String database) {
         List<String> names = new ArrayList<>();
         String query = null;
@@ -190,12 +322,12 @@ public class DBConnection {
             query = "SELECT table_name from " + database + ".INFORMATION_SCHEMA.TABLES ORDER BY table_name;";
         }
 
-        for (Row row : query(query))
+        for (Row row : createQueryResult(query))
             names.add(row.get(row.getFieldNames().get(0)));
         return names;
     }
 
-    public QueryResult query(String sql) {
+    private QueryResult createQueryResult(String sql) {
         return new QueryResult(sql, this, verbose);
     }
 

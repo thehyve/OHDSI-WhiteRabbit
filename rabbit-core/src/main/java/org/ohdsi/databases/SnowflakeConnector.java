@@ -44,18 +44,9 @@ public enum SnowflakeConnector implements DBConnectorInterface {
     }
 
     @Override
-    public DBConnectorInterface getInstance(String server, String fullSchemaPath, String user, String password) {
+    public DBConnectorInterface getInstance(DbSettings dbSettings) {
         if (snowflakeConnection == null) {
-            snowflakeConnection =  connectToSnowflake(server, fullSchemaPath, user, password);
-        }
-
-        return INSTANCE;
-    }
-
-    @Override
-    public DBConnectorInterface getInstance() {
-        if (this.snowflakeConnection == null) {
-            throw new RuntimeException(ERROR_CONNECTION_NOT_INITIALIZED);
+            snowflakeConnection = connectToSnowflake(dbSettings);
         }
 
         return INSTANCE;
@@ -118,13 +109,13 @@ public enum SnowflakeConnector implements DBConnectorInterface {
         return this.dbType;
     }
 
-    private static DBConnection connectToSnowflake(String server, String schema, String user, String password) {
+    private static DBConnection connectToSnowflake(DbSettings dbSettings) {
         try {
             Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
         } catch (ClassNotFoundException ex) {
             throw new RuntimeException("Cannot find JDBC driver. Make sure the file snowflake-jdbc-x.xx.xx.jar is in the path: " + ex.getMessage());
         }
-        String url = buildUrl(server, schema, user, password, INSTANCE.configuration.getValue(SNOWFLAKE_AUTHENTICATOR));
+        String url = buildUrl(dbSettings.server, dbSettings.domain, dbSettings.user, dbSettings.password, INSTANCE.configuration.getValue(SNOWFLAKE_AUTHENTICATOR));
         try {
             return new DBConnection(DriverManager.getConnection(url), DbType.SNOWFLAKE, false);
         } catch (SQLException ex) {

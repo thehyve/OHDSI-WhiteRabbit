@@ -33,14 +33,16 @@ public class DBConnector {
 	}
 
 	public static DBConnection connect(DbSettings dbSettings, boolean verbose) {
-		return connect(dbSettings.server, dbSettings.domain, dbSettings.user, dbSettings.password, dbSettings.dbType, verbose);
+		if (dbSettings.dbType.supportsDBConnectorInterface()) {
+			return new DBConnection(dbSettings.dbType.getDbConnectorInterface().getInstance(dbSettings), dbSettings.dbType, verbose);
+		} else {
+			return connect(dbSettings.server, dbSettings.domain, dbSettings.user, dbSettings.password, dbSettings.dbType, verbose);
+		}
 	}
 
 	// If dbType.BIGQUERY: domain field has been replaced with  database field
-	public static DBConnection connect(String server, String domain, String user, String password, DbType dbType, boolean verbose) {
-		if (dbType.supportsDBConnectorInterface()) {
-			return new DBConnection(dbType.getDbConnectorInterface().getInstance(server, domain, user, password), dbType, verbose);
-		} else if (dbType.equalsDbType(DbType.MYSQL))
+	private static DBConnection connect(String server, String domain, String user, String password, DbType dbType, boolean verbose) {
+		if (dbType.equalsDbType(DbType.MYSQL))
 			return new DBConnection(DBConnector.connectToMySQL(server, user, password), dbType, verbose);
 		else if (dbType.equalsDbType(DbType.SQL_SERVER) || dbType.equalsDbType(DbType.PDW) || dbType.equalsDbType(DbType.AZURE))
 			return new DBConnection(DBConnector.connectToMSSQL(server, domain, user, password), dbType, verbose);
