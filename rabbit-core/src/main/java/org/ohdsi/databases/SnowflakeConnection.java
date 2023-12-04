@@ -155,6 +155,7 @@ public enum SnowflakeConnection implements DBConnectionInterface {
     }
     public static class SnowflakeConfiguration extends DBConfiguration {
         public static final String SNOWFLAKE_ACCOUNT = "SNOWFLAKE_ACCOUNT";
+        public static final String TOOLTIP_SNOWFLAKE_ACCOUNT = "Account for the Snowflake instance";
         public static final String SNOWFLAKE_USER = "SNOWFLAKE_USER";
         public static final String SNOWFLAKE_PASSWORD = "SNOWFLAKE_PASSWORD";
         public static final String SNOWFLAKE_AUTHENTICATOR = "SNOWFLAKE_AUTHENTICATOR";
@@ -168,7 +169,7 @@ public enum SnowflakeConnection implements DBConnectionInterface {
                 ConfigurationField.create(
                         SNOWFLAKE_ACCOUNT,
                         "Account",
-                        "Account for the Snowflake instance")
+                        TOOLTIP_SNOWFLAKE_ACCOUNT)
                         .required(),
                 ConfigurationField.create(
                         SNOWFLAKE_USER,

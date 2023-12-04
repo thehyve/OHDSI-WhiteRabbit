@@ -31,6 +31,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.ohdsi.databases.SnowflakeConnection;
+import org.ohdsi.databases.SnowflakeConnection.SnowflakeConfiguration;
 import org.ohdsi.databases.SnowflakeTestUtils;
 import org.ohdsi.databases.configuration.DbType;
 import org.ohdsi.whiterabbit.Console;
@@ -46,6 +47,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ohdsi.databases.configuration.DbType.SNOWFLAKE;
 import static org.ohdsi.whiterabbit.scan.SourceDataScanSnowflakeIT.*;
@@ -94,12 +96,13 @@ class SourceDataScanSnowflakeGuiIT {
         window.tabbedPane(WhiteRabbitMain.NAME_TABBED_PANE).selectTab(WhiteRabbitMain.LABEL_LOCATIONS);
         window.comboBox("SourceType").selectItem(DbType.SNOWFLAKE.label());
         window.textBox("FolderField").setText(tempDir.toAbsolutePath().toString());
-        window.textBox(SnowflakeConnection.SnowflakeConfiguration.SNOWFLAKE_ACCOUNT).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_ACCOUNT"));
-        window.textBox(SnowflakeConnection.SnowflakeConfiguration.SNOWFLAKE_USER).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_USER"));
-        window.textBox(SnowflakeConnection.SnowflakeConfiguration.SNOWFLAKE_PASSWORD).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_PASSWORD"));
-        window.textBox(SnowflakeConnection.SnowflakeConfiguration.SNOWFLAKE_WAREHOUSE).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_WAREHOUSE"));
-        window.textBox(SnowflakeConnection.SnowflakeConfiguration.SNOWFLAKE_DATABASE).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_DATABASE"));
-        window.textBox(SnowflakeConnection.SnowflakeConfiguration.SNOWFLAKE_SCHEMA).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_SCHEMA"));
+        assertEquals(SnowflakeConfiguration.TOOLTIP_SNOWFLAKE_ACCOUNT, window.textBox(SnowflakeConfiguration.SNOWFLAKE_ACCOUNT).target().getToolTipText());
+        window.textBox(SnowflakeConfiguration.SNOWFLAKE_ACCOUNT).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_ACCOUNT"));
+        window.textBox(SnowflakeConfiguration.SNOWFLAKE_USER).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_USER"));
+        window.textBox(SnowflakeConfiguration.SNOWFLAKE_PASSWORD).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_PASSWORD"));
+        window.textBox(SnowflakeConfiguration.SNOWFLAKE_WAREHOUSE).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_WAREHOUSE"));
+        window.textBox(SnowflakeConfiguration.SNOWFLAKE_DATABASE).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_DATABASE"));
+        window.textBox(SnowflakeConfiguration.SNOWFLAKE_SCHEMA).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_SCHEMA"));
 
         // use the "Test connection" button
         window.button(WhiteRabbitMain.LABEL_TEST_CONNECTION).click();
