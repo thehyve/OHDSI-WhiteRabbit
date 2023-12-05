@@ -18,6 +18,7 @@
 package org.ohdsi.whiterabbit.scan;
 
 import org.apache.commons.lang.StringUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.io.TempDir;
@@ -52,17 +53,15 @@ public class SourceDataScanSnowflakeIT {
     @Container
     public static GenericContainer<?> testContainer;
 
-    static {
+    @BeforeEach
+    public void setUp() {
         try {
             testContainer = createPythonContainer();
-            prepareTestData();
+            prepareTestData(testContainer);
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException("Creating python container failed.");
         }
     }
-
-    @TempDir
-    static File tmpDir;
 
     @Test
     void testWarnWhenRunningWithoutSnowflakeConfigured() {
@@ -71,23 +70,6 @@ public class SourceDataScanSnowflakeIT {
                 String.format("\nTest class %s is being run without a Snowflake test instance configured.\n" +
                         "This is NOT a valid verification run.", SourceDataScanSnowflakeIT.class.getName()));
     }
-
-//    @Test
-//    @EnabledIfEnvironmentVariable(named = SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE, matches = ".+")
-//    void testProcessSnowflake(@TempDir Path tempDir) throws IOException, InterruptedException, URISyntaxException {
-//        Path outFile = tempDir.resolve("scanresult-snowflake.xlsx");
-//        URL referenceScanReport = TestSourceDataScanCsvGui.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
-//
-//        SourceDataScan sourceDataScan = ScanTestUtils.createSourceDataScan();
-//        DbSettings dbSettings = SnowflakeTestUtils.getTestDbSettingsSnowflake();
-//
-//        logger.info("dbSettings before: " + dbSettings);
-//        sourceDataScan.process(dbSettings, outFile.toString());
-//        logger.info("dbSettings after : " + dbSettings);
-//        ScanTestUtils.scanResultsSheetMatchesReference(outFile, Paths.get(referenceScanReport.toURI()), DbType.SNOWFLAKE);
-//
-//        logger.info("Testing scan on Snowflake OK");
-//    }
 
     @Test
     @EnabledIfEnvironmentVariable(named = SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE, matches = ".+")
@@ -99,39 +81,43 @@ public class SourceDataScanSnowflakeIT {
         assert iniTemplate != null;
         String content = new String(Files.readAllBytes(Paths.get(iniTemplate.toURI())), charset);
         content = content.replaceAll("%WORKING_FOLDER%", tempDir.toString())
-                .replaceAll("%SNOWFLAKE_ACCOUNT%", SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_ACCOUNT"))
-                .replaceAll("%SNOWFLAKE_USER%", SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_USER"))
-                .replaceAll("%SNOWFLAKE_PASSWORD%", SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_PASSWORD"))
-                .replaceAll("%SNOWFLAKE_WAREHOUSE%", SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_WAREHOUSE"))
-                .replaceAll("%SNOWFLAKE_DATABASE%", SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_DATABASE"))
-                .replaceAll("%SNOWFLAKE_SCHEMA%", SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_SCHEMA"));
+                .replaceAll("%SNOWFLAKE_ACCOUNT%", SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_ACCOUNT"))
+                .replaceAll("%SNOWFLAKE_USER%", SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_USER"))
+                .replaceAll("%SNOWFLAKE_PASSWORD%", SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_PASSWORD"))
+                .replaceAll("%SNOWFLAKE_WAREHOUSE%", SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_WAREHOUSE"))
+                .replaceAll("%SNOWFLAKE_DATABASE%", SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_DATABASE"))
+                .replaceAll("%SNOWFLAKE_SCHEMA%", SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_SCHEMA"));
         Files.write(iniFile, content.getBytes(charset));
         WhiteRabbitMain wrMain = new WhiteRabbitMain(true, new String[]{"-ini", iniFile.toAbsolutePath().toString()});
         assert referenceScanReport != null;
         assertTrue(ScanTestUtils.scanResultsSheetMatchesReference(tempDir.resolve("ScanReport.xlsx"), Paths.get(referenceScanReport.toURI()), DbType.SNOWFLAKE));
     }
 
-    static void prepareTestData() throws IOException, InterruptedException {
+    static void prepareTestData(GenericContainer<?> container) throws IOException, InterruptedException {
+        prepareTestData(container, new SnowflakeTestUtils.EnvironmentReader());
+    }
+
+    static void prepareTestData(GenericContainer<?> container, SnowflakeTestUtils.ReaderInterface reader) throws IOException, InterruptedException {
         // snowsql is used for initializing the database
 
         // add some packages needed for the installation of snowsql
-        execAndVerifyCommand(testContainer, "/bin/sh", "-c", "apt update; apt -y install wget unzip");
+        execAndVerifyCommand(container, "/bin/sh", "-c", "apt update; apt -y install wget unzip");
         // download snowsql
-        execAndVerifyCommand(testContainer, "/bin/bash", "-c",
+        execAndVerifyCommand(container, "/bin/bash", "-c",
                 "wget -q https://sfc-repo.snowflakecomputing.com/snowsql/bootstrap/1.2/linux_x86_64/snowsql-1.2.29-linux_x86_64.bash;");
         // install snowsql
-        execAndVerifyCommand(testContainer, "/bin/bash", "-c",
+        execAndVerifyCommand(container, "/bin/bash", "-c",
                 "echo -e \"/tmp\\nN\" | bash snowsql-1.2.29-linux_x86_64.bash ");
 
         // run the sql script needed to initialize the test data
-        execAndVerifyCommand(testContainer, "/bin/bash", "-c",
+        execAndVerifyCommand(container, "/bin/bash", "-c",
                 String.format("(cd %s; SNOWSQL_PWD='%s' /tmp/snowsql -a %s -u %s -d %s -s %s -f %s/create_data_snowflake.sql)",
                         CONTAINER_DATA_PATH,
-                        SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_PASSWORD"),
-                        SnowflakeTestUtils.getenvOrFail(SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE),
-                        SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_USER"),
-                        SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_DATABASE"),
-                        SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_SCHEMA"),
+                        reader.getOrFail("SNOWFLAKE_WR_TEST_PASSWORD"),
+                        reader.getOrFail(SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE),
+                        reader.getOrFail("SNOWFLAKE_WR_TEST_USER"),
+                        reader.getOrFail("SNOWFLAKE_WR_TEST_DATABASE"),
+                        reader.getOrFail("SNOWFLAKE_WR_TEST_SCHEMA"),
                         CONTAINER_DATA_PATH
                         ));
     }
@@ -161,7 +147,7 @@ public class SourceDataScanSnowflakeIT {
             logger.error("stderr: {}", result.getStderr());
             // hide the password, if present, so it won't appear in logs (pragmatic)
             String message = ("Command failed: " + String.join(" ", command))
-                    .replace(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_PASSWORD"), "xxxxx");
+                    .replace(SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_PASSWORD"), "xxxxx");
             assertEquals(expectedExitValue, result.getExitCode(), message);
         }
     }

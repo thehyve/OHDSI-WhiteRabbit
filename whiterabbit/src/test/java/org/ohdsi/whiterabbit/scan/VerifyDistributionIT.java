@@ -17,11 +17,18 @@
  ******************************************************************************/
 package org.ohdsi.whiterabbit.scan;
 
+import org.apache.commons.lang.StringUtils;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.runners.Parameterized;
+import org.ohdsi.databases.SnowflakeTestUtils;
 import org.ohdsi.databases.configuration.DbType;
 import org.ohdsi.utilities.files.IniFile;
+import org.ohdsi.whiterabbit.WhiteRabbitMain;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Container.ExecResult;
@@ -33,13 +40,17 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.util.function.BooleanSupplier;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.ohdsi.whiterabbit.scan.SourceDataScanSnowflakeIT.createPythonContainer;
+import static org.ohdsi.whiterabbit.scan.SourceDataScanSnowflakeIT.prepareTestData;
 
 /**
- * Intent: "deploy" the distributed application in a docker container containing a Java runtime of a specified version,
- * and run a set of tests that aim to verify that the distribution is complete, i.e. no dependencies
- * are missing. A data for a scan on csv files is used to run whiterabbit.
+ * Intent: "deploy" the distributed application in a docker container (TestContainer) containing a Java runtime
+ * of a specified version, and runs a test of WhiteRabbit that aim to verify that the distribution is complete,
+ * i.e. no dependencies are missing. A data for a scan on csv files is used to run whiterabbit.
  *
  * Note that this does not test any of the JDBC driver dependencies, unless these databases are actually used.
  */
@@ -66,9 +77,83 @@ public class VerifyDistributionIT {
     }
 
     @Test
-    @EnabledIfSystemProperty(named = "org.ohdsi.test.snowflake", matches = "(true|True|TRUE|yes|Yes|YES|1)")
-    void testDistrubutionWithJava17AndSnowflake() {
-        assertTrue(false, "should always trigger failure");
+    void verifySnowflakeFailureInJava17() throws IOException, URISyntaxException, InterruptedException {
+        /*
+         * There is an issue with Snowflake JDBC that causes a failure in Java 16 and later
+         * (see https://community.snowflake.com/s/article/JDBC-Driver-Compatibility-Issue-With-JDK-16-and-Later)
+         * A flag can be passed to the JVM to work around this: --add-opens=java.base/java.nio=ALL-UNNAMED
+         *
+         * The whiteRabbit script in the distribution passes this flag.
+         *
+         * The tests below verify that:
+         * - the flag does not cause problems when running with Java 8 (1.8) or 11
+         * - without the flag, a failure occurs when running with Java 17
+         * - passing the flag fixes the failure with Java 17
+         *
+         * As the flag is in the distributed script, it needs to be edited out of the script.
+         *
+         * Note that we only test with the LTS versions of Java. This leaves Java 16 untested and unfixed.
+         *
+         * Once a fix is available in a newer version of the Snowflake JDBC jar, and it is used in WhiteRabbit,
+         * The test that now confirms the issue by expecting an Assertion error should start to fail.
+         * Then it is time to remove the flag (it is in the pom.xml for the whiterabbit module), and remove these tests,
+         * or normalize them to simply verify that all works well.
+         */
+        String patchingFlag = "--add-opens=java.base/java.nio=ALL-UNNAMED";
+        String javaOpts = String.format("JAVA_OPTS='%s'", patchingFlag);
+
+        // verify that the flag as set in the whiteRabbit script does not have an adversary effect when running with Java 11
+        // note that this flag is not supported by Java 8 (1.8)
+        runDistributionWithSnowflake("eclipse-temurin:11",javaOpts);
+
+        // verify that the failure occurs when running with Java 17, without the flag
+        AssertionError ignoredError = Assertions.assertThrows(org.opentest4j.AssertionFailedError.class, () -> {
+            runDistributionWithSnowflake("eclipse-temurin:17","");
+        });
+
+        // finally, verify that passing the flag fixes the failure when running wuth Java 17
+        runDistributionWithSnowflake("eclipse-temurin:17",javaOpts);
+    }
+
+    void runDistributionWithSnowflake(String javaImageName, String javaOpts) throws IOException, InterruptedException, URISyntaxException {
+        // test only run when there are settings available for Snowflake; otherwise it should be skipped
+        Assumptions.assumeTrue(new SnowflakeTestUtils.SnowflakeSystemPropertiesFileChecker(), "Snowflake system properties file not available");
+        SnowflakeTestUtils.PropertyReader reader = new SnowflakeTestUtils.PropertyReader();
+        try (GenericContainer<?> testContainer = createPythonContainer()) {
+            prepareTestData(testContainer, reader);
+            testContainer.stop();
+
+            try (GenericContainer<?> javaContainer = createJavaContainer(javaImageName)) {
+                javaContainer.start();
+                Charset charset = StandardCharsets.UTF_8;
+                Path iniFile = tempDir.resolve("snowflake.ini");
+                URL iniTemplate = VerifyDistributionIT.class.getClassLoader().getResource("scan_data/snowflake.ini.template");
+                URL referenceScanReport = SourceDataScanSnowflakeIT.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
+                assert iniTemplate != null;
+                String content = new String(Files.readAllBytes(Paths.get(iniTemplate.toURI())), charset);
+                content = content.replaceAll("%WORKING_FOLDER%", WORKDIR_IN_CONTAINER)
+                        .replaceAll("%SNOWFLAKE_ACCOUNT%", reader.getOrFail("SNOWFLAKE_WR_TEST_ACCOUNT"))
+                        .replaceAll("%SNOWFLAKE_USER%", reader.getOrFail("SNOWFLAKE_WR_TEST_USER"))
+                        .replaceAll("%SNOWFLAKE_PASSWORD%", reader.getOrFail("SNOWFLAKE_WR_TEST_PASSWORD"))
+                        .replaceAll("%SNOWFLAKE_WAREHOUSE%", reader.getOrFail("SNOWFLAKE_WR_TEST_WAREHOUSE"))
+                        .replaceAll("%SNOWFLAKE_DATABASE%", reader.getOrFail("SNOWFLAKE_WR_TEST_DATABASE"))
+                        .replaceAll("%SNOWFLAKE_SCHEMA%", reader.getOrFail("SNOWFLAKE_WR_TEST_SCHEMA"));
+                Files.write(iniFile, content.getBytes(charset));
+                // verify that the distribution of whiterabbit has been generated and is available inside the container
+                ExecResult execResult = javaContainer.execInContainer("sh", "-c", String.format("ls %s", APPDIR_IN_CONTAINER));
+                assertTrue(execResult.getStdout().contains("repo"), "WhiteRabbit distribution is not accessible inside container");
+
+                // run whiterabbit and verify the result
+                execResult = javaContainer.execInContainer("sh", "-c",
+                        String.format("%s /app/bin/whiteRabbit -ini %s/snowflake.ini", javaOpts, WORKDIR_IN_CONTAINER));
+                assertTrue(execResult.getStdout().contains("Started new scan of 2 tables..."));
+                assertTrue(execResult.getStdout().contains("Scanning table PERSON"));
+                assertTrue(execResult.getStdout().contains("Scanning table COST"));
+                assertTrue(execResult.getStdout().contains("Scan report generated: /whiterabbit/ScanReport.xlsx"));
+
+                assertTrue(ScanTestUtils.scanResultsSheetMatchesReference(tempDir.resolve("ScanReport.xlsx"), Paths.get(referenceScanReport.toURI()), DbType.SNOWFLAKE));
+            }
+        }
     }
 
     private void testWhiteRabbitInContainer(String imageName, String expectedVersion) throws IOException, InterruptedException, URISyntaxException {
@@ -115,12 +200,5 @@ public class VerifyDistributionIT {
                 .withCommand("sh", "-c", "tail -f /dev/null")
                 .withFileSystemBind(Paths.get("../dist").toAbsolutePath().toString(), APPDIR_IN_CONTAINER)
                 .withFileSystemBind(tempDir.toString(), WORKDIR_IN_CONTAINER, BindMode.READ_WRITE);
-
-    }
-
-    IniFile loadConfigurationFromEnv() {
-        IniFile iniFile = new IniFile();
-
-        return iniFile;
     }
 }

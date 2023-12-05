@@ -30,7 +30,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
-import org.ohdsi.databases.SnowflakeConnection;
 import org.ohdsi.databases.SnowflakeConnection.SnowflakeConfiguration;
 import org.ohdsi.databases.SnowflakeTestUtils;
 import org.ohdsi.databases.configuration.DbType;
@@ -73,7 +72,7 @@ class SourceDataScanSnowflakeGuiIT {
     public void onSetUp() {
         try {
             testContainer = createPythonContainer();
-            prepareTestData();
+            prepareTestData(testContainer);
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException("Creating python container failed.");
         }
@@ -97,12 +96,12 @@ class SourceDataScanSnowflakeGuiIT {
         window.comboBox("SourceType").selectItem(DbType.SNOWFLAKE.label());
         window.textBox("FolderField").setText(tempDir.toAbsolutePath().toString());
         assertEquals(SnowflakeConfiguration.TOOLTIP_SNOWFLAKE_ACCOUNT, window.textBox(SnowflakeConfiguration.SNOWFLAKE_ACCOUNT).target().getToolTipText());
-        window.textBox(SnowflakeConfiguration.SNOWFLAKE_ACCOUNT).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_ACCOUNT"));
-        window.textBox(SnowflakeConfiguration.SNOWFLAKE_USER).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_USER"));
-        window.textBox(SnowflakeConfiguration.SNOWFLAKE_PASSWORD).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_PASSWORD"));
-        window.textBox(SnowflakeConfiguration.SNOWFLAKE_WAREHOUSE).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_WAREHOUSE"));
-        window.textBox(SnowflakeConfiguration.SNOWFLAKE_DATABASE).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_DATABASE"));
-        window.textBox(SnowflakeConfiguration.SNOWFLAKE_SCHEMA).setText(SnowflakeTestUtils.getenvOrFail("SNOWFLAKE_WR_TEST_SCHEMA"));
+        window.textBox(SnowflakeConfiguration.SNOWFLAKE_ACCOUNT).setText(SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_ACCOUNT"));
+        window.textBox(SnowflakeConfiguration.SNOWFLAKE_USER).setText(SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_USER"));
+        window.textBox(SnowflakeConfiguration.SNOWFLAKE_PASSWORD).setText(SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_PASSWORD"));
+        window.textBox(SnowflakeConfiguration.SNOWFLAKE_WAREHOUSE).setText(SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_WAREHOUSE"));
+        window.textBox(SnowflakeConfiguration.SNOWFLAKE_DATABASE).setText(SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_DATABASE"));
+        window.textBox(SnowflakeConfiguration.SNOWFLAKE_SCHEMA).setText(SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_SCHEMA"));
 
         // use the "Test connection" button
         window.button(WhiteRabbitMain.LABEL_TEST_CONNECTION).click();
