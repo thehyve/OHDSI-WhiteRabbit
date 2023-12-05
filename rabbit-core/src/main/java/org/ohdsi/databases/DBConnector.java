@@ -18,8 +18,10 @@
 package org.ohdsi.databases;
 
 import java.sql.Connection;
+import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Enumeration;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -28,9 +30,6 @@ import org.ohdsi.databases.configuration.DbSettings;
 import org.ohdsi.databases.configuration.DbType;
 
 public class DBConnector {
-
-	public static void main(String[] args) {
-	}
 
 	public static DBConnection connect(DbSettings dbSettings, boolean verbose) {
 		if (dbSettings.dbType.supportsDBConnectorInterface()) {
@@ -259,6 +258,46 @@ public class DBConnector {
 			return DriverManager.getConnection(url);
 		} catch (SQLException e1) {
 			throw new RuntimeException("Simba URL failed: Cannot connect to DB server: " + e1.getMessage());
+		}
+	}
+
+	/*
+	 * main() can be run to verify that all configured JDBC drivers are loadable
+	 */
+	public static void main(String[] args) {
+		verifyDrivers();
+	}
+
+	public static final String ALL_JDBC_DRIVERS_LOADABLE = "All configured JDBC drivers could be loaded.";
+	static void verifyDrivers() {
+		// verify that a JDBC driver that is not included/supported cannot be loaded
+		String notSupportedDriver = "org.sqlite.JDBC"; // change this if WhiteRabbit starts supporting SQLite
+		if (DbType.driverNames().contains(notSupportedDriver)) {
+			throw new RuntimeException("Cannot run this test for a supported driver.");
+		}
+		try {
+			testJDBCDriverAndVersion(notSupportedDriver);
+			throw new RuntimeException(String.format("JDBC driver was not expected to be loaded: %s", notSupportedDriver));
+		} catch (ClassNotFoundException ignored) {}
+
+		DbType.driverNames().forEach(driver -> {
+			try {
+				testJDBCDriverAndVersion(driver);
+			} catch (ClassNotFoundException e) {
+				throw new RuntimeException(String.format("JDBC driver class could not be loaded: %s", driver));
+			}
+		});
+		System.out.println(ALL_JDBC_DRIVERS_LOADABLE);
+	}
+
+	static void testJDBCDriverAndVersion(String driverName) throws ClassNotFoundException {
+		Enumeration<Driver> drivers = DriverManager.getDrivers();
+		while (drivers.hasMoreElements()) {
+			Driver driver = drivers.nextElement();
+			Class<?> driverClass = Class.forName(driverName);
+			if (driver.getClass().isAssignableFrom(driverClass)) {
+				int ignoredMajorVersion = driver.getMajorVersion();
+			}
 		}
 	}
 }

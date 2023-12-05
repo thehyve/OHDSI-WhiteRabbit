@@ -17,9 +17,12 @@
  ******************************************************************************/
 package org.ohdsi.databases.configuration;
 
+import org.apache.commons.lang.StringUtils;
 import org.ohdsi.databases.DBConnectionInterface;
 import org.ohdsi.databases.SnowflakeConnection;
 
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public enum DbType {
@@ -28,29 +31,31 @@ public enum DbType {
 	 * is applied (see constructor and the normalizedName() method). This is enforced when the enum values are constructed,
 	 * and a violation of this rule will result in a DBConfigurationException being thrown.
 	 */
-	DELIMITED_TEXT_FILES("Delimited text files"),
-	MYSQL("MySQL"),
-	ORACLE("Oracle"),
-	SQL_SERVER("SQL Server"),
-	POSTGRESQL("PostgreSQL"),
-	MS_ACCESS("MS Access"),
-	PDW("PDW"),
-	REDSHIFT("Redshift"),
-	TERADATA("Teradata"),
-	BIGQUERY("BigQuery"),
-	AZURE("Azure"),
-	SNOWFLAKE("Snowflake", SnowflakeConnection.INSTANCE),
-	SAS7BDAT("Sas7bdat");
+	DELIMITED_TEXT_FILES("Delimited text files", null),
+	MYSQL("MySQL", "com.mysql.cj.jdbc.Driver"),
+	ORACLE("Oracle", "oracle.jdbc.driver.OracleDriver"),
+	SQL_SERVER("SQL Server", "com.microsoft.sqlserver.jdbc.SQLServerDriver"),
+	POSTGRESQL("PostgreSQL", "org.postgresql.Driver"),
+	MS_ACCESS("MS Access", "net.ucanaccess.jdbc.UcanaccessDriver"),
+	PDW("PDW", "com.microsoft.sqlserver.jdbc.SQLServerDriver"),
+	REDSHIFT("Redshift", "com.amazon.redshift.jdbc42.Driver"),
+	TERADATA("Teradata", "com.teradata.jdbc.TeraDriver"),
+	BIGQUERY("BigQuery", "com.simba.googlebigquery.jdbc42.Driver"),
+	AZURE("Azure", "com.microsoft.sqlserver.jdbc.SQLServerDriver"),
+	SNOWFLAKE("Snowflake", "net.snowflake.client.jdbc.SnowflakeDriver", SnowflakeConnection.INSTANCE),
+	SAS7BDAT("Sas7bdat", null);
 
 	private final String label;
+	private final String driverName;
 	private final DBConnectionInterface implementingClass;
 
-	DbType(String type) {
-		this(type, null);
+	DbType(String type, String driverName) {
+		this(type, driverName, null);
 	}
 
-	DbType(String label, DBConnectionInterface implementingClass) {
+	DbType(String label, String driverName, DBConnectionInterface implementingClass) {
 		this.label = label;
+		this.driverName = driverName;
 		this.implementingClass = implementingClass;
 		if (!this.name().equals(normalizedName(label))) {
 			throw new DBConfigurationException(String.format(
@@ -95,8 +100,17 @@ public enum DbType {
 				.map(DbType::label).toArray(String[]::new);
 	}
 
+	public static List<String> driverNames() {
+		// return a list of unique names, without null values
+		return Stream.of(values()).filter(v -> StringUtils.isNotEmpty(v.driverName)).map(d -> d.driverName).distinct().collect(Collectors.toList());
+	}
+
 	public String label() {
 		return this.label;
+	}
+
+	public String driverName() {
+		return this.driverName;
 	}
 
 	private static String normalizedName(String name) {

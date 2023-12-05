@@ -25,6 +25,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.runners.Parameterized;
+import org.ohdsi.databases.DBConnector;
 import org.ohdsi.databases.SnowflakeTestUtils;
 import org.ohdsi.databases.configuration.DbType;
 import org.ohdsi.utilities.files.IniFile;
@@ -77,6 +78,23 @@ public class VerifyDistributionIT {
     }
 
     @Test
+    void verifyAllJDBCDriversLoadable() throws IOException, InterruptedException {
+        try (GenericContainer<?> javaContainer = createJavaContainer("eclipse-temurin:11")) {
+            javaContainer.start();
+            ExecResult execResult = javaContainer.execInContainer("sh", "-c",
+                    String.format("cd %s/repo; java -classpath '*' org.ohdsi.databases.DBConnector", APPDIR_IN_CONTAINER));
+            if (execResult.getExitCode() != 0) {
+                System.out.println("stdout:" + execResult.getStdout());
+                System.out.println("stderr:" + execResult.getStderr());
+            }
+            assertTrue(execResult.getStdout().contains(DBConnector.ALL_JDBC_DRIVERS_LOADABLE), "Not all supported JDBC drivers could be loaded");
+            javaContainer.execInContainer("sh", "-c", "rm /app/repo/snowflake*"); // sabotage, confirms that test breaks if driver missing
+            execResult = javaContainer.execInContainer("sh", "-c",
+                    String.format("cd %s/repo; java -classpath '*' org.ohdsi.databases.DBConnector", APPDIR_IN_CONTAINER));
+            assertFalse(execResult.getStdout().contains(DBConnector.ALL_JDBC_DRIVERS_LOADABLE), "Not all supported JDBC drivers could be loaded");
+        }
+    }
+    //@Test // has been used while developing, leaving in place to test again after Snowflake JDBC driver update
     void verifySnowflakeFailureInJava17() throws IOException, URISyntaxException, InterruptedException {
         /*
          * There is an issue with Snowflake JDBC that causes a failure in Java 16 and later
