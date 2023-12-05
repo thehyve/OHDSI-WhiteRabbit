@@ -66,34 +66,16 @@
             <groupId>org.apache.poi</groupId>
             <artifactId>poi</artifactId>
             <version>${apache-poi-version}</version>
-            <!-- exclusions>
-                <exclusion>
-                    <groupId>org.apache.ant</groupId>
-                    <artifactId>ant</artifactId>
-                </exclusion>
-            </exclusions -->
         </dependency>
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
             <version>${apache-poi-version}</version>
-            <!-- exclusions>
-                <exclusion>
-                    <groupId>org.apache.commons</groupId>
-                    <artifactId>commons-compress</artifactId>
-                </exclusion>
-            </exclusions -->
         </dependency>
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-excelant</artifactId>
             <version>${apache-poi-version}</version>
-            <!-- exclusions>
-                <exclusion>
-                    <groupId>org.apache.ant</groupId>
-                    <artifactId>ant</artifactId>
-                </exclusion>
-            </exclusions -->
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml-lite -->
         <dependency>
@@ -101,11 +83,6 @@
             <artifactId>poi-ooxml-lite</artifactId>
             <version>${apache-poi-version}</version>
         </dependency>
-        <!-- dependency>
-            <groupId>org.apache.poi</groupId>
-            <artifactId>poi-ooxml-schemas</artifactId>
-	    <version>4.1.2</version>
-        </dependency -->
         <!-- Note: Apache xmlbeans v4.x and v5.x is incompatible with Apache poi v4-->
         <dependency>
             <groupId>org.apache.xmlbeans</groupId>
@@ -285,11 +262,6 @@
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient -->
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.5.14</version>
-        </dependency>
         <dependency>
             <groupId>net.snowflake</groupId>
             <artifactId>snowflake-jdbc</artifactId>
