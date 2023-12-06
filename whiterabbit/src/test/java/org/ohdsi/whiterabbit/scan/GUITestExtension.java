@@ -37,10 +37,10 @@ import static org.assertj.swing.junit.runner.Formatter.testNameFrom;
  * @author William Bakker
  */
 public class GUITestExtension implements Extension, InvocationInterceptor {
-    private final FailureScreenshotTaker screenshotTaker;
+    //private final FailureScreenshotTaker screenshotTaker;
 
     public GUITestExtension() {
-        screenshotTaker = new FailureScreenshotTaker(new ImageFolderCreator().createImageFolder());
+        //screenshotTaker = new FailureScreenshotTaker(new ImageFolderCreator().createImageFolder());
     }
 
     @Override
@@ -52,7 +52,7 @@ public class GUITestExtension implements Extension, InvocationInterceptor {
         try {
             invocation.proceed();
         } catch (Throwable t) {
-            takeScreenshot(invocationContext.getExecutable());
+            //takeScreenshot(invocationContext.getExecutable());
             throw t;
         }
     }
@@ -61,6 +61,6 @@ public class GUITestExtension implements Extension, InvocationInterceptor {
         final Class<?> testClass = method.getDeclaringClass();
         if (!(isGUITest(testClass, method)))
             return;
-        screenshotTaker.saveScreenshot(testNameFrom(testClass, method));
+        //screenshotTaker.saveScreenshot(testNameFrom(testClass, method));
     }
 }
