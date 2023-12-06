@@ -94,7 +94,8 @@ public class VerifyDistributionIT {
             assertFalse(execResult.getStdout().contains(DBConnector.ALL_JDBC_DRIVERS_LOADABLE), "Not all supported JDBC drivers could be loaded");
         }
     }
-    //@Test // has been used while developing, leaving in place to test again after Snowflake JDBC driver update
+
+    //@Test // useful while developing/debugging, leaving in place to test again after Snowflake JDBC driver update
     void verifySnowflakeFailureInJava17() throws IOException, URISyntaxException, InterruptedException {
         /*
          * There is an issue with Snowflake JDBC that causes a failure in Java 16 and later

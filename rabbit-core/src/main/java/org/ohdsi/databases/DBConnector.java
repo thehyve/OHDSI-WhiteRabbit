@@ -32,6 +32,7 @@ import org.ohdsi.databases.configuration.DbType;
 public class DBConnector {
 
 	public static DBConnection connect(DbSettings dbSettings, boolean verbose) {
+		assert dbSettings.dbType != null;
 		if (dbSettings.dbType.supportsDBConnectorInterface()) {
 			return new DBConnection(dbSettings.dbType.getDbConnectorInterface().getInstance(dbSettings), dbSettings.dbType, verbose);
 		} else {

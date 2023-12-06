@@ -24,6 +24,7 @@ import java.io.PrintStream;
 import java.util.*;
 
 public class DBConfiguration {
+    public static final String DATA_TYPE_FIELD = "DATA_TYPE";
     public static final String DELIMITER_FIELD = "DELIMITER";
     public static final String TABLES_TO_SCAN_FIELD = "TABLES_TO_SCAN";
     public static final String SCAN_FIELD_VALUES_FIELD = "SCAN_FIELD_VALUES";
@@ -103,7 +104,7 @@ public class DBConfiguration {
         return iniFile;
     }
 
-    public DbSettings toDbSettings() {
+    public DbSettings toDbSettings(ValidationFeedback feedback) {
         throw new DBConfigurationException("Should be implemented by inheriting classes");
     }
 

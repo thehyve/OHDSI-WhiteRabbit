@@ -104,7 +104,7 @@ class SourceDataScanPostgreSQLGuiIT {
         DialogFixture frame = WindowFinder.findDialog(matcher).using(window.robot());
         frame.button().click();
 
-        // switch to the scan pannel, add all tables found and run the scan
+        // switch to the scan panel, add all tables found and run the scan
         window.tabbedPane(WhiteRabbitMain.NAME_TABBED_PANE).selectTab(WhiteRabbitMain.LABEL_SCAN).click();
         window.button(WhiteRabbitMain.LABEL_ADD_ALL_IN_DB).click();
         window.button(WhiteRabbitMain.LABEL_SCAN_TABLES).click();

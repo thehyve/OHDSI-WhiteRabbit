@@ -21,6 +21,10 @@ import org.apache.commons.lang.StringUtils;
 
 import java.io.PrintStream;
 import java.sql.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.ohdsi.databases.configuration.*;
 import org.ohdsi.utilities.collections.Pair;
 import org.ohdsi.utilities.files.IniFile;
@@ -69,16 +73,11 @@ public enum SnowflakeConnection implements DBConnectionInterface {
         return INSTANCE;
     }
 
-    public static Pair<SnowflakeConfiguration, DbSettings> getConfiguration(IniFile iniFile, PrintStream stream) {
+    public static Pair<SnowflakeConfiguration, DbSettings> getConfiguration(IniFile iniFile, ValidationFeedback feedback) {
         SnowflakeConfiguration configuration = new SnowflakeConfiguration();
-        ValidationFeedback feedBack = configuration.loadAndValidateConfiguration(iniFile);
-
-        if (feedBack.hasErrors()) {
-            throw new DBConfigurationException(String.format("There are errors in the configuration:%n\t%s", String.join("\n\t", feedBack.getErrors().keySet())));
-        }
-
-        if (feedBack.hasWarnings() && stream != null) {
-            stream.printf("The validation of the configuration generated warnings:%n\t%s", String.join("\n\t", feedBack.getWarnings().keySet()));
+        ValidationFeedback currentFeedback = configuration.loadAndValidateConfiguration(iniFile);
+        if (feedback != null) {
+            feedback.add(currentFeedback);
         }
 
         String warehouse = configuration.getValue(SNOWFLAKE_WAREHOUSE);
@@ -164,6 +163,7 @@ public enum SnowflakeConnection implements DBConnectionInterface {
         public static final String SNOWFLAKE_SCHEMA = "SNOWFLAKE_SCHEMA";
         public static final String ERROR_MUST_SET_PASSWORD_OR_AUTHENTICATOR = "Either password or authenticator must be specified for Snowflake";
         public static final String ERROR_MUST_NOT_SET_PASSWORD_AND_AUTHENTICATOR = "Specify only one of password or authenticator Snowflake";
+        public static final String ERROR_VALUE_CAN_ONLY_BE_ONE_OF = "Error can only be one of ";
         public SnowflakeConfiguration() {
             super(
                 ConfigurationField.create(
@@ -199,6 +199,22 @@ public enum SnowflakeConnection implements DBConnectionInterface {
                         SNOWFLAKE_AUTHENTICATOR,
                         "Authenticator method",
                         "Snowflake JDBC authenticator method (only 'externalbrowser' is currently supported)")
+                        .addValidator(new FieldValidator() {
+                            private final List<String> allowedValues = Arrays.asList("externalbrowser");
+                            @Override
+                            public ValidationFeedback validate(ConfigurationField field) {
+                                ValidationFeedback feedback = new ValidationFeedback();
+                                if (StringUtils.isNotEmpty(field.getValue())) {
+                                        if (!allowedValues.contains(field.getValue().toLowerCase())) {
+                                            feedback.addError(String.format("%s (%s)", ERROR_VALUE_CAN_ONLY_BE_ONE_OF,
+                                                    String.join(", ", allowedValues)), field);
+                                        } else {
+                                            field.setValue(field.getValue().toLowerCase());
+                                        }
+                                }
+                                return feedback;
+                            }
+                        })
             );
             this.configurationFields.addValidator(new PasswordXORAuthenticatorValidator());
         }
@@ -222,8 +238,8 @@ public enum SnowflakeConnection implements DBConnectionInterface {
             }
         }
         @Override
-        public DbSettings toDbSettings() {
-            return getConfiguration(this.toIniFile(),null ).getItem2();
+        public DbSettings toDbSettings(ValidationFeedback feedback) {
+            return getConfiguration(this.toIniFile(),feedback ).getItem2();
         }
 
     }

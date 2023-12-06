@@ -144,17 +144,16 @@ public class LocationsPanel extends JPanel {
         // remove existing DB related fields in sourcePanel
         sourcePanel.clear();
 
-        DbType dbType = DbType.getDbType(selectedSourceType);
-        if (dbType.supportsDBConnectorInterface()) {
-            this.currentDbType = dbType;
+       currentDbType = DbType.getDbType(selectedSourceType);
+        if (currentDbType.supportsDBConnectorInterface()) {
             createDatabaseFields();
         } else {
-            this.currentDbType = null;
             createDatabaseFields(selectedSourceType);
         }
         if (panelsManager.getAddAllButton() != null) {
             panelsManager.getAddAllButton().setEnabled(sourceIsDatabase(selectedSourceType));
         }
+        this.revalidate();
     }
 
     @FunctionalInterface

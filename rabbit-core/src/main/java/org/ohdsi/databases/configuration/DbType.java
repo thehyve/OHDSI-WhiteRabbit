@@ -87,7 +87,7 @@ public enum DbType {
 	}
 
 	public static DbType getDbType(String name) {
-		return DbType.valueOf(DbType.class, normalizedName(name));
+		return Enum.valueOf(DbType.class, normalizedName(name));
 	}
 
 	/**

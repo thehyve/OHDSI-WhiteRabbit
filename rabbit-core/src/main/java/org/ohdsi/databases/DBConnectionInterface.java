@@ -17,18 +17,17 @@
  ******************************************************************************/
 package org.ohdsi.databases;
 
-import org.ohdsi.databases.configuration.DBConfiguration;
-import org.ohdsi.databases.configuration.DBConfigurationException;
-import org.ohdsi.databases.configuration.DbSettings;
-import org.ohdsi.databases.configuration.DbType;
+import org.ohdsi.databases.configuration.*;
 import org.ohdsi.utilities.files.IniFile;
 import org.ohdsi.utilities.files.Row;
 
+import java.io.PrintStream;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * DBConnectionInterface defines the interface that a database connection class must implement.
@@ -195,8 +194,8 @@ public interface DBConnectionInterface {
     /**
      * @return the DbSettings object used to initialize the database connection
      */
-    default DbSettings getDbSettings() {
-        return getDBConfiguration().toDbSettings();
+    default DbSettings getDbSettings(ValidationFeedback feedback) {
+        return getDBConfiguration().toDbSettings(feedback);
     }
 
     /**
@@ -207,9 +206,24 @@ public interface DBConnectionInterface {
      *
      * @return DbSettings object
      */
-    default DbSettings getDbSettings(IniFile iniFile) {
-        getDBConfiguration().loadAndValidateConfiguration(iniFile);
-        return getDBConfiguration().toDbSettings();
+    default DbSettings getDbSettings(IniFile iniFile, ValidationFeedback feedback, PrintStream outStream) {
+        ValidationFeedback validationFeedback = getDBConfiguration().loadAndValidateConfiguration(iniFile);
+        if (feedback != null) {
+            feedback.add(validationFeedback);
+        }
+        if (outStream != null) {
+            if (validationFeedback.hasErrors()) {
+                outStream.println("There are errors for the configuration file:");
+                validationFeedback.getErrors().forEach((error, fields) ->
+                        outStream.printf("\t%s (%s)%n", error, fields.stream().map(f -> f.name).collect(Collectors.joining(","))));
+            }
+            if (validationFeedback.hasWarnings()) {
+                outStream.println("There are errors for the configuration file:");
+                validationFeedback.getWarnings().forEach((warning, fields) ->
+                        outStream.printf("\t%s (%s)%n", warning, fields.stream().map(f -> f.name).collect(Collectors.joining(","))));
+            }
+        }
+        return getDBConfiguration().toDbSettings(feedback);
     }
 
     /**

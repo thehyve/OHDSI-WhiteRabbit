@@ -36,6 +36,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.Vector;
 
 import javax.swing.*;
@@ -45,9 +46,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.io.output.TeeOutputStream;
 import org.ohdsi.databases.*;
-import org.ohdsi.databases.configuration.DbSettings;
-import org.ohdsi.databases.configuration.DbType;
-import org.ohdsi.databases.configuration.DBConfigurationException;
+import org.ohdsi.databases.configuration.*;
 import org.ohdsi.utilities.DirectoryUtilities;
 import org.ohdsi.utilities.StringUtilities;
 import org.ohdsi.utilities.Version;
@@ -78,6 +77,9 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 	public static final String LABEL_SCAN_TABLES = "Scan tables";
 
 	public static final String LABEL_ADD_ALL_IN_DB = "Add all in DB";
+
+	public static final String TITLE_ERRORS_IN_DATABASE_CONFIGURATION = "There are errors in the database configuration";
+	public static final String TITLE_WARNINGS_ABOUT_DATABASE_CONFIGURATION = "There are warnings about the database configuration";
 
 	private JFrame				frame;
 	private JTextField			scanReportFileField;
@@ -121,11 +123,8 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 		else {
 			frame = new JFrame("White Rabbit");
 
-			frame.addWindowListener(new WindowAdapter() {
-				public void windowClosing(WindowEvent e) {
-					System.exit(0);
-				}
-			});
+			frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+
 			frame.setLayout(new BorderLayout());
 			frame.setJMenuBar(createMenuBar());
 
@@ -162,16 +161,16 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 
 		DbType dbType = DbType.getDbType(iniFile.getDataType());
 		if (dbType.supportsDBConnectorInterface()) {
-			dbSettings = dbType.getDbConnectorInterface().getDbSettings(iniFile);
+			dbSettings = dbType.getDbConnectorInterface().getDbSettings(iniFile, null, System.out);
 		} else {
 			dbSettings = new DbSettings();
-			if (iniFile.get("DATA_TYPE").equalsIgnoreCase(DELIMITED_TEXT_FILES)) {
+			if (iniFile.get(DBConfiguration.DATA_TYPE_FIELD).equalsIgnoreCase(DELIMITED_TEXT_FILES)) {
 				dbSettings.sourceType = DbSettings.SourceType.CSV_FILES;
 				if (iniFile.get("DELIMITER").equalsIgnoreCase("tab"))
 					dbSettings.delimiter = '\t';
 				else
 					dbSettings.delimiter = iniFile.get("DELIMITER").charAt(0);
-			} else if (iniFile.get("DATA_TYPE").equalsIgnoreCase(DbType.SAS7BDAT.label())) {
+			} else if (iniFile.get(DBConfiguration.DATA_TYPE_FIELD).equalsIgnoreCase(DbType.SAS7BDAT.label())) {
 				dbSettings.sourceType = DbSettings.SourceType.SAS_FILES;
 			} else {
 				dbSettings.sourceType = DbSettings.SourceType.DATABASE;
@@ -179,16 +178,8 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 				dbSettings.password = iniFile.get("PASSWORD");
 				dbSettings.server = iniFile.get("SERVER_LOCATION");
 				dbSettings.database = iniFile.get("DATABASE_NAME");
-				if (iniFile.get("DATA_TYPE").equalsIgnoreCase("MySQL"))
-					dbSettings.dbType = DbType.MYSQL;
-				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Oracle"))
-					dbSettings.dbType = DbType.ORACLE;
-				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("PostgreSQL"))
-					dbSettings.dbType = DbType.POSTGRESQL;
-				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Redshift"))
-					dbSettings.dbType = DbType.REDSHIFT;
-				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("SQL Server")) {
-					dbSettings.dbType = DbType.SQL_SERVER;
+				dbSettings.dbType = dbType;
+				if (dbType == DbType.SQL_SERVER) {
 					if (!iniFile.get("USER_NAME").isEmpty()) { // Not using windows authentication
 						String[] parts = iniFile.get("USER_NAME").split("/");
 						if (parts.length == 2) {
@@ -196,8 +187,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 							dbSettings.domain = parts[0];
 						}
 					}
-				} else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Azure")) {
-					dbSettings.dbType = DbType.AZURE;
+				} else if (dbType == DbType.AZURE) {
 					if (!iniFile.get("USER_NAME").isEmpty()) { // Not using windows authentication
 						String[] parts = iniFile.get("USER_NAME").split("/");
 						if (parts.length == 2) {
@@ -205,8 +195,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 							dbSettings.domain = parts[0];
 						}
 					}
-				} else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("PDW")) {
-					dbSettings.dbType = DbType.PDW;
+				} else if (dbType == DbType.PDW) {
 					if (!iniFile.get("USER_NAME").isEmpty()) { // Not using windows authentication
 						String[] parts = iniFile.get("USER_NAME").split("/");
 						if (parts.length == 2) {
@@ -214,12 +203,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 							dbSettings.domain = parts[0];
 						}
 					}
-				} else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("MS Access"))
-					dbSettings.dbType = DbType.MS_ACCESS;
-				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Teradata"))
-					dbSettings.dbType = DbType.TERADATA;
-				else if (iniFile.get("DATA_TYPE").equalsIgnoreCase("BigQuery")) {
-					dbSettings.dbType = DbType.BIGQUERY;
+				} else if (dbType == DbType.BIGQUERY) {
 					/* GBQ requires database. Putting database into domain var for connect() */
 					dbSettings.domain = dbSettings.database;
 				}
@@ -556,7 +540,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 		testConnectionButton.setToolTipText("Test the connection");
 		testConnectionButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				testConnection(getTargetDbSettings());
+				testConnection(getTargetDbSettings(), null);
 			}
 		});
 		componentsToDisableWhenRunning.add(testConnectionButton);
@@ -655,7 +639,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 	}
 
 	private void addAllTables() {
-		DbSettings dbSettings = getSourceDbSettings();
+		DbSettings dbSettings = getSourceDbSettings(null);
 		if (dbSettings != null) {
 			RichConnection connection = new RichConnection(dbSettings);
 			for (String table : connection.getTableNames(dbSettings.database)) {
@@ -668,7 +652,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 	}
 
 	private void pickTables() {
-		DbSettings sourceDbSettings = getSourceDbSettings();
+		DbSettings sourceDbSettings = getSourceDbSettings(null);
 		if (sourceDbSettings != null) {
 			if (sourceDbSettings.sourceType == DbSettings.SourceType.CSV_FILES || sourceDbSettings.sourceType == DbSettings.SourceType.SAS_FILES) {
 				JFileChooser fileChooser = getjFileChooser(sourceDbSettings, locationsPanel);
@@ -718,88 +702,77 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 		return fileChooser;
 	}
 
-	private DbSettings getSourceDbSettings() {
-		DbType dbChoice = locationsPanel.getCurrentDbChoice();
-		if (dbChoice != null && dbChoice.supportsDBConnectorInterface()) {
-			return locationsPanel.getCurrentDbChoice().getDbConnectorInterface().getDbSettings();
-		} else {
-			String sourceDelimiterField = locationsPanel.getSourceDelimiterField().getText();
-			String sourceType = locationsPanel.getSelectedSourceType();
-			DbSettings dbSettings = new DbSettings();
-			if (sourceType.equals(DbType.DELIMITED_TEXT_FILES.label())) {
-				dbSettings.dbType = DbType.DELIMITED_TEXT_FILES;
-				dbSettings.sourceType = DbSettings.SourceType.CSV_FILES;
-				if (sourceDelimiterField.isEmpty()) {
-					JOptionPane.showMessageDialog(frame, "Delimiter field cannot be empty for source database", "Error connecting to server",
-							JOptionPane.ERROR_MESSAGE);
-					return null;
-				}
-				if (sourceDelimiterField.equalsIgnoreCase("tab"))
-					dbSettings.delimiter = '\t';
-				else
-					dbSettings.delimiter = locationsPanel.getSourceDelimiterField().getText().charAt(0);
-			} else if (sourceType.equalsIgnoreCase(DbType.SAS7BDAT.label())) {
-				dbSettings.sourceType = DbSettings.SourceType.SAS_FILES;
-				dbSettings.dbType = DbType.SAS7BDAT;
-			} else {
-				dbSettings.sourceType = DbSettings.SourceType.DATABASE;
-				dbSettings.user = locationsPanel.getSourceUserField();
-				dbSettings.password = locationsPanel.getSourcePasswordField();
-				dbSettings.server = locationsPanel.getSourceServerField();
-				String sourceDatabaseField = locationsPanel.getSourceDatabaseField();
-				dbSettings.database = sourceDatabaseField.trim().isEmpty() ? null : sourceDatabaseField;
-				// TODO simplify?
-				if (sourceType.equals(DbType.MYSQL.label()))
-					dbSettings.dbType = DbType.MYSQL;
-				else if (sourceType.equals(DbType.ORACLE.label()))
-					dbSettings.dbType = DbType.ORACLE;
-				else if (sourceType.equals(DbType.POSTGRESQL.label()))
-					dbSettings.dbType = DbType.POSTGRESQL;
-				else if (sourceType.equals(DbType.BIGQUERY.label()))
-					dbSettings.dbType = DbType.BIGQUERY;
-				else if (sourceType.equals(DbType.REDSHIFT.label()))
-					dbSettings.dbType = DbType.REDSHIFT;
-				else if (sourceType.equals(DbType.SQL_SERVER.label())) {
-					dbSettings.dbType = DbType.SQL_SERVER;
-					if (!dbSettings.user.isEmpty()) { // Not using windows authentication
-						String[] parts = dbSettings.user.split("/");
-						if (parts.length == 2) {
-							dbSettings.user = parts[1];
-							dbSettings.domain = parts[0];
-						}
-					}
-				} else if (sourceType.equals(DbType.PDW.label())) {
-					dbSettings.dbType = DbType.PDW;
-					if (!dbSettings.user.isEmpty()) { // Not using windows authentication
-						String[] parts = dbSettings.user.split("/");
-						if (parts.length == 2) {
-							dbSettings.user = parts[1];
-							dbSettings.domain = parts[0];
-						}
-					}
-				} else if (sourceType.equals(DbType.MS_ACCESS.label()))
-					dbSettings.dbType = DbType.MS_ACCESS;
-				else if (sourceType.equals(DbType.TERADATA.label()))
-					dbSettings.dbType = DbType.TERADATA;
-				else if (sourceType.equals(DbType.AZURE.label())) {
-					dbSettings.dbType = DbType.AZURE;
-					dbSettings.database = "";
-				}
-			}
+	private DbSettings getSourceDbSettings(ValidationFeedback feedback) {
+        DbType dbChoice = locationsPanel.getCurrentDbChoice();
+        DbSettings dbSettings;
+        if (dbChoice != null && dbChoice.supportsDBConnectorInterface()) {
+            dbSettings = locationsPanel.getCurrentDbChoice().getDbConnectorInterface().getDbSettings(feedback);
 			return dbSettings;
-		}
-	}
+        } else {
+            String sourceDelimiterField = locationsPanel.getSourceDelimiterField().getText();
+            String sourceType = locationsPanel.getSelectedSourceType();
+            dbSettings = new DbSettings();
+            if (sourceType.equals(DbType.DELIMITED_TEXT_FILES.label())) {
+                dbSettings.dbType = DbType.DELIMITED_TEXT_FILES;
+                dbSettings.sourceType = DbSettings.SourceType.CSV_FILES;
+                if (sourceDelimiterField.isEmpty()) {
+                    JOptionPane.showMessageDialog(frame, "Delimiter field cannot be empty for source database", "Error connecting to server",
+                            JOptionPane.ERROR_MESSAGE);
+                    return null;
+                }
+                if (sourceDelimiterField.equalsIgnoreCase("tab"))
+                    dbSettings.delimiter = '\t';
+                else
+                    dbSettings.delimiter = locationsPanel.getSourceDelimiterField().getText().charAt(0);
+            } else if (sourceType.equalsIgnoreCase(DbType.SAS7BDAT.label())) {
+                dbSettings.sourceType = DbSettings.SourceType.SAS_FILES;
+                dbSettings.dbType = DbType.SAS7BDAT;
+            } else {
+                dbSettings.sourceType = DbSettings.SourceType.DATABASE;
+                dbSettings.user = locationsPanel.getSourceUserField();
+                dbSettings.password = locationsPanel.getSourcePasswordField();
+                dbSettings.server = locationsPanel.getSourceServerField();
+                String sourceDatabaseField = locationsPanel.getSourceDatabaseField();
+                dbSettings.database = sourceDatabaseField.trim().isEmpty() ? null : sourceDatabaseField;
+				dbSettings.dbType = dbChoice;
+                if (dbChoice == DbType.SQL_SERVER) {
+                    if (!dbSettings.user.isEmpty()) { // Not using windows authentication
+                        String[] parts = dbSettings.user.split("/");
+                        if (parts.length == 2) {
+                            dbSettings.user = parts[1];
+                            dbSettings.domain = parts[0];
+                        }
+                    }
+                } else if (dbChoice == DbType.PDW) {
+					if (!dbSettings.user.isEmpty()) { // Not using windows authentication
+						String[] parts = dbSettings.user.split("/");
+						if (parts.length == 2) {
+							dbSettings.user = parts[1];
+							dbSettings.domain = parts[0];
+						}
+					}
+				} else if (dbChoice == DbType.AZURE) {
+                    dbSettings.database = "";
+                }
+            }
+            return dbSettings;
+        }
+    }
 
 	public void runConnectionTest() {
-		DbSettings dbSettings = getSourceDbSettings();
+		ValidationFeedback feedback = new ValidationFeedback();
+		DbSettings dbSettings = getSourceDbSettings(feedback);
 		if (dbSettings != null) {
-			testConnection(dbSettings);
+			testConnection(dbSettings, feedback);
 		} else {
 			throw new DBConfigurationException("Source database settings were not initialized");
 		}
 	}
 
-	private void testConnection(DbSettings dbSettings) {
+	private void testConnection(DbSettings dbSettings, ValidationFeedback feedback) {
+		if (feedbackBlocksContinuation(feedback)) {
+			return;
+		}
 		String folder = locationsPanel.getFolderField().getText();
 		if (dbSettings.sourceType == DbSettings.SourceType.CSV_FILES || dbSettings.sourceType == DbSettings.SourceType.SAS_FILES) {
 			if (new File(folder).exists()) {
@@ -843,6 +816,49 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 			String message = "Successfully connected to " + dbSettings.database + " on server " + dbSettings.server;
 			JOptionPane.showMessageDialog(frame, StringUtilities.wordWrap(message, 80), LABEL_CONNECTION_SUCCESSFUL, JOptionPane.INFORMATION_MESSAGE);
 		}
+	}
+
+	private boolean feedbackBlocksContinuation(ValidationFeedback feedback) {
+		if (feedback == null || (!feedback.hasWarnings() && !feedback.hasErrors())) {
+			return false;
+		} else {
+			if (feedback.hasErrors()) {
+				showFeedback(feedback);
+				return true;
+			}
+			if (feedback.hasWarnings()) {
+				showFeedback(feedback);
+				return false;
+			}
+		}
+		return false;
+	}
+
+	private void showFeedback(ValidationFeedback feedback) {
+		if (feedback == null) {
+			return;
+		}
+		String message = "";
+		String title = "";
+		int messageType = JOptionPane.INFORMATION_MESSAGE;
+		if (feedback.hasErrors()) {
+			title = TITLE_ERRORS_IN_DATABASE_CONFIGURATION;
+			message = createMessage(feedback.getErrors().keySet());
+			messageType = JOptionPane.ERROR_MESSAGE;
+		} else if (feedback.hasWarnings()) {
+			title = TITLE_WARNINGS_ABOUT_DATABASE_CONFIGURATION;
+			message = createMessage(feedback.getWarnings().keySet());
+			messageType = JOptionPane.WARNING_MESSAGE;
+		}
+		JOptionPane.showMessageDialog(ObjectExchange.frame, message, title, messageType);
+	}
+
+	private static String createMessage(Set<String> messages) {
+		StringBuilder messageBuilder = new StringBuilder();
+		for (String message : messages) {
+			messageBuilder.append(String.format("%s%n", message));
+		}
+		return messageBuilder.toString();
 	}
 
 	private DbSettings getTargetDbSettings() {
@@ -973,7 +989,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 			for (JComponent component : componentsToDisableWhenRunning)
 				component.setEnabled(false);
 			try {
-				DbSettings dbSettings = getSourceDbSettings();
+				DbSettings dbSettings = getSourceDbSettings(null);
 				if (dbSettings != null) {
 					for (String table : tables) {
 						if (dbSettings.sourceType == DbSettings.SourceType.CSV_FILES || dbSettings.sourceType == DbSettings.SourceType.SAS_FILES)

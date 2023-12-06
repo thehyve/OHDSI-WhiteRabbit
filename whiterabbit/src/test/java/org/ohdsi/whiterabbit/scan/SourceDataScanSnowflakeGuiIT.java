@@ -95,6 +95,19 @@ class SourceDataScanSnowflakeGuiIT {
         window.tabbedPane(WhiteRabbitMain.NAME_TABBED_PANE).selectTab(WhiteRabbitMain.LABEL_LOCATIONS);
         window.comboBox("SourceType").selectItem(DbType.SNOWFLAKE.label());
         window.textBox("FolderField").setText(tempDir.toAbsolutePath().toString());
+
+        // first use the test connection button, and expect a popup that informs us that several required fields are empty
+        // use the "Test connection" button
+        window.button(WhiteRabbitMain.LABEL_TEST_CONNECTION).click();
+        GenericTypeMatcher<JDialog> matcher = new GenericTypeMatcher<JDialog>(JDialog.class, true) {
+            protected boolean isMatching(JDialog frame) {
+                return WhiteRabbitMain.TITLE_ERRORS_IN_DATABASE_CONFIGURATION.equals(frame.getTitle());
+            }
+        };
+        DialogFixture frame = WindowFinder.findDialog(matcher).using(window.robot());
+        frame.button().click(); // close the popup
+
+        // fill in all the required values and try again
         assertEquals(SnowflakeConfiguration.TOOLTIP_SNOWFLAKE_ACCOUNT, window.textBox(SnowflakeConfiguration.SNOWFLAKE_ACCOUNT).target().getToolTipText());
         window.textBox(SnowflakeConfiguration.SNOWFLAKE_ACCOUNT).setText(SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_ACCOUNT"));
         window.textBox(SnowflakeConfiguration.SNOWFLAKE_USER).setText(SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_USER"));
@@ -105,12 +118,12 @@ class SourceDataScanSnowflakeGuiIT {
 
         // use the "Test connection" button
         window.button(WhiteRabbitMain.LABEL_TEST_CONNECTION).click();
-        GenericTypeMatcher<JDialog> matcher = new GenericTypeMatcher<JDialog>(JDialog.class, true) {
+        matcher = new GenericTypeMatcher<JDialog>(JDialog.class, true) {
             protected boolean isMatching(JDialog frame) {
                 return WhiteRabbitMain.LABEL_CONNECTION_SUCCESSFUL.equals(frame.getTitle());
             }
         };
-        DialogFixture frame = WindowFinder.findDialog(matcher).using(window.robot());
+        frame = WindowFinder.findDialog(matcher).using(window.robot());
         frame.button().click();
 
         // switch to the scan panel, add all tables found and run the scan
