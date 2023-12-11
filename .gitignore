@@ -17,3 +17,5 @@ Try*
 /examples/
 .DS_Store
 data/
+
+.java-version

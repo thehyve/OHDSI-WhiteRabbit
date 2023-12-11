@@ -23,7 +23,7 @@ import java.sql.SQLException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import oracle.jdbc.pool.OracleDataSource;
+//import oracle.jdbc.pool.OracleDataSource;
 import org.apache.tools.ant.types.selectors.SelectSelector;
 
 public class DBConnector {
@@ -37,8 +37,8 @@ public class DBConnector {
 			return DBConnector.connectToMySQL(server, user, password);
 		else if (dbType.equals(DbType.MSSQL) || dbType.equals(DbType.PDW) || dbType.equals(DbType.AZURE))
 			return DBConnector.connectToMSSQL(server, domain, user, password);
-		else if (dbType.equals(DbType.ORACLE))
-			return DBConnector.connectToOracle(server, domain, user, password);
+//		else if (dbType.equals(DbType.ORACLE))
+//			return DBConnector.connectToOracle(server, domain, user, password);
 		else if (dbType.equals(DbType.POSTGRESQL))
 			return DBConnector.connectToPostgreSQL(server, user, password);
 		else if (dbType.equals(DbType.MSACCESS))
@@ -131,23 +131,23 @@ public class DBConnector {
 		}
 	}
 
-	public static Connection connectToODBC(String server, String user, String password) {
-		try {
-			Class.forName("sun.jdbc.odbc.JdbcOdbcDriver");
-		} catch (ClassNotFoundException e1) {
-			throw new RuntimeException("Cannot find ODBC driver");
-		}
-
-		String url = "jdbc:odbc:" + server;
-
-		try {
-			Connection connection = DriverManager.getConnection(url, user, password);
-
-			return connection;
-		} catch (SQLException e1) {
-			throw new RuntimeException("Cannot connect to DB server: " + e1.getMessage());
-		}
-	}
+//	public static Connection connectToODBC(String server, String user, String password) {
+//		try {
+//			Class.forName("sun.jdbc.odbc.JdbcOdbcDriver");
+//		} catch (ClassNotFoundException e1) {
+//			throw new RuntimeException("Cannot find ODBC driver");
+//		}
+//
+//		String url = "jdbc:odbc:" + server;
+//
+//		try {
+//			Connection connection = DriverManager.getConnection(url, user, password);
+//
+//			return connection;
+//		} catch (SQLException e1) {
+//			throw new RuntimeException("Cannot connect to DB server: " + e1.getMessage());
+//		}
+//	}
 
 	/*
 	 * public static Connection connectToMSSQL(String server, String domain, String user, String password) { try {
@@ -177,51 +177,51 @@ public class DBConnector {
 		}
 	}
 
-	public static Connection connectToOracle(String server, String domain, String user, String password) {
-		try {
-			Class.forName("oracle.jdbc.driver.OracleDriver");
-		} catch (ClassNotFoundException e) {
-			throw new RuntimeException("Class not found exception: " + e.getMessage());
-		}
-		// First try OCI driver:
-		String error = null;
-		try {
-			OracleDataSource ods;
-			ods = new OracleDataSource();
-			ods.setURL("jdbc:oracle:oci8:@" + server);
-			ods.setUser(user);
-			ods.setPassword(password);
-			return ods.getConnection();
-		} catch (UnsatisfiedLinkError e) {
-			error = e.getMessage();
-		} catch (SQLException e) {
-			error = e.getMessage();
-		}
-		// If fails, try THIN driver:
-		if (error != null)
-			try {
-				String host = "127.0.0.1";
-				String sid = server;
-				String port = "1521";
-				if (server.contains("/")) {
-					host = server.split("/")[0];
-					if (host.contains(":")) {
-						port = host.split(":")[1];
-						host = host.split(":")[0];
-					}
-					sid = server.split("/")[1];
-				}
-				OracleDataSource ods;
-				ods = new OracleDataSource();
-				ods.setURL("jdbc:oracle:thin:@" + host + ":" + port + ":" + sid);
-				ods.setUser(user);
-				ods.setPassword(password);
-				return ods.getConnection();
-			} catch (SQLException e) {
-				throw new RuntimeException("Cannot connect to DB server:\n- When using OCI: " + error + "\n- When using THIN: " + e.getMessage());
-			}
-		return null;
-	}
+//	public static Connection connectToOracle(String server, String domain, String user, String password) {
+//		try {
+//			Class.forName("oracle.jdbc.driver.OracleDriver");
+//		} catch (ClassNotFoundException e) {
+//			throw new RuntimeException("Class not found exception: " + e.getMessage());
+//		}
+//		// First try OCI driver:
+//		String error = null;
+//		try {
+//			OracleDataSource ods;
+//			ods = new OracleDataSource();
+//			ods.setURL("jdbc:oracle:oci8:@" + server);
+//			ods.setUser(user);
+//			ods.setPassword(password);
+//			return ods.getConnection();
+//		} catch (UnsatisfiedLinkError e) {
+//			error = e.getMessage();
+//		} catch (SQLException e) {
+//			error = e.getMessage();
+//		}
+//		// If fails, try THIN driver:
+//		if (error != null)
+//			try {
+//				String host = "127.0.0.1";
+//				String sid = server;
+//				String port = "1521";
+//				if (server.contains("/")) {
+//					host = server.split("/")[0];
+//					if (host.contains(":")) {
+//						port = host.split(":")[1];
+//						host = host.split(":")[0];
+//					}
+//					sid = server.split("/")[1];
+//				}
+//				OracleDataSource ods;
+//				ods = new OracleDataSource();
+//				ods.setURL("jdbc:oracle:thin:@" + host + ":" + port + ":" + sid);
+//				ods.setUser(user);
+//				ods.setPassword(password);
+//				return ods.getConnection();
+//			} catch (SQLException e) {
+//				throw new RuntimeException("Cannot connect to DB server:\n- When using OCI: " + error + "\n- When using THIN: " + e.getMessage());
+//			}
+//		return null;
+//	}
 
 	public static Connection connectToBigQuery(String server, String domain, String user, String password) {
 		try {
