@@ -50,6 +50,7 @@ public class RichConnection implements Closeable {
 		this.dbType = dbType;
 	}
 
+	public RichConnection() {}
 	/**
 	 * Execute the given SQL statement.
 	 * 

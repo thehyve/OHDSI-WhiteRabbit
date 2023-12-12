@@ -148,7 +148,7 @@ public class WhiteRabbitMain implements ActionListener {
 		}
 	}
 
-	private void launchCommandLine(String iniFileName) {
+	public static String launchCommandLine(String iniFileName) {
 		IniFile iniFile = new IniFile(iniFileName);
 		DbSettings dbSettings = new DbSettings();
 		if (iniFile.get("DATA_TYPE").equalsIgnoreCase("Delimited text files")) {
@@ -265,7 +265,10 @@ public class WhiteRabbitMain implements ActionListener {
 		sourceDataScan.setMaxValues(maxValues);
 		sourceDataScan.setCalculateNumericStats(calculateNumericStats);
 		sourceDataScan.setNumStatsSamplerSize(numericStatsSamplerSize);
-		sourceDataScan.process(dbSettings, iniFile.get("WORKING_FOLDER") + "/ScanReport.xlsx");
+		String scanReportFile = iniFile.get("WORKING_FOLDER") + "/ScanReport.xlsx";
+		sourceDataScan.process(dbSettings, scanReportFile);
+
+		return scanReportFile;
 	}
 
 	private JComponent createTabsPanel() {

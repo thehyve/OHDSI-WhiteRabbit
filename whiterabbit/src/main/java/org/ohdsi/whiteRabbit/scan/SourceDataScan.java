@@ -57,11 +57,11 @@ public class SourceDataScan {
 	private SXSSFWorkbook workbook;
 	private char delimiter = ',';
 	private int sampleSize;
-	private boolean scanValues = false;
-	private boolean calculateNumericStats = false;
-	private int numStatsSamplerSize;
-	private int minCellCount;
-	private int maxValues;
+	private static boolean scanValues = false;
+	private static boolean calculateNumericStats = false;
+	private static int numStatsSamplerSize;
+	private static int minCellCount;
+	private static int maxValues;
 	private DbSettings.SourceType sourceType;
 	private DbType dbType;
 	private String database;
@@ -402,7 +402,11 @@ public class SourceDataScan {
 				queryResult = fetchRowsFromTable(connection, table, rowCount);
 				for (org.ohdsi.utilities.files.Row row : queryResult) {
 					for (FieldInfo fieldInfo : fieldInfos) {
-						fieldInfo.processValue(row.get(fieldInfo.name));
+						try {
+							fieldInfo.processValue(row.get(fieldInfo.name));
+						} catch (NullPointerException npe) {
+							System.out.printf("NPE while processing row %s, fieldInfo %s", row, fieldInfo);
+						}
 					}
 					actualCount++;
 					if (sampleSize != -1 && actualCount >= sampleSize) {
@@ -414,6 +418,7 @@ public class SourceDataScan {
 					fieldInfo.trim();
 			} catch (Exception e) {
 				System.out.println("Error: " + e.getMessage());
+				e.printStackTrace();
 			} finally {
 				if (queryResult != null) {
 					queryResult.close();
@@ -424,7 +429,7 @@ public class SourceDataScan {
 		return fieldInfos;
 	}
 
-	private QueryResult fetchRowsFromTable(RichConnection connection, String table, long rowCount) {
+	public QueryResult fetchRowsFromTable(RichConnection connection, String table, long rowCount) {
 		String query = null;
 
 		if (sampleSize == -1) {
@@ -461,7 +466,7 @@ public class SourceDataScan {
 
 	}
 
-	private List<FieldInfo> fetchTableStructure(RichConnection connection, String table) {
+	public List<FieldInfo> fetchTableStructure(RichConnection connection, String table) {
 		List<FieldInfo> fieldInfos = new ArrayList<>();
 
 		if (dbType == DbType.MSACCESS) {
@@ -607,7 +612,7 @@ public class SourceDataScan {
 		return fieldInfos;
 	}
 
-	private class FieldInfo {
+	public static class FieldInfo {
 		public String type;
 		public String name;
 		public String label;
@@ -646,7 +651,7 @@ public class SourceDataScan {
 			}
 
 			// Calculate numeric stats and dereference sampling reservoir to save memory.
-			if (calculateNumericStats) {
+			if (calculateNumericStats && samplingReservoir != null) {
 				average = getAverage();
 				stdev = getStandardDeviation();
 				minimum = getMinimum();
@@ -728,7 +733,7 @@ public class SourceDataScan {
 				this.trim();
 			}
 
-			if (calculateNumericStats && !trimValue.isEmpty()) {
+			if (calculateNumericStats && !trimValue.isEmpty() && samplingReservoir != null) {
 				if (isInteger || isReal) {
 					samplingReservoir.add(Double.parseDouble(trimValue));
 				} else if (isDate) {
@@ -740,6 +745,7 @@ public class SourceDataScan {
 
 		public List<Pair<String, Integer>> getSortedValuesWithoutSmallValues() {
 			List<Pair<String, Integer>> result = valueCounts.key2count.entrySet().stream()
+					.filter(e -> e.getValue().count >= minCellCount)
 					.filter(e -> e.getValue().count >= minCellCount)
 					.sorted(Comparator.<Map.Entry<String, Count>>comparingInt(e -> e.getValue().count).reversed())
 					.limit(maxValues)

@@ -36,11 +36,28 @@ public class IniFile {
 		}
 	}
 
+	public IniFile() {
+	}
+
 	public String get(String fieldName){
 		String value = settings.get(fieldName.toLowerCase());
 		if (value == null)
 			return "";
 		else
 			return value;
+	}
+
+	public void set(String fieldName, String value) {
+		settings.put(fieldName.trim().toLowerCase(), value);
+	}
+
+	public Map<String, String> getSettings() {
+		return settings;
+	}
+
+	public void unset(String fieldName) {
+		if (settings.containsKey(fieldName)) {
+			settings.remove(fieldName);
+		}
 	}
 }
