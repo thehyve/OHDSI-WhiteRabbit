@@ -1,11 +1,10 @@
 package org.ohdsi.whiteRabbit.scan;
 
+import org.apache.commons.math3.random.RandomDataGenerator;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -26,12 +25,17 @@ public class UniformSamplingReservoir {
     private double populationMaximum = Double.NEGATIVE_INFINITY;
     private transient int currentSampleLength;
 
+    private static RandomUtil.ThreadLocalRandomWrapper randomWrapper = null;
+
     /**
      * Create an empty reservoir.
      * @param maxSize maximum reservoir size.
      * @throws NullPointerException if given allValues are {@code null}
      */
     public UniformSamplingReservoir(int maxSize) {
+        if (randomWrapper == null) {
+            randomWrapper = new RandomUtil.ThreadLocalRandomWrapper();
+        }
         if (maxSize <= 0) {
             throw new IllegalArgumentException("Reservoir maximum size must be strictly positive");
         }
@@ -45,7 +49,7 @@ public class UniformSamplingReservoir {
     /** Add a sample to the reservoir. */
     public void add(double value) {
         if (currentSampleLength == maxSize) {
-            long removeIndex = ThreadLocalRandom.current().nextLong(populationCount);
+            long removeIndex = randomWrapper.nextLong(populationCount);
             if (removeIndex < maxSize) {
                 removeAndAdd((int)removeIndex, value);
             }
@@ -220,5 +224,42 @@ public class UniformSamplingReservoir {
         System.out.println(us.getPopulationMaximum());
         System.out.println(us.getSampleMean());
         System.out.println(us.getSampleStandardDeviation());
+    }
+
+    /**
+     * Production code uses type ThreadLocalRandom, which cannot be seeded. For test purposed, where repeatability is
+     * desirable, this can be set to a seeded behaviour, provided that RandomUtil.setSeed() is called before
+     * ThreadLocalRandomWrapper.nextLong() is called.
+     *
+     * Note: nextLong() will throw an ArithmeticException if it is called with an upperbound exceeding Integer.MAX_VALUE,
+     * and a seed was set.
+     */
+    public static class RandomUtil {
+        private static long seed = 0;   // 0 will give normal ThreadRandomLocal behaviour, to maintain the original implementation
+        private static final ThreadLocal<Random> RANDOM_THREAD_LOCAL = ThreadLocal.withInitial(Random::new);
+
+        public static class ThreadLocalRandomWrapper {
+            private ThreadLocalRandom threadLocalRandom = ThreadLocalRandom.current();
+            private RandomDataGenerator randomDataGenerator = new RandomDataGenerator();
+
+            public ThreadLocalRandomWrapper() {
+                if (seed != 0) {
+                    randomDataGenerator.reSeed(seed);
+                    System.err.printf("Initializing %s with seed %s, next value %s%n", ThreadLocalRandomWrapper.class.getCanonicalName(), RandomUtil.seed, this.nextLong(seed));
+                }
+            }
+
+            public long nextLong(long upperBound) {
+                if (seed == 0) {
+                    return threadLocalRandom.nextLong(upperBound);
+                } else {
+                    int checkedUpperBound = Math.toIntExact(upperBound); // causes an exception if upperBound > Integer.MAX_VALUE
+                    return randomDataGenerator.nextInt(0, checkedUpperBound);
+                }
+            }
+        }
+        public static void setSeed(long seed) {
+            RandomUtil.seed = seed;
+        }
     }
 }

@@ -14,6 +14,7 @@ import org.ohdsi.utilities.files.IniFile;
 import org.ohdsi.utilities.files.Row;
 import org.ohdsi.databases.RichConnection;
 import org.ohdsi.whiteRabbit.scan.SourceDataScan;
+import org.ohdsi.whiteRabbit.scan.UniformSamplingReservoir;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
@@ -46,8 +47,10 @@ public class TestWhiteRabbitMain extends RichConnection /* so that we can extend
     public static final String CALCULATE_NUMERIC_STATS_FIELD = "CALCULATE_NUMERIC_STATS";
     public static final String NUMERIC_STATS_SAMPLER_SIZE_FIELD = "NUMERIC_STATS_SAMPLER_SIZE";
     public static final long PROGRESS_INTERVAL = 10_000_000;
-    public static final long XSAMPLES = Integer.MAX_VALUE;
+    public static final long XSAMPLES = 100_000_000;
     public static final long BOUND = Integer.MAX_VALUE;
+    public static final long RANDOM_SEED = 556365;
+    public static final boolean CALC_STATS = true;
 
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -59,15 +62,18 @@ public class TestWhiteRabbitMain extends RichConnection /* so that we can extend
         setupMockedRichConnection();
         setupSpiedSourceDataScan(XSAMPLES, BOUND);
 
+        UniformSamplingReservoir.RandomUtil.setSeed(RANDOM_SEED);
+
         Path scanReportPath = Paths.get(tempDir.toFile().getAbsolutePath(), "ScanReport.xlsx");
         Path iniFilePath = Paths.get(tempDir.toFile().getAbsolutePath(), "LargeScan.ini");
         IniFile iniFile = createIniFileForTest(tempDir);
         writeIniFile(iniFile, iniFilePath);
         String reportFilePath = WhiteRabbitMain.launchCommandLine(iniFilePath.toString());
         assertNotNull(reportFilePath);
-        Path testScanResult = Paths.get(String.format("/var/tmp/ScanReport-v0.10.7-%s-%s.xlsx", XSAMPLES, BOUND));
+        Path testScanResult = Paths.get(
+                String.format("/var/tmp/ScanReport-v0.10.7-%s-%s%s%s.xlsx",
+                        XSAMPLES, BOUND, CALC_STATS ? "-stats": "", RANDOM_SEED == 0 ? "" : "-seed-" + RANDOM_SEED));
         Files.copy(scanReportPath, testScanResult, StandardCopyOption.REPLACE_EXISTING);
-        addIniFileToXLSX(iniFile, testScanResult);
         System.out.println("Result copied to: " + testScanResult);
 
         //assertTrue(ScanTestUtils.scanResultsSheetMatchesReference(tempDir.resolve("ScanReport.xlsx"), Paths.get(referenceScanReport.toURI()), DbType.DELIMITED_TEXT_FILES));
@@ -141,13 +147,15 @@ public class TestWhiteRabbitMain extends RichConnection /* so that we can extend
             field2column.put("M", 3);
             field2column.put("MM", 4);
             field2column.put("MMM", 5);
+            field2column.put("Parity", 6);
             List<String> cells = Arrays.asList(
                     String.valueOf(val),
                     String.valueOf(val % 10),
                     String.valueOf(val % 100),
                     String.valueOf(val % 1_000),
                     String.valueOf(val % 1_000_000),
-                    String.valueOf(val % 1_000_000_000)
+                    String.valueOf(val % 1_000_000_000),
+                    val % 2 == 0 ? "even" : "odd"
             );
 
             return new Row(cells, field2column);
@@ -169,6 +177,7 @@ public class TestWhiteRabbitMain extends RichConnection /* so that we can extend
         fieldInfos.add(new SourceDataScan.FieldInfo("M"));
         fieldInfos.add(new SourceDataScan.FieldInfo("MM"));
         fieldInfos.add(new SourceDataScan.FieldInfo("MMM"));
+        fieldInfos.add(new SourceDataScan.FieldInfo("Parity"));
         return fieldInfos;
     }
 
@@ -186,7 +195,7 @@ public class TestWhiteRabbitMain extends RichConnection /* so that we can extend
         iniFile.set(MIN_CELL_COUNT_FIELD, "5");
         iniFile.set(MAX_DISTINCT_VALUES_FIELD, "1000");
         iniFile.set(ROWS_PER_TABLE_FIELD, "10000000");
-        iniFile.set(CALCULATE_NUMERIC_STATS_FIELD, "yes");
+        iniFile.set(CALCULATE_NUMERIC_STATS_FIELD, CALC_STATS ? "yes" : "no");
         iniFile.set(NUMERIC_STATS_SAMPLER_SIZE_FIELD, "500");
 
         return iniFile;
@@ -264,28 +273,5 @@ public class TestWhiteRabbitMain extends RichConnection /* so that we can extend
                 iniFilePath))) {
             inifile.getSettings().forEach((key, value) -> pw.printf("%s = %s%n", key.toUpperCase(), value));
         }
-    }
-
-    private static void addIniFileToXLSX(IniFile iniFile, Path xlsx) throws IOException {
-        FileInputStream file = new FileInputStream(xlsx.toString());
-        iniFile.unset("password");
-        iniFile.unset("working_folder");
-        Workbook workbook = new XSSFWorkbook(file);
-        file.close();
-
-        AtomicInteger rownr = new AtomicInteger(0);
-        Sheet sheet = workbook.createSheet("IniFile");
-        iniFile.getSettings().forEach((key, value) -> {
-            org.apache.poi.ss.usermodel.Row row = sheet.createRow(rownr.getAndIncrement());
-            Cell cell1 = row.createCell(0);
-            Cell cell2 = row.createCell(1);
-            cell1.setCellValue(key);
-            cell2.setCellValue(value);
-        });
-
-        FileOutputStream outputStream = new FileOutputStream(xlsx.toString());
-        workbook.write(outputStream);
-        workbook.close();
-        outputStream.close();
     }
 }
