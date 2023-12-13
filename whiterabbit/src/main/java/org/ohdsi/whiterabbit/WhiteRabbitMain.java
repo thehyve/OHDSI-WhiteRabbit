@@ -34,10 +34,7 @@ import java.awt.event.WindowEvent;
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.Vector;
+import java.util.*;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -153,10 +150,10 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 		IniFile iniFile = new IniFile(iniFileName);
 		DbSettings dbSettings = getDbSettings(iniFile);
 		findTablesToScan(iniFile, dbSettings);
-		performSourceDataScan(iniFile, dbSettings);
+		reportFilePath = performSourceDataScan(iniFile, dbSettings);
 	}
 
-	private DbSettings getDbSettings(IniFile iniFile) {
+	public static DbSettings getDbSettings(IniFile iniFile) {
 		DbSettings dbSettings;
 
 		DbType dbType = DbType.getDbType(iniFile.getDataType());
@@ -213,11 +210,11 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 		return dbSettings;
 	}
 
-	private void findTablesToScan(IniFile iniFile, DbSettings dbSettings) {
+	public static void findTablesToScan(IniFile iniFile, DbSettings dbSettings) {
 		if (iniFile.get("TABLES_TO_SCAN").equalsIgnoreCase("*")) {
 			if (dbSettings.sourceType == DbSettings.SourceType.DATABASE) {
-				try (RichConnection connection = new RichConnection(dbSettings)) {
-					dbSettings.tables.addAll(connection.getTableNames(dbSettings.database));
+				try (RichConnection richConnection = new RichConnection(dbSettings)) {
+					dbSettings.tables.addAll(richConnection.getTableNames(dbSettings.database));
 				}
 			} else {
 				String extension;
@@ -247,8 +244,12 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 		}
 	}
 
-	private void performSourceDataScan(IniFile iniFile, DbSettings dbSettings) throws IOException {
-		SourceDataScan sourceDataScan = new SourceDataScan();
+	public static String performSourceDataScan(IniFile iniFile, DbSettings dbSettings) throws IOException {
+		return performSourceDataScan(iniFile, dbSettings, Optional.empty());
+	}
+
+	public static String performSourceDataScan(IniFile iniFile, DbSettings dbSettings, Optional<SourceDataScan> externalSourceDataScan) throws IOException {
+		SourceDataScan sourceDataScan = externalSourceDataScan.orElseGet(SourceDataScan::new);
 		int maxRows = Integer.parseInt(iniFile.get("ROWS_PER_TABLE"));
 		boolean scanValues = iniFile.get("SCAN_FIELD_VALUES").equalsIgnoreCase("yes");
 		int minCellCount = 0;
@@ -270,8 +271,10 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 		sourceDataScan.setMaxValues(maxValues);
 		sourceDataScan.setCalculateNumericStats(calculateNumericStats);
 		sourceDataScan.setNumStatsSamplerSize(numericStatsSamplerSize);
-		reportFilePath = iniFile.get("WORKING_FOLDER") + "/" + SourceDataScan.SCAN_REPORT_FILE_NAME;
+		String reportFilePath = iniFile.get("WORKING_FOLDER") + "/" + SourceDataScan.SCAN_REPORT_FILE_NAME;
 		sourceDataScan.process(dbSettings, reportFilePath);
+
+		return reportFilePath;
 	}
 
 	private JComponent createTabsPanel() {

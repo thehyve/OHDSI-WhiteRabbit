@@ -19,9 +19,7 @@ package org.ohdsi.databases;
 
 import java.io.Closeable;
 import java.sql.BatchUpdateException;
-import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
@@ -42,12 +40,12 @@ public class RichConnection implements Closeable {
 	Logger logger = LoggerFactory.getLogger(RichConnection.class);
 
 	public static int INSERT_BATCH_SIZE = 100000;
-	private DBConnection connection;
+	private DBConnection dbConnection;
 	private boolean verbose = false;
 	private DbType dbType;
 
 	public RichConnection(DbSettings dbSettings) {
-		this.connection = DBConnector.connect(dbSettings, verbose);
+		this.dbConnection = DBConnector.connect(dbSettings, verbose);
 		this.dbType = dbSettings.dbType;
 	}
 
@@ -57,7 +55,7 @@ public class RichConnection implements Closeable {
 	 * @param sql
 	 */
 	public void execute(String sql) {
-		connection.execute(sql, verbose);
+		dbConnection.execute(sql, verbose);
 	}
 
 	/**
@@ -67,28 +65,31 @@ public class RichConnection implements Closeable {
 	 * @return
 	 */
 	public QueryResult query(String sql) {
-		return new QueryResult(sql, connection, verbose);
+		return new QueryResult(sql, dbConnection, verbose);
 	}
 
+	public boolean supportsDBConnectionInterface() {
+		return this.dbConnection != null && dbConnection.hasDBConnectorInterface();
+	}
 	/**
 	 * Switch the database to use.
 	 *
 	 * @param database
 	 */
 	public void use(String database) {
-		connection.use(database, dbType);
+		dbConnection.use(database, dbType);
 	}
 
 	public List<String> getTableNames(String database) {
-		return connection.getTableNames(database);
+		return dbConnection.getTableNames(database);
 	}
 
 	public List<FieldInfo> fetchTableStructure(RichConnection connection, String database, String table, ScanParameters scanParameters) {
-		return this.connection.fetchTableStructure(this, database, table, scanParameters);
+		return this.dbConnection.fetchTableStructure(this, database, table, scanParameters);
 	}
 
 	public QueryResult fetchRowsFromTable(String table, long rowCount, ScanParameters scanParameters) {
-		return this.connection.fetchRowsFromTable(table, rowCount, scanParameters);
+		return this.dbConnection.fetchRowsFromTable(table, rowCount, scanParameters);
 	}
 
 	/**
@@ -123,18 +124,18 @@ public class RichConnection implements Closeable {
 	 */
 	public void close() {
 		try {
-			connection.close();
+			dbConnection.close();
 		} catch (SQLException e) {
 			logger.error(e.getMessage(), e);
 		}
 	}
 
 	public void setVerbose(boolean verbose) {
-		this.connection.setVerbose(verbose);
+		this.dbConnection.setVerbose(verbose);
 	}
 
-	public DBConnection getConnection() {
-		return connection;
+	public DBConnection getDbConnection() {
+		return dbConnection;
 	}
 
 
@@ -172,7 +173,7 @@ public class RichConnection implements Closeable {
 	}
 
 	boolean isVerbose() {
-		return connection.isVerbose();
+		return dbConnection.isVerbose();
 	}
 
 	private void insert(String tableName, List<Row> rows) {
@@ -188,8 +189,8 @@ public class RichConnection implements Closeable {
 		}
 		sql.append(")");
 		try {
-			connection.setAutoCommit(false);
-			PreparedStatement statement = connection.prepareStatement(sql.toString());
+			dbConnection.setAutoCommit(false);
+			PreparedStatement statement = dbConnection.prepareStatement(sql.toString());
 			for (Row row : rows) {
 				for (int i = 0; i < columns.size(); i++) {
 					String value = row.get(columns.get(i));
@@ -213,10 +214,10 @@ public class RichConnection implements Closeable {
 				statement.addBatch();
 			}
 			statement.executeBatch();
-			connection.commit();
+			dbConnection.commit();
 			statement.close();
-			connection.setAutoCommit(true);
-			connection.clearWarnings();
+			dbConnection.setAutoCommit(true);
+			dbConnection.clearWarnings();
 		} catch (SQLException e) {
 			logger.error(e.getMessage(), e);
 			if (e instanceof BatchUpdateException) {

@@ -494,21 +494,21 @@ public class SourceDataScan implements ScanParameters {
 				.removeIf(stringListEntry -> stringListEntry.getValue().isEmpty());
 	}
 
-	private List<FieldInfo> processDatabaseTable(String table, RichConnection connection, String database) {
+	private List<FieldInfo> processDatabaseTable(String table, RichConnection richConnection, String database) {
 		StringUtilities.outputWithTime("Scanning table " + table);
 
 		long rowCount;
-		if (connection.getConnection().hasDBConnectorInterface()) {
-			rowCount = connection.getConnection().getDBConnectorInterface().getTableSize(table);
+		if (richConnection.supportsDBConnectionInterface()) {
+			rowCount = richConnection.getDbConnection().getDBConnectorInterface().getTableSize(table);
 		} else {
-			rowCount = connection.getTableSize(table);
+			rowCount = richConnection.getTableSize(table);
 		}
-		List<FieldInfo> fieldInfos = connection.fetchTableStructure(connection, database, table, this);
+		List<FieldInfo> fieldInfos = richConnection.fetchTableStructure(richConnection, database, table, this);
 		if (scanValues) {
 			int actualCount = 0;
 			QueryResult queryResult = null;
 			try {
-				queryResult = connection.fetchRowsFromTable(table, rowCount, this);
+				queryResult = richConnection.fetchRowsFromTable(table, rowCount, this);
 				for (org.ohdsi.utilities.files.Row row : queryResult) {
 					for (FieldInfo fieldInfo : fieldInfos) {
 						fieldInfo.processValue(row.get(fieldInfo.name));

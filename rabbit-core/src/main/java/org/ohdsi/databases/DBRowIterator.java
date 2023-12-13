@@ -39,7 +39,7 @@ class DBRowIterator implements Iterator<Row> {
     private Set<String> columnNames = new HashSet<>();
 
     public DBRowIterator(String sql, RichConnection richConnection) {
-        new DBRowIterator(sql, richConnection.getConnection(), richConnection.isVerbose());
+        new DBRowIterator(sql, richConnection.getDbConnection(), richConnection.isVerbose());
     }
     public DBRowIterator(String sql, DBConnection dbConnection, boolean verbose) {
         Statement statement;

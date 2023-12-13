@@ -108,6 +108,36 @@ public class ScanTestUtils {
 
         return true;
     }
+    public static List<String> getNonMatchingValues(Map<String, List<List<String>>> scanSheets, Map<String, List<List<String>>> referenceSheets, String... tabsToCompare) {
+        List<String> differences = new ArrayList<>();
+        assertEquals(scanSheets.size(), referenceSheets.size(), "Number of sheets does not match.");
+        for (String tabName: tabsToCompare) {
+            if (scanSheets.containsKey(tabName)) {
+                List<List<String>> scanSheet = scanSheets.get(tabName);
+                List<List<String>> referenceSheet = referenceSheets.get(tabName);
+                assertEquals(scanSheet.size(), referenceSheet.size(), String.format("Number of rows in sheet %s does not match.", tabName));
+                // in WhiteRabbit v0.10.7 and older, the order or tables is not defined, so this can result in differences due to the rows
+                // being in a different order. By sorting the rows in both sheets, these kind of differences should not play a role.
+                scanSheet.sort(new RowsComparator());
+                referenceSheet.sort(new RowsComparator());
+                for (int i = 0; i < scanSheet.size(); ++i) {
+                    final int fi = i;
+                    IntStream.range(0, scanSheet.get(fi).size())
+                            .parallel()
+                            .forEach(j -> {
+                                final String scanValue = scanSheet.get(fi).get(j);
+                                final String referenceValue = referenceSheet.get(fi).get(j);
+                                if (!scanValue.equalsIgnoreCase(referenceValue)) {
+                                    differences.add(String.format("In tab '%s', value '%s' at (%s,%s) does not match expected value '%s'",
+                                            tabName, scanValue, fi, j, referenceValue));
+                                }
+                            });
+                }
+            }
+        }
+
+        return differences;
+    }
 
     private static boolean matchTypeName(String type, String reference, DbType dbType) {
         if (dbType == ORACLE) {
@@ -140,7 +170,7 @@ public class ScanTestUtils {
         }
     }
 
-    private static Map<String, List<List<String>>> readXlsxAsStringValues(Path xlsx) throws IOException {
+    public static Map<String, List<List<String>>> readXlsxAsStringValues(Path xlsx) throws IOException {
         assertTrue(Files.exists(xlsx), String.format("File %s does not exist.", xlsx));
 
         Map<String, List<List<String>>> sheets = new HashMap<>();

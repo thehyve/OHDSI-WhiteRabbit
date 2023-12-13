@@ -79,7 +79,9 @@ public class FieldInfo {
             q2 = getQ2();
             q3 = getQ3();
         }
-        samplingReservoir = null;
+        if (samplingReservoir != null) {
+            samplingReservoir.setTrimmed(true);
+        }
     }
 
     public boolean hasValuesTrimmed() {

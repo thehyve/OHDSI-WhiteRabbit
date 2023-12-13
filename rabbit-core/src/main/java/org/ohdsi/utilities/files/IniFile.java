@@ -50,8 +50,18 @@ public class IniFile {
 			return value;
 	}
 
+	public Map<String, String> getSettings() {
+		return this.settings;
+	}
+
 	public void set(String fieldName, String value) {
 		settings.put(fieldName.trim().toLowerCase(), value);
+	}
+
+	public void unset(String fieldName) {
+		if (settings.containsKey(fieldName)) {
+			settings.remove(fieldName);
+		}
 	}
 
 	public String getOrFail(String fieldName){
