@@ -29,8 +29,6 @@ import java.awt.MediaTracker;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -160,8 +158,8 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 		DbSettings dbSettings;
 
 		DbType dbType = DbType.getDbType(iniFile.getDataType());
-		if (dbType.supportsDBConnectorInterface()) {
-			dbSettings = dbType.getDbConnectorInterface().getDbSettings(iniFile, null, System.out);
+		if (dbType.supportsStorageHandler()) {
+			dbSettings = dbType.getStorageHandler().getDbSettings(iniFile, null, System.out);
 		} else {
 			dbSettings = new DbSettings();
 			if (iniFile.get(DBConfiguration.DATA_TYPE_FIELD).equalsIgnoreCase(DELIMITED_TEXT_FILES)) {
@@ -705,8 +703,8 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 	private DbSettings getSourceDbSettings(ValidationFeedback feedback) {
         DbType dbChoice = locationsPanel.getCurrentDbChoice();
         DbSettings dbSettings;
-        if (dbChoice != null && dbChoice.supportsDBConnectorInterface()) {
-            dbSettings = locationsPanel.getCurrentDbChoice().getDbConnectorInterface().getDbSettings(feedback);
+        if (dbChoice != null && dbChoice.supportsStorageHandler()) {
+            dbSettings = locationsPanel.getCurrentDbChoice().getStorageHandler().getDbSettings(feedback);
 			return dbSettings;
         } else {
             String sourceDelimiterField = locationsPanel.getSourceDelimiterField().getText();

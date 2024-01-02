@@ -19,11 +19,9 @@ package org.ohdsi.databases;
 
 import org.apache.commons.lang.StringUtils;
 
-import java.io.PrintStream;
 import java.sql.*;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.ohdsi.databases.configuration.*;
 import org.ohdsi.utilities.collections.Pair;
@@ -31,17 +29,17 @@ import org.ohdsi.utilities.files.IniFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.ohdsi.databases.SnowflakeConnection.SnowflakeConfiguration.*;
+import static org.ohdsi.databases.SnowflakeHandler.SnowflakeConfiguration.*;
 
 /*
- * SnowflakeDB implements all Snowflake specific logic required to connect to, and query, a Snowflake instance.
+ * SnowflakeHandler implements all Snowflake specific logic required to connect to, and query, a Snowflake instance.
  *
  * It is implemented as a Singleton, using the enum pattern es described here: https://www.baeldung.com/java-singleton
  */
-public enum SnowflakeConnection implements DBConnectionInterface {
+public enum SnowflakeHandler implements StorageHandler {
     INSTANCE();
 
-    final static Logger logger = LoggerFactory.getLogger(SnowflakeConnection.class);
+    final static Logger logger = LoggerFactory.getLogger(SnowflakeHandler.class);
 
     DBConfiguration configuration = new SnowflakeConfiguration();
     private DBConnection snowflakeConnection = null;
@@ -54,7 +52,7 @@ public enum SnowflakeConnection implements DBConnectionInterface {
     public static final String ERROR_CONNECTION_NOT_INITIALIZED =
             "Snowflake Database connection has not been initialized.";
 
-    SnowflakeConnection() {
+    SnowflakeHandler() {
     }
 
     public void resetConnection() throws SQLException {
@@ -65,7 +63,7 @@ public enum SnowflakeConnection implements DBConnectionInterface {
     }
 
     @Override
-    public DBConnectionInterface getInstance(DbSettings dbSettings) {
+    public StorageHandler getInstance(DbSettings dbSettings) {
         if (snowflakeConnection == null) {
             snowflakeConnection = connectToSnowflake(dbSettings);
         }

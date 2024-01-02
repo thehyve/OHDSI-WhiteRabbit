@@ -33,8 +33,8 @@ public class DBConnector {
 
 	public static DBConnection connect(DbSettings dbSettings, boolean verbose) {
 		assert dbSettings.dbType != null;
-		if (dbSettings.dbType.supportsDBConnectorInterface()) {
-			return new DBConnection(dbSettings.dbType.getDbConnectorInterface().getInstance(dbSettings), dbSettings.dbType, verbose);
+		if (dbSettings.dbType.supportsStorageHandler()) {
+			return new DBConnection(dbSettings.dbType.getStorageHandler().getInstance(dbSettings), dbSettings.dbType, verbose);
 		} else {
 			return connect(dbSettings.server, dbSettings.domain, dbSettings.user, dbSettings.password, dbSettings.dbType, verbose);
 		}

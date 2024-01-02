@@ -28,14 +28,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.ohdsi.databases.SnowflakeConnection.*;
+import static org.ohdsi.databases.SnowflakeHandler.*;
 
-class TestSnowflakeConnection {
+class TestSnowflakeHandler {
 
-    Logger logger = LoggerFactory.getLogger(TestSnowflakeConnection.class);
+    Logger logger = LoggerFactory.getLogger(TestSnowflakeHandler.class);
 
     @Test
     void testPrintIniFileTemplate() throws IOException {

@@ -35,7 +35,7 @@ import java.util.List;
  * The latter one instantiates a java.sql.Connection instance itself.
  * The constructors of DBConnection ensure that one of the following is true:
  *  - a java.sql.Connection implementing object is provided, and used it its methods
- *  - a DBConnectionInterface implementing object is provided, and used to create a java.sql.Connection interface
+ *  - a StorageHandler implementing object is provided, and used to create a java.sql.Connection interface
  *  - if neither of the above is valid at construction, a RuntimeException is thrown
  *
  * DBConnection provides a partial subset of the java.sql.Connection interface, just enough to satisfy the
@@ -47,7 +47,7 @@ public class DBConnection {
     private final Connection connection;
     private final DbType dbType;
     private boolean verbose;
-    private final DBConnectionInterface connectorInterface;
+    private final StorageHandler connectorInterface;
     private static DecimalFormat decimalFormat		= new DecimalFormat("#.#");
 
 
@@ -58,7 +58,7 @@ public class DBConnection {
         this.verbose = verbose;
     }
 
-    public DBConnection(DBConnectionInterface connectorInterface, DbType dbType, boolean verbose) {
+    public DBConnection(StorageHandler connectorInterface, DbType dbType, boolean verbose) {
         this.connectorInterface = connectorInterface;
         connectorInterface.checkInitialised();
         this.connection = connectorInterface.getDBConnection().getConnection();
@@ -70,7 +70,7 @@ public class DBConnection {
         return this.connection;
     }
 
-    public DBConnectionInterface getDBConnectorInterface() {
+    public StorageHandler getStorageHandler() {
         this.connectorInterface.checkInitialised();
         return this.connectorInterface;
     }
@@ -83,7 +83,7 @@ public class DBConnection {
         return verbose;
     }
 
-    public boolean hasDBConnectorInterface() {
+    public boolean hasStorageHandler() {
         return this.connectorInterface != null;
     }
 
@@ -96,8 +96,8 @@ public class DBConnection {
     }
 
     public void use(String database, DbType dbType) {
-        if (this.hasDBConnectorInterface()) {
-            this.getDBConnectorInterface().use(database);
+        if (this.hasStorageHandler()) {
+            this.getStorageHandler().use(database);
         } else {
             if (database == null || dbType == DbType.MS_ACCESS || dbType == DbType.BIGQUERY || dbType == DbType.AZURE) {
                 return;
@@ -176,8 +176,8 @@ public class DBConnection {
     }
 
     public List<String> getTableNames(String database) {
-        if (this.hasDBConnectorInterface()) {
-            return this.getDBConnectorInterface().getTableNames();
+        if (this.hasStorageHandler()) {
+            return this.getStorageHandler().getTableNames();
         } else {
             return getTableNamesClassic(database);
         }
@@ -186,8 +186,8 @@ public class DBConnection {
     public List<FieldInfo> fetchTableStructure(RichConnection connection, String database, String table, ScanParameters scanParameters) {
         List<FieldInfo> fieldInfos = new ArrayList<>();
 
-        if (dbType.supportsDBConnectorInterface()) {
-            fieldInfos = dbType.getDbConnectorInterface().fetchTableStructure(table, scanParameters);
+        if (dbType.supportsStorageHandler()) {
+            fieldInfos = dbType.getStorageHandler().fetchTableStructure(table, scanParameters);
         } else if (dbType == DbType.MS_ACCESS) {
             ResultSet rs = getFieldNamesFromJDBC(table);
             try {
@@ -269,8 +269,8 @@ public class DBConnection {
         String query = null;
         int sampleSize = scanParameters.getSampleSize();
 
-        if (dbType.supportsDBConnectorInterface()) {
-            query = dbType.getDbConnectorInterface().getRowSampleQuery(table, rowCount, sampleSize);
+        if (dbType.supportsStorageHandler()) {
+            query = dbType.getStorageHandler().getRowSampleQuery(table, rowCount, sampleSize);
         } else if (sampleSize == -1) {
             if (dbType == DbType.MS_ACCESS)
                 query = "SELECT * FROM [" + table + "]";
@@ -349,8 +349,8 @@ public class DBConnection {
     }
 
     public void close() throws SQLException {
-        if (this.hasDBConnectorInterface()) {
-            this.getDBConnectorInterface().close();
+        if (this.hasStorageHandler()) {
+            this.getStorageHandler().close();
         } else {
             this.connection.close();
         }

@@ -18,8 +18,8 @@
 package org.ohdsi.databases.configuration;
 
 import org.apache.commons.lang.StringUtils;
-import org.ohdsi.databases.DBConnectionInterface;
-import org.ohdsi.databases.SnowflakeConnection;
+import org.ohdsi.databases.StorageHandler;
+import org.ohdsi.databases.SnowflakeHandler;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -42,18 +42,18 @@ public enum DbType {
 	TERADATA("Teradata", "com.teradata.jdbc.TeraDriver"),
 	BIGQUERY("BigQuery", "com.simba.googlebigquery.jdbc42.Driver"),
 	AZURE("Azure", "com.microsoft.sqlserver.jdbc.SQLServerDriver"),
-	SNOWFLAKE("Snowflake", "net.snowflake.client.jdbc.SnowflakeDriver", SnowflakeConnection.INSTANCE),
+	SNOWFLAKE("Snowflake", "net.snowflake.client.jdbc.SnowflakeDriver", SnowflakeHandler.INSTANCE),
 	SAS7BDAT("Sas7bdat", null);
 
 	private final String label;
 	private final String driverName;
-	private final DBConnectionInterface implementingClass;
+	private final StorageHandler implementingClass;
 
 	DbType(String type, String driverName) {
 		this(type, driverName, null);
 	}
 
-	DbType(String label, String driverName, DBConnectionInterface implementingClass) {
+	DbType(String label, String driverName, StorageHandler implementingClass) {
 		this.label = label;
 		this.driverName = driverName;
 		this.implementingClass = implementingClass;
@@ -72,17 +72,17 @@ public enum DbType {
 		return (other != null && other.equals(this));
 	}
 
-	public boolean supportsDBConnectorInterface() {
+	public boolean supportsStorageHandler() {
 		return this.implementingClass != null;
 	}
 
-	public DBConnectionInterface getDbConnectorInterface() throws DBConfigurationException {
-		if (this.supportsDBConnectorInterface()) {
+	public StorageHandler getStorageHandler() throws DBConfigurationException {
+		if (this.supportsStorageHandler()) {
 			return this.implementingClass;
 		} else {
 			throw new DBConfigurationException(String.format("Class %s does not implement interface %s",
 					this.implementingClass.getClass().getName(),
-					DBConnectionInterface.class.getName()));
+					StorageHandler.class.getName()));
 		}
 	}
 

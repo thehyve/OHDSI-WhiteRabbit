@@ -30,18 +30,18 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * DBConnectionInterface defines the interface that a database connection class must implement.
+ * StorageHandler defines the interface that a database connection class must implement.
  *
  */
-public interface DBConnectionInterface {
+public interface StorageHandler {
 
     /**
      * Creates an instance of the implementing class, or can return the singleton for.
      *
      * @param dbSettings Configuration parameters for the implemented database
-     * @return instance of a DBConnectionInterface implementing class
+     * @return instance of a StorageHandler implementing class
      */
-    DBConnectionInterface getInstance(DbSettings dbSettings);
+    StorageHandler getInstance(DbSettings dbSettings);
 
     /**
      * Returns the DBConnection object associated with the database connection
@@ -202,7 +202,7 @@ public interface DBConnectionInterface {
      * Returns a validated DbSettings object with values based on the IniFile object
      *
      * @param iniFile IniFile object containing database configuration values for the class
-     *                that implements the DBConnectionInterface
+     *                that implements the StorageHandler
      *
      * @return DbSettings object
      */

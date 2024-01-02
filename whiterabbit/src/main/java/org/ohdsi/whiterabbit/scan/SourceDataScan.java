@@ -498,8 +498,8 @@ public class SourceDataScan implements ScanParameters {
 		StringUtilities.outputWithTime("Scanning table " + table);
 
 		long rowCount;
-		if (connection.getConnection().hasDBConnectorInterface()) {
-			rowCount = connection.getConnection().getDBConnectorInterface().getTableSize(table);
+		if (connection.getConnection().hasStorageHandler()) {
+			rowCount = connection.getConnection().getStorageHandler().getTableSize(table);
 		} else {
 			rowCount = connection.getTableSize(table);
 		}
