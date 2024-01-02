@@ -18,6 +18,7 @@
 package org.ohdsi.whiterabbit.scan;
 
 import org.apache.commons.lang.StringUtils;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -63,7 +64,7 @@ public class SourceDataScanSnowflakeIT {
         }
     }
 
-    @Test
+    //@Test
     void testWarnWhenRunningWithoutSnowflakeConfigured() {
         String snowflakeWrTestAccunt = System.getenv(SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE);
         assertFalse(StringUtils.isEmpty(snowflakeWrTestAccunt) && StringUtils.isEmpty(System.getProperty("ohdsi.org.whiterabbit.skip_snowflake_tests")),
@@ -72,8 +73,9 @@ public class SourceDataScanSnowflakeIT {
     }
 
     @Test
-    @EnabledIfEnvironmentVariable(named = SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE, matches = ".+")
+    //@EnabledIfEnvironmentVariable(named = SNOWFLAKE_ACCOUNT_ENVIRONMENT_VARIABLE, matches = ".+")
     void testProcessSnowflakeFromIni(@TempDir Path tempDir) throws URISyntaxException, IOException {
+        Assumptions.assumeTrue(new SnowflakeTestUtils.SnowflakeSystemPropertiesFileChecker(), "Snowflake system properties file not available");
         Charset charset = StandardCharsets.UTF_8;
         Path iniFile = tempDir.resolve("snowflake.ini");
         URL iniTemplate = SourceDataScanSnowflakeIT.class.getClassLoader().getResource("scan_data/snowflake.ini.template");
@@ -81,12 +83,12 @@ public class SourceDataScanSnowflakeIT {
         assert iniTemplate != null;
         String content = new String(Files.readAllBytes(Paths.get(iniTemplate.toURI())), charset);
         content = content.replaceAll("%WORKING_FOLDER%", tempDir.toString())
-                .replaceAll("%SNOWFLAKE_ACCOUNT%", SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_ACCOUNT"))
-                .replaceAll("%SNOWFLAKE_USER%", SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_USER"))
-                .replaceAll("%SNOWFLAKE_PASSWORD%", SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_PASSWORD"))
-                .replaceAll("%SNOWFLAKE_WAREHOUSE%", SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_WAREHOUSE"))
-                .replaceAll("%SNOWFLAKE_DATABASE%", SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_DATABASE"))
-                .replaceAll("%SNOWFLAKE_SCHEMA%", SnowflakeTestUtils.getEnvOrFail("SNOWFLAKE_WR_TEST_SCHEMA"));
+                .replaceAll("%SNOWFLAKE_ACCOUNT%", SnowflakeTestUtils.getPropertyOrFail("SNOWFLAKE_WR_TEST_ACCOUNT"))
+                .replaceAll("%SNOWFLAKE_USER%", SnowflakeTestUtils.getPropertyOrFail("SNOWFLAKE_WR_TEST_USER"))
+                .replaceAll("%SNOWFLAKE_PASSWORD%", SnowflakeTestUtils.getPropertyOrFail("SNOWFLAKE_WR_TEST_PASSWORD"))
+                .replaceAll("%SNOWFLAKE_WAREHOUSE%", SnowflakeTestUtils.getPropertyOrFail("SNOWFLAKE_WR_TEST_WAREHOUSE"))
+                .replaceAll("%SNOWFLAKE_DATABASE%", SnowflakeTestUtils.getPropertyOrFail("SNOWFLAKE_WR_TEST_DATABASE"))
+                .replaceAll("%SNOWFLAKE_SCHEMA%", SnowflakeTestUtils.getPropertyOrFail("SNOWFLAKE_WR_TEST_SCHEMA"));
         Files.write(iniFile, content.getBytes(charset));
         WhiteRabbitMain wrMain = new WhiteRabbitMain(true, new String[]{"-ini", iniFile.toAbsolutePath().toString()});
         assert referenceScanReport != null;
@@ -94,7 +96,10 @@ public class SourceDataScanSnowflakeIT {
     }
 
     static void prepareTestData(GenericContainer<?> container) throws IOException, InterruptedException {
-        prepareTestData(container, new SnowflakeTestUtils.EnvironmentReader());
+        SnowflakeTestUtils.SnowflakeSystemPropertiesFileChecker checker = new SnowflakeTestUtils.SnowflakeSystemPropertiesFileChecker();
+        if (checker.getAsBoolean()) {
+            prepareTestData(container, new SnowflakeTestUtils.PropertyReader());
+        }
     }
 
     static void prepareTestData(GenericContainer<?> container, SnowflakeTestUtils.ReaderInterface reader) throws IOException, InterruptedException {

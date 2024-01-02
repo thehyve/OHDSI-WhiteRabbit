@@ -96,7 +96,6 @@ public class TestRabbitInAHatMain {
         fileChooser.selectFile(new File(Objects.requireNonNull(scanReportUrl).toURI())).approve();
     }
 
-    @GUITest
     @Test
     public void openAndVerifySavedETLSpecs() throws URISyntaxException {
         // open the test ETL specification

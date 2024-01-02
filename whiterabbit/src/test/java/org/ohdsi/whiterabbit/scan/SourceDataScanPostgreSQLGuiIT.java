@@ -73,7 +73,7 @@ class SourceDataScanPostgreSQLGuiIT {
     @Container
     public static PostgreSQLContainer<?> postgreSQL = createPostgreSQLContainer();
 
-    @GUITest
+    @ExtendWith(GUITestExtension.class)
     @Test
     void testConnectionAndSourceDataScan(@TempDir Path tempDir) throws IOException, URISyntaxException {
         URL referenceScanReport = TestSourceDataScanCsvGui.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
