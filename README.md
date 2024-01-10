@@ -1,7 +1,7 @@
 PLEASE NOTE
 ===========
 **This branch was created with the purpose of creating scans that can be used as a reference from version 0.10.7, to find regressions in newer versions.
-This version should not be merged back into master, nor should it be used for any kind of (test-) release.**
+This version should not be merged back into master, nor should it be used for any kind of public (test-) release.**
 
 ![WR logo](https://github.com/OHDSI/WhiteRabbit/blob/master/whiterabbit/src/main/resources/org/ohdsi/whiteRabbit/WhiteRabbit64.png) White Rabbit 
 ===========
