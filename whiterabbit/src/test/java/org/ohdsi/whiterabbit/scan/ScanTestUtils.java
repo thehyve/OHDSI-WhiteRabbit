@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.assertj.swing.timing.Pause.pause;
@@ -46,7 +47,7 @@ public class ScanTestUtils {
         sourceDataScan.setMinCellCount(5);
         sourceDataScan.setScanValues(true);
         sourceDataScan.setMaxValues(1000);
-        sourceDataScan.setNumStatsSamplerSize(500);
+        sourceDataScan.setNumStatsSamplerSize(0);
         sourceDataScan.setCalculateNumericStats(false);
         sourceDataScan.setSampleSize(100000);
 
@@ -76,7 +77,9 @@ public class ScanTestUtils {
 
     public static boolean scanValuesMatchReferenceValues(Map<String, List<List<String>>> scanSheets, Map<String, List<List<String>>> referenceSheets, DbType dbType) {
         assertEquals(scanSheets.size(), referenceSheets.size(), "Number of sheets does not match.");
-        for (String tabName: new String[]{"Field Overview", "Table Overview", "cost.csv", "person.csv"}) {
+
+        List<String> tabNames = referenceSheets.keySet().stream()/*.filter(k -> !k.equals("_"))*/.collect(Collectors.toList());
+        for (String tabName: tabNames) {
             if (scanSheets.containsKey(tabName)) {
                 List<List<String>> scanSheet = scanSheets.get(tabName);
                 List<List<String>> referenceSheet = referenceSheets.get(tabName);
@@ -92,14 +95,16 @@ public class ScanTestUtils {
                             .forEach(j -> {
                                 final String scanValue = scanSheet.get(fi).get(j);
                                 final String referenceValue = referenceSheet.get(fi).get(j);
-                                if (tabName.equals("Field Overview") && j == 3 && !scanValue.equalsIgnoreCase(referenceValue)) {
-                                    assertTrue(matchTypeName(scanValue, referenceValue, dbType),
-                                            String.format("Field type '%s' cannot be matched with reference type '%s' for DbType %s",
-                                                    scanValue, referenceValue, dbType.name()));
-                                } else {
-                                    assertTrue(scanValue.equalsIgnoreCase(referenceValue),
-                                            String.format("In sheet %s, value '%s' in scan results does not match '%s' in reference",
-                                                    tabName, scanValue, referenceValue));
+                                if (!isExcludedFromMatching(tabName, fi, scanValue, referenceValue, dbType)) {
+                                    if (tabName.equals("Field Overview") && j == 3 && !scanValue.equalsIgnoreCase(referenceValue)) {
+                                        assertTrue(matchTypeName(scanValue, referenceValue, dbType),
+                                                String.format("Field type '%s' cannot be matched with reference type '%s' for DbType %s",
+                                                        scanValue, referenceValue, dbType.name()));
+                                    } else {
+                                        assertTrue(scanValue.equalsIgnoreCase(referenceValue),
+                                                String.format("In sheet %s, value '%s' in scan results does not match '%s' in reference (row %s, column %s)",
+                                                        tabName, scanValue, referenceValue, fi, j));
+                                    }
                                 }
                             });
                 }
@@ -109,36 +114,85 @@ public class ScanTestUtils {
         return true;
     }
 
+    private static boolean isExcludedFromMatching(String tabName, int row, String scanValue, String referenceValue, DbType dbType) {
+        if (tabName.equals("_")) {
+            if (dbType == DELIMITED_TEXT_FILES) {
+                switch (row) {
+                    case 1:             // reference sheet does not contain DbType, ignore
+                    //case 10:            // reference sheet contains 0
+                        return true;
+                }
+            } else if (dbType != POSTGRESQL) {
+                if (row == 1) {
+                    return true;        // In reference sheet, this is always POSTGRESQL, ignore
+                }
+            }
+
+            switch (row) {
+                case 16:                // ignore WhiteRabbit version
+                case 12: case 13:       // ignore timestamps
+                    return true;
+            }
+        }
+
+        return false;
+    }
     private static boolean matchTypeName(String type, String reference, DbType dbType) {
-        if (dbType == ORACLE) {
-            switch (type) {
-                case "NUMBER": return reference.equals("integer");
-                case "VARCHAR2": return reference.equals("character varying");
-                case "FLOAT": return reference.equals("numeric");
-                // seems a mismatch in the OMOP CMD v5.2 (Oracle defaults to WITH time zone):
-                case "TIMESTAMP(6) WITH TIME ZONE": return reference.equals("timestamp without time zone");
-                default: throw new RuntimeException(String.format("Unsupported column type '%s' for DbType %s ", type, dbType.name()));
-            }
-        } else if (dbType == DbType.SNOWFLAKE) {
-            switch (type) {
-                case "NUMBER": return reference.equals("integer") || reference.equals("numeric");
-                case "VARCHAR": return reference.equals("character varying");
-                case "TIMESTAMPNTZ": return reference.equals("timestamp without time zone");
-                default: throw new RuntimeException(String.format("Unsupported column type '%s' for DbType %s ", type, dbType.name()));
-            }
-        } else {
-            throw new RuntimeException("Unsupported DbType: " + dbType.name());
+        switch (dbType) {
+            case ORACLE:
+                switch (type) {
+                    case "NUMBER": return reference.equals("integer");
+                    case "VARCHAR2": return reference.equals("character varying");
+                    case "FLOAT": return reference.equals("numeric");
+                    // seems a mismatch in the OMOP CMD v5.2 (Oracle defaults to WITH time zone):
+                    case "TIMESTAMP(6) WITH TIME ZONE": return reference.equals("timestamp without time zone");
+                    default: throw new RuntimeException(String.format("Unsupported column type '%s' for DbType %s ", type, dbType.name()));
+                }
+            case SNOWFLAKE:
+                switch (type) {
+                    case "NUMBER": return reference.equals("integer") || reference.equals("numeric");
+                    case "VARCHAR": return reference.equals("character varying");
+                    case "TIMESTAMPNTZ": return reference.equals("timestamp without time zone");
+                    default: throw new RuntimeException(String.format("Unsupported column type '%s' for DbType %s ", type, dbType.name()));
+                }
+            case MYSQL:
+                switch (type) {
+                    case "int":
+                    case "decimal": return reference.equals("integer") || reference.equals("numeric");
+                    case "varchar": return reference.equals("character varying");
+                    case "timestamp": return reference.equals("timestamp without time zone");
+                    default: throw new RuntimeException(String.format("Unsupported column type '%s' for DbType %s ", type, dbType.name()));
+                }
+            case SAS7BDAT:
+                switch (type) {
+                    case "VARCHAR": return reference.equals("INT");
+                    default:
+                        throw new RuntimeException(String.format("Unsupported column type '%s' for DbType %s ", type, dbType.name()));
+                }
+            default:
+                throw new RuntimeException("Unsupported DbType: " + dbType.name());
         }
     }
 
     static class RowsComparator implements Comparator<List<String>> {
         @Override
         public int compare(List<String> o1, List<String> o2) {
+            if (o1.isEmpty() || o2.isEmpty()) {
+                throw new RuntimeException("Nothing to compare...");
+            }
             String firstString_o1 = o1.get(0);
             String firstString_o2 = o2.get(0);
-            return firstString_o1.compareToIgnoreCase(firstString_o2);
+            if (!firstString_o1.equalsIgnoreCase(firstString_o2) || (o1.size() == 1 || o2.size() == 1)) {
+                // first field differs, or there is no second field to compare
+                return firstString_o1.compareToIgnoreCase(firstString_o2);
+            }
+            // compare on the second field
+            String secondString_o1 = o1.get(1);
+            String secondString_o2 = o2.get(1);
+            return secondString_o1.compareToIgnoreCase(secondString_o2);
         }
     }
+
 
     private static Map<String, List<List<String>>> readXlsxAsStringValues(Path xlsx) throws IOException {
         assertTrue(Files.exists(xlsx), String.format("File %s does not exist.", xlsx));
