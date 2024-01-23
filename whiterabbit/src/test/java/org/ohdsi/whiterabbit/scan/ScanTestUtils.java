@@ -140,10 +140,10 @@ public class ScanTestUtils {
             }
         case MYSQL:
             switch (type) {
-                case "int":
-                case "decimal": return reference.equals("integer") || reference.equals("numeric");
-                case "varchar": return reference.equals("character varying");
-                case "timestamp": return reference.equals("timestamp without time zone");
+                case "int": case "INT":
+                case "decimal": case "DECIMAL": return reference.equals("integer") || reference.equals("numeric");
+                case "varchar": case "VARCHAR": return reference.equals("character varying");
+                case "timestamp": case "TIMESTAMP": return reference.equals("timestamp without time zone");
                 default: throw new RuntimeException(String.format("Unsupported column type '%s' for DbType %s ", type, dbType.name()));
             }
         default:

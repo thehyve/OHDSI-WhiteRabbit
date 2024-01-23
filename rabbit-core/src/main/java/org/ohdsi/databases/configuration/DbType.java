@@ -18,6 +18,7 @@
 package org.ohdsi.databases.configuration;
 
 import org.apache.commons.lang.StringUtils;
+import org.ohdsi.databases.MySqlHandler;
 import org.ohdsi.databases.StorageHandler;
 import org.ohdsi.databases.SnowflakeHandler;
 
@@ -43,7 +44,8 @@ public enum DbType {
 	BIGQUERY("BigQuery", "com.simba.googlebigquery.jdbc42.Driver"),
 	AZURE("Azure", "com.microsoft.sqlserver.jdbc.SQLServerDriver"),
 	SNOWFLAKE("Snowflake", "net.snowflake.client.jdbc.SnowflakeDriver", SnowflakeHandler.INSTANCE),
-	SAS7BDAT("Sas7bdat", null);
+	SAS7BDAT("Sas7bdat", null),
+	MYSQL_NEW("MySQL New", "com.mysql.cj.jdbc.Driver", MySqlHandler.INSTANCE);
 
 	private final String label;
 	private final String driverName;

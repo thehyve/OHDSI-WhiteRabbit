@@ -60,7 +60,9 @@ public interface StorageHandler {
      * @param tableName name of the table to get the size (number of rows) for
      * @return Implementation specific query to get the size of the table
      */
-    String getTableSizeQuery(String tableName);
+    default String getTableSizeQuery(String tableName) {
+        return String.format("SELECT COUNT(*) FROM %s;", tableName);
+    }
 
     /**
      * Verifies if the implementing object was properly configured for use. Should throw a DBConfigurationException
@@ -98,10 +100,11 @@ public interface StorageHandler {
      */
     default void use(String ignoredDatabase) {}
 
+
     /**
      * closes the connection to the database. No-op by default.
      */
-    default void close() {
+    default void close() throws SQLException {
         // no-op by default, so singletons don't need to implement it
     }
 
