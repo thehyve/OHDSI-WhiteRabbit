@@ -21,8 +21,11 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.assertj.swing.timing.Condition;
+import org.ohdsi.databases.UniformSamplingReservoir;
 import org.ohdsi.databases.configuration.DbType;
 import org.ohdsi.whiterabbit.Console;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -32,6 +35,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 import static org.assertj.swing.timing.Pause.pause;
@@ -40,6 +44,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.ohdsi.databases.configuration.DbType.*;
 
 public class ScanTestUtils {
+
+    static Logger logger = LoggerFactory.getLogger(ScanTestUtils.class);
+
 
     // Convenience for having the same scan parameters across tests
     public static SourceDataScan createSourceDataScan() {
@@ -89,6 +96,7 @@ public class ScanTestUtils {
                 scanSheet.sort(new RowsComparator());
                 referenceSheet.sort(new RowsComparator());
                 for (int i = 0; i < scanSheet.size(); ++i) {
+                    AtomicInteger mismatches = new AtomicInteger(0);
                     final int fi = i;
                     IntStream.range(0, scanSheet.get(fi).size())
                             .parallel()
@@ -107,6 +115,7 @@ public class ScanTestUtils {
                                     }
                                 }
                             });
+                    assertEquals(0, mismatches.get(), "No mismatches of values with the reference data should have occurred");
                 }
             }
         }
