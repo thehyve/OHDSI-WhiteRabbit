@@ -21,7 +21,6 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.assertj.swing.timing.Condition;
-import org.ohdsi.databases.UniformSamplingReservoir;
 import org.ohdsi.databases.configuration.DbType;
 import org.ohdsi.whiterabbit.Console;
 import org.slf4j.Logger;
@@ -82,36 +81,53 @@ public class ScanTestUtils {
         return scanResultsSheetMatchesReference(expectedPath, referencePath, dbType);
     }
 
-    public static boolean scanValuesMatchReferenceValues(Map<String, List<List<String>>> scanSheets, Map<String, List<List<String>>> referenceSheets, DbType dbType) {
+    public static <scannedData> boolean scanValuesMatchReferenceValues(Map<String, List<List<String>>> scanSheets, Map<String, List<List<String>>> referenceSheets, DbType dbType) {
         assertEquals(scanSheets.size(), referenceSheets.size(), "Number of sheets does not match.");
 
-        List<String> tabNames = referenceSheets.keySet().stream()/*.filter(k -> !k.equals("_"))*/.collect(Collectors.toList());
+        List<String> tabNames = new ArrayList<>(referenceSheets.keySet());
         for (String tabName: tabNames) {
             if (scanSheets.containsKey(tabName)) {
                 List<List<String>> scanSheet = scanSheets.get(tabName);
                 List<List<String>> referenceSheet = referenceSheets.get(tabName);
                 assertEquals(scanSheet.size(), referenceSheet.size(), String.format("Number of rows in sheet %s does not match.", tabName));
-                // in WhiteRabbit v0.10.7 and older, the order or tables is not defined, so this can result in differences due to the rows
+                // in WhiteRabbit v0.10.7 and earlier, the order of tables is not defined, so this can result in differences due to the rows
                 // being in a different order. By sorting the rows in both sheets, these kind of differences should not play a role.
-                scanSheet.sort(new RowsComparator());
-                referenceSheet.sort(new RowsComparator());
+                if (tabName.equalsIgnoreCase("Field Overview") || tabName.equalsIgnoreCase("Table Overview")) {
+                    scanSheet.sort(new ColumnValueComparator());
+                    referenceSheet.sort(new ColumnValueComparator());
+                } else if (!tabName.equals("_")) {
+                    scanSheet = transposeAndSort(scanSheet);
+                    referenceSheet = transposeAndSort(referenceSheet);
+                }
+
+                final List<List<String>> scannedData = scanSheet;
+                final List<List<String>> referenceData = referenceSheet;
+
                 for (int i = 0; i < scanSheet.size(); ++i) {
                     AtomicInteger mismatches = new AtomicInteger(0);
                     final int fi = i;
                     IntStream.range(0, scanSheet.get(fi).size())
                             .parallel()
                             .forEach(j -> {
-                                final String scanValue = scanSheet.get(fi).get(j);
-                                final String referenceValue = referenceSheet.get(fi).get(j);
+                                final String scanValue = scannedData.get(fi).get(j);
+                                final String referenceValue = referenceData.get(fi).get(j);
                                 if (!isExcludedFromMatching(tabName, fi, scanValue, referenceValue, dbType)) {
                                     if (tabName.equals("Field Overview") && j == 3 && !scanValue.equalsIgnoreCase(referenceValue)) {
-                                        assertTrue(matchTypeName(scanValue, referenceValue, dbType),
-                                                String.format("Field type '%s' cannot be matched with reference type '%s' for DbType %s",
-                                                        scanValue, referenceValue, dbType.name()));
+                                        if (!matchTypeName(scanValue, referenceValue, dbType)) {
+                                            mismatches.incrementAndGet();
+                                            logger.error(String.format("Field type '%s' cannot be matched with reference type '%s' for DbType %s",
+                                                    scanValue, referenceValue, dbType.name()));
+                                        }
                                     } else {
-                                        assertTrue(scanValue.equalsIgnoreCase(referenceValue),
-                                                String.format("In sheet %s, value '%s' in scan results does not match '%s' in reference (row %s, column %s)",
-                                                        tabName, scanValue, referenceValue, fi, j));
+                                        if (!scanValue.equalsIgnoreCase(referenceValue)) {
+                                            mismatches.incrementAndGet();
+                                            logger.error(
+                                                    String.format("In sheet %s, value '%s' in scan results does not match '%s' in reference " +
+                                                                    "(row %s, column %s, data col0='%s', data col1='%s', ref col0='%s', ref col1='%s')",
+                                                            tabName, scanValue, referenceValue, fi, j,
+                                                            scannedData.get(fi).get(0), scannedData.get(fi).get(1),
+                                                            referenceData.get(fi).get(0), referenceData.get(fi).get(1)));
+                                        }
                                     }
                                 }
                             });
@@ -127,19 +143,19 @@ public class ScanTestUtils {
         if (tabName.equals("_")) {
             if (dbType == DELIMITED_TEXT_FILES) {
                 switch (row) {
-                    case 1:             // reference sheet does not contain DbType, ignore
+                    case 9:             // reference sheet does not contain DbType, ignore
                     //case 10:            // reference sheet contains 0
                         return true;
                 }
             } else if (dbType != POSTGRESQL) {
-                if (row == 1) {
+                if (row == 9) {
                     return true;        // In reference sheet, this is always POSTGRESQL, ignore
                 }
             }
 
             switch (row) {
-                case 16:                // ignore WhiteRabbit version
-                case 12: case 13:       // ignore timestamps
+                case 1:                // ignore WhiteRabbit version
+                case 2: case 3:         // ignore timestamps
                     return true;
             }
         }
@@ -183,7 +199,7 @@ public class ScanTestUtils {
         }
     }
 
-    static class RowsComparator implements Comparator<List<String>> {
+    static class ColumnValueComparator implements Comparator<List<String>> {
         @Override
         public int compare(List<String> o1, List<String> o2) {
             if (o1.isEmpty() || o2.isEmpty()) {
@@ -202,6 +218,13 @@ public class ScanTestUtils {
         }
     }
 
+    static private List<List<String>> transposeAndSort(List<List<String>> sheet) {
+        List<List<String>> transposed = IntStream.range(0,sheet.get(0).size())
+                .mapToObj(i -> sheet.stream().map(l -> l.get(i)).collect(Collectors.toList()))
+                .collect(Collectors.toList());
+        transposed.sort(new ColumnValueComparator());
+        return transposed;
+    }
 
     private static Map<String, List<List<String>>> readXlsxAsStringValues(Path xlsx) throws IOException {
         assertTrue(Files.exists(xlsx), String.format("File %s does not exist.", xlsx));

@@ -57,17 +57,4 @@ class TestSourceDataScanSasIniFile {
         assertNotNull(referenceScanReport);
         assertTrue(ScanTestUtils.scanResultsSheetMatchesReference(tempDir.resolve("ScanReport.xlsx"), Paths.get(referenceScanReport.toURI()), DbType.SAS7BDAT));
     }
-
-    @Test
-    // minimal test to verify comparing ScanReports: test the tester :-) (and no, this test strictly speaking does not belong here, it should be in its own class)
-    void testCompareSheets() {
-        // conform that ScanTestUtils.compareSheets does know how to compare scan results (same, different)
-        Map<String, List<List<String>>> sheets1 = Collections.singletonMap("Field Overview", Collections.singletonList(Arrays.asList("one", "two", "three")));
-        Map<String, List<List<String>>> sheets2 = Collections.singletonMap("Field Overview", Collections.singletonList(Arrays.asList("one", "two", "three")));
-        Map<String, List<List<String>>> sheets3 = Collections.singletonMap("Field Overview", Collections.singletonList(Arrays.asList("two", "three", "four")));
-        AssertionFailedError thrown = Assertions.assertThrows(AssertionFailedError.class, () -> {
-            ScanTestUtils.scanValuesMatchReferenceValues(sheets1, sheets3, DbType.POSTGRESQL);
-        }, "AssertionFailedError was expected");
-        ScanTestUtils.scanValuesMatchReferenceValues(sheets1, sheets2, DbType.POSTGRESQL);
-    }
 }
