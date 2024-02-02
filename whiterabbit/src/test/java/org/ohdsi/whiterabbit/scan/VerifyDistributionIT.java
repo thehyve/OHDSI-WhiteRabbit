@@ -17,6 +17,7 @@
  ******************************************************************************/
 package org.ohdsi.whiterabbit.scan;
 
+import com.github.dockerjava.api.command.InspectContainerResponse;
 import org.apache.commons.lang.StringUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
@@ -30,10 +31,15 @@ import org.ohdsi.databases.SnowflakeTestUtils;
 import org.ohdsi.databases.configuration.DbType;
 import org.ohdsi.utilities.files.IniFile;
 import org.ohdsi.whiterabbit.WhiteRabbitMain;
+import org.rnorth.ducttape.unreliables.Unreliables;
 import org.testcontainers.containers.BindMode;
+import org.testcontainers.containers.ContainerState;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Container.ExecResult;
+import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy;
+import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.utility.MountableFile;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -41,7 +47,9 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -169,6 +177,8 @@ public class VerifyDistributionIT {
                 assertTrue(execResult.getStdout().contains("Scanning table COST"));
                 assertTrue(execResult.getStdout().contains("Scan report generated: /whiterabbit/ScanReport.xlsx"));
 
+                javaContainer.copyFileFromContainer("/whiterabbit/ScanReport.xlsx", tempDir.resolve("ScanReport.xlsx").toString());
+
                 assertTrue(ScanTestUtils.scanResultsSheetMatchesReference(tempDir.resolve("ScanReport.xlsx"), Paths.get(referenceScanReport.toURI()), DbType.SNOWFLAKE));
             }
         }
@@ -195,6 +205,7 @@ public class VerifyDistributionIT {
             ExecResult execResult = javaContainer.execInContainer("sh", "-c", "java -version");
             assertTrue(execResult.getStderr().startsWith(expectedVersion), "default java version in container should match version " + expectedVersion);
 
+            javaContainer.copyFileToContainer(MountableFile.forHostPath(tempDir), WORKDIR_IN_CONTAINER);
             // verify that the distribution of whiterabbit has been generated and is available inside the container
             execResult = javaContainer.execInContainer("sh", "-c", String.format("ls %s", APPDIR_IN_CONTAINER));
             assertTrue(execResult.getStdout().contains("repo"), "WhiteRabbit distribution is not accessible inside container");
@@ -210,6 +221,8 @@ public class VerifyDistributionIT {
             assertTrue(execResult.getStdout().contains("Scanning table /whiterabbit/cost.csv"));
             assertTrue(execResult.getStdout().contains("Scan report generated: /whiterabbit/ScanReport.xlsx"));
 
+            javaContainer.copyFileFromContainer("/whiterabbit/ScanReport.xlsx", tempDir.resolve("ScanReport.xlsx").toString());
+
             assertTrue(ScanTestUtils.scanResultsSheetMatchesReference(tempDir.resolve("ScanReport.xlsx"), Paths.get(referenceScanReport.toURI()), DbType.DELIMITED_TEXT_FILES));
 
             javaContainer.stop();
@@ -220,7 +233,11 @@ public class VerifyDistributionIT {
         return new GenericContainer<>(
                 DockerImageName.parse(imageName))
                 .withCommand("sh", "-c", "tail -f /dev/null")
-                .withFileSystemBind(Paths.get("../dist").toAbsolutePath().toString(), APPDIR_IN_CONTAINER)
-                .withFileSystemBind(tempDir.toString(), WORKDIR_IN_CONTAINER, BindMode.READ_WRITE);
+                .withCopyToContainer(
+                        MountableFile.forHostPath("../dist/"),
+                        APPDIR_IN_CONTAINER);
+//                .withCopyToContainer(
+//                        MountableFile.forHostPath(tempDir.toString()),
+//                        WORKDIR_IN_CONTAINER);
     }
 }
