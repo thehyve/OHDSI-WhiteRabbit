@@ -149,13 +149,13 @@ public class VerifyDistributionIT {
                 URL referenceScanReport = SourceDataScanSnowflakeIT.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
                 assert iniTemplate != null;
                 String content = new String(Files.readAllBytes(Paths.get(iniTemplate.toURI())), charset);
-                content = content.replaceAll("%WORKING_FOLDER%", WORKDIR_IN_CONTAINER)
-                        .replaceAll("%SNOWFLAKE_ACCOUNT%", reader.getOrFail("SNOWFLAKE_WR_TEST_ACCOUNT"))
-                        .replaceAll("%SNOWFLAKE_USER%", reader.getOrFail("SNOWFLAKE_WR_TEST_USER"))
-                        .replaceAll("%SNOWFLAKE_PASSWORD%", reader.getOrFail("SNOWFLAKE_WR_TEST_PASSWORD"))
-                        .replaceAll("%SNOWFLAKE_WAREHOUSE%", reader.getOrFail("SNOWFLAKE_WR_TEST_WAREHOUSE"))
-                        .replaceAll("%SNOWFLAKE_DATABASE%", reader.getOrFail("SNOWFLAKE_WR_TEST_DATABASE"))
-                        .replaceAll("%SNOWFLAKE_SCHEMA%", reader.getOrFail("SNOWFLAKE_WR_TEST_SCHEMA"));
+                content = content.replace("%WORKING_FOLDER%", WORKDIR_IN_CONTAINER)
+                        .replace("%SNOWFLAKE_ACCOUNT%", reader.getOrFail("SNOWFLAKE_WR_TEST_ACCOUNT"))
+                        .replace("%SNOWFLAKE_USER%", reader.getOrFail("SNOWFLAKE_WR_TEST_USER"))
+                        .replace("%SNOWFLAKE_PASSWORD%", reader.getOrFail("SNOWFLAKE_WR_TEST_PASSWORD"))
+                        .replace("%SNOWFLAKE_WAREHOUSE%", reader.getOrFail("SNOWFLAKE_WR_TEST_WAREHOUSE"))
+                        .replace("%SNOWFLAKE_DATABASE%", reader.getOrFail("SNOWFLAKE_WR_TEST_DATABASE"))
+                        .replace("%SNOWFLAKE_SCHEMA%", reader.getOrFail("SNOWFLAKE_WR_TEST_SCHEMA"));
                 Files.write(iniFile, content.getBytes(charset));
                 // verify that the distribution of whiterabbit has been generated and is available inside the container
                 ExecResult execResult = javaContainer.execInContainer("sh", "-c", String.format("ls %s", APPDIR_IN_CONTAINER));

@@ -76,6 +76,7 @@ public class ScanTestUtils {
             }
 
         }, timeout(10000));
+        System.out.println("console: >" + console.getText() + "<");
         assertTrue(console.getText().contains(expectedPath.toString()));
 
         return scanResultsSheetMatchesReference(expectedPath, referencePath, dbType);
