@@ -220,8 +220,5 @@ public class VerifyDistributionIT {
                 .withCopyToContainer(
                         MountableFile.forHostPath("../dist/"),
                         APPDIR_IN_CONTAINER);
-//                .withCopyToContainer(
-//                        MountableFile.forHostPath(tempDir.toString()),
-//                        WORKDIR_IN_CONTAINER);
     }
 }
