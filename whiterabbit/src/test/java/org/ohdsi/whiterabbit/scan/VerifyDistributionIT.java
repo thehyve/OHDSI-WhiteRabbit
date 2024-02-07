@@ -17,27 +17,15 @@
  ******************************************************************************/
 package org.ohdsi.whiterabbit.scan;
 
-import com.github.dockerjava.api.command.InspectContainerResponse;
-import org.apache.commons.lang.StringUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.runners.Parameterized;
 import org.ohdsi.databases.DBConnector;
 import org.ohdsi.databases.SnowflakeTestUtils;
 import org.ohdsi.databases.configuration.DbType;
-import org.ohdsi.utilities.files.IniFile;
-import org.ohdsi.whiterabbit.WhiteRabbitMain;
-import org.rnorth.ducttape.unreliables.Unreliables;
-import org.testcontainers.containers.BindMode;
-import org.testcontainers.containers.ContainerState;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Container.ExecResult;
-import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy;
-import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
@@ -47,10 +35,6 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
-import java.util.concurrent.TimeUnit;
-import java.util.function.BooleanSupplier;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.ohdsi.whiterabbit.scan.SourceDataScanSnowflakeIT.*;
