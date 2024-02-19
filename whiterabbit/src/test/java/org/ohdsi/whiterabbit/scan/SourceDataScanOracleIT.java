@@ -44,7 +44,7 @@ class SourceDataScanOracleIT {
     private final static String USER_NAME = "test_user";
     private final static String SCHEMA_NAME = USER_NAME;
 
-    // The Oracle test containersomehwat  is slow to start, and these tests can be configured to be skipped by
+    // The Oracle test container is somewhat  is slow to start, and these tests can be configured to be skipped by
     // setting the environment variable SKIP_ORACLE_TESTS to "true" (e.g. in a Github workflow)
     private final static String SKIP_ORACLE_TESTS = "SKIP_ORACLE_TESTS";
 
