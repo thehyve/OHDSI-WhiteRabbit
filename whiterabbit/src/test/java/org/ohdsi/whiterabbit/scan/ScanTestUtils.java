@@ -82,7 +82,7 @@ public class ScanTestUtils {
     }
 
     public static <scannedData> boolean scanValuesMatchReferenceValues(Map<String, List<List<String>>> scanSheets, Map<String, List<List<String>>> referenceSheets, DbType dbType) {
-        assertEquals(scanSheets.size(), referenceSheets.size(), "Number of sheets does not match.");
+        assertEquals(referenceSheets.size(), scanSheets.size(), "Number of sheets does not match.");
 
         List<String> tabNames = new ArrayList<>(referenceSheets.keySet());
         for (String tabName: tabNames) {
@@ -222,6 +222,14 @@ public class ScanTestUtils {
             case SAS7BDAT:
                 switch (type) {
                     case "VARCHAR": return reference.equals("INT");
+                    default:
+                        throw new RuntimeException(String.format("Unsupported column type '%s' for DbType %s ", type, dbType.name()));
+                }
+            case BIGQUERY:
+                switch (type) {
+                    case "STRING": return reference.equals("character varying") || reference.equals("timestamp without time zone") || reference.equals("numeric") || reference.equals("integer");
+                    case "INT64":
+                    case "INTEGER": return reference.equals("integer") || reference.equals("numeric") || reference.equals("character varying");
                     default:
                         throw new RuntimeException(String.format("Unsupported column type '%s' for DbType %s ", type, dbType.name()));
                 }
