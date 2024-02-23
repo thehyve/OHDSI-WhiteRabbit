@@ -298,7 +298,7 @@ public class DBConnector {
 			throw new RuntimeException(String.format("JDBC driver was not expected to be loaded: %s", notSupportedDriver));
 		} catch (ClassNotFoundException ignored) {}
 
-		DbType.driverNames().forEach(driver -> {
+		DbType.includedDriverNames().forEach(driver -> {
 			try {
 				testJDBCDriverAndVersion(driver);
 			} catch (ClassNotFoundException e) {

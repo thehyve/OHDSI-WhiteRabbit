@@ -17,27 +17,20 @@
  ******************************************************************************/
 package org.ohdsi.whiterabbit.scan;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.ohdsi.databases.RichConnection;
 import org.ohdsi.databases.configuration.DbSettings;
 import org.ohdsi.databases.configuration.DbType;
-import org.testcontainers.containers.BigQueryEmulatorContainer;
-import org.testcontainers.junit.jupiter.Container;
 
-import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.*;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SourceDataScanBigQueryIT {
@@ -46,25 +39,11 @@ class SourceDataScanBigQueryIT {
     public static void startContainer() {
     }
 
-//    @Test
-//    public void connectToDatabase() {
-//        // this is also implicitly tested by testSourceDataScan(), but having it fail separately helps identify problems quicker
-//        DbSettings dbSettings = getTestDbSettings();
-//        try (RichConnection richConnection = new RichConnection(dbSettings)) {
-//            // do nothing, connection will be closed automatically because RichConnection implements interface Closeable
-//        }
-//    }
-//
-//    @Test
-//    public void testGetTableNames() {
-//        // this is also implicitly tested by testSourceDataScan(), but having it fail separately helps identify problems quicker
-//        DbSettings dbSettings = getTestDbSettings();
-//        List<String> tableNames = getTableNames(dbSettings);
-//        assertEquals(2, tableNames.size());
-//    }
-
-    @Test
+    // Disabled: this test fails since the BigQuery JDBC jar is no longer included by default; but it could be handy when
+    // testing/debugging BigQuery issues, so it is left in place
+    //@Test
     void testSourceDataScan(@TempDir Path tempDir) throws IOException, URISyntaxException {
+        Assumptions.assumeTrue(new ScanTestUtils.PropertiesFileChecker("bigquery.env"), "No BigQuery properties file present, skipping BigQuery test(s).");
         Path outFile = tempDir.resolve("scanresult.xlsx");
         URL referenceScanReport = SourceDataScanBigQueryIT.class.getClassLoader().getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
 
@@ -79,7 +58,7 @@ class SourceDataScanBigQueryIT {
 
     private List<String> getTableNames(DbSettings dbSettings) {
         try (RichConnection richConnection = new RichConnection(dbSettings)) {
-            return richConnection.getTableNames("OHDSI");
+            return richConnection.getTableNames(ScanTestUtils.getPropertyOrFail("BIGQUERY_DATASET") );
         }
     }
 
@@ -88,13 +67,13 @@ class SourceDataScanBigQueryIT {
         DbSettings dbSettings = new DbSettings();
         dbSettings.dbType = DbType.BIGQUERY;
         dbSettings.sourceType = DbSettings.SourceType.DATABASE;
-        dbSettings.server = "elite-thunder-415014";
-        dbSettings.user = "";   // TODO get from bigquery.env file
-        dbSettings.password = "";   // TODO get from bigquery.env file
+        dbSettings.server = ScanTestUtils.getPropertyOrFail("BIGQUERY_PROJECT_ID");
+        dbSettings.user = ScanTestUtils.getPropertyOrFail("BIGQUERY_ACCOUNT");
+        dbSettings.password = ScanTestUtils.getPropertyOrFail("BIGQUERY_KEY_FILE");
         dbSettings.tables = getTableNames(dbSettings);
-        dbSettings.database = "OHDSI";
-        dbSettings.domain = "OHDSI";
-        dbSettings.schema = "OHDSI";
+        dbSettings.database = ScanTestUtils.getPropertyOrFail("BIGQUERY_DATASET");
+        dbSettings.domain = "";
+        dbSettings.schema = "";
 
         return dbSettings;
     }
