@@ -149,13 +149,8 @@
         </dependency>
         <dependency>
             <groupId>com.teradata.jdbc</groupId>
-            <artifactId>terajdbc4</artifactId>
-            <version>16.0.0.32</version>
-        </dependency>
-        <dependency>
-            <groupId>com.teradata.tdgss</groupId>
-            <artifactId>tdgssconfig</artifactId>
-            <version>16.0.0.0</version>
+            <artifactId>terajdbc</artifactId>
+            <version>20.00.00.16</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.avro/avro -->
         <dependency>

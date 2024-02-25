@@ -66,7 +66,7 @@ public class DBConnector {
 		try {
 			Class.forName("com.teradata.jdbc.TeraDriver");
 		} catch(ClassNotFoundException e) {
-			throw new RuntimeException("Cannot find JDBC driver. Make sure the terajdbc4.jar and tdgssconfig.jar are in the path");
+			throw new RuntimeException("Cannot find JDBC driver. Make sure the terajdbc.jar is in the path.");
 		}
 		String url = "jdbc:teradata://" + server;
 		try {
