@@ -18,7 +18,6 @@
 package org.ohdsi.whiterabbit.scan;
 
 import org.junit.jupiter.api.Test;
-import org.ohdsi.databases.DBConnection;
 import org.ohdsi.databases.RichConnection;
 import org.ohdsi.databases.configuration.DbSettings;
 import org.ohdsi.databases.configuration.DbType;
@@ -53,11 +52,11 @@ import static org.junit.jupiter.api.Assertions.*;
   - get a list of tables available and verify that there are more than 0
   No actual WhiteRabbit scan of the database is performed.
  */
-class SourceDataScanTeradataIT {
+class SourceTableScanTeradataIT {
 
     private final static List<String> VALIDATED_VERSIONS = Arrays.asList("16.20.00.13", "17.20.00.15", "20.00.00.16");
 
-    Logger logger = LoggerFactory.getLogger(SourceDataScanTeradataIT.class);
+    Logger logger = LoggerFactory.getLogger(SourceTableScanTeradataIT.class);
 
     @Test
     void testGetTableNames() throws ClassNotFoundException {
