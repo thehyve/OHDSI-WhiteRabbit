@@ -312,9 +312,6 @@
                         <!-- apparently there is no license information available for sqljdbc4, even though
                         it is published on Maven repos -->
                         <exclude>com.microsoft.sqlserver:sqljdbc4</exclude>
-
-                        <!-- temporary exclusion for the patched caciocavallo dependency -->
-                        <exclude>com.github.thehyve:caciocavallo</exclude>
                     </excludes>
                     <!-- acceptableLicenseResources>osi-widely-used</acceptableLicenseResources -->
                 </configuration>
