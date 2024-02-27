@@ -147,11 +147,6 @@
             <artifactId>redshift-jdbc42</artifactId>
             <version>2.1.0.25</version>
         </dependency>
-        <dependency>
-            <groupId>com.teradata.jdbc</groupId>
-            <artifactId>terajdbc</artifactId>
-            <version>20.00.00.16</version>
-        </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.avro/avro -->
         <dependency>
             <groupId>org.apache.avro</groupId>

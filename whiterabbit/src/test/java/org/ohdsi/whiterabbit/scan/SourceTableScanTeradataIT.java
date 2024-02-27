@@ -58,7 +58,8 @@ class SourceTableScanTeradataIT {
 
     Logger logger = LoggerFactory.getLogger(SourceTableScanTeradataIT.class);
 
-    @Test
+    // Teradata does not allow redistribution of the JDBC driver, this test can only be run for local test purposes
+    //@Test
     void testGetTableNames() throws ClassNotFoundException {
         if (!VALIDATED_VERSIONS.contains(getVersion())) {
             logger.warn("Version {} of Teradata JDBC driver was not tested before, please make sure a local instance of Teradata is available," +

@@ -39,7 +39,7 @@ public enum DbType {
 	MS_ACCESS("MS Access", "net.ucanaccess.jdbc.UcanaccessDriver"),
 	PDW("PDW", "com.microsoft.sqlserver.jdbc.SQLServerDriver"),
 	REDSHIFT("Redshift", "com.amazon.redshift.jdbc42.Driver"),
-	TERADATA("Teradata", "com.teradata.jdbc.TeraDriver"),
+	TERADATA("Teradata", "com.teradata.jdbc.TeraDriver", null, false),
 	BIGQUERY("BigQuery", "com.simba.googlebigquery.jdbc42.Driver", null, false),	// license does not allow inclusion with the distribution
 	AZURE("Azure", "com.microsoft.sqlserver.jdbc.SQLServerDriver"),
 	SNOWFLAKE("Snowflake", "net.snowflake.client.jdbc.SnowflakeDriver", SnowflakeHandler.INSTANCE),
@@ -113,6 +113,11 @@ public enum DbType {
 	public static List<String> includedDriverNames() {
 		// return a list of unique names for drivers that are included with the distribution, without null values
 		return Stream.of(values()).filter(v -> StringUtils.isNotEmpty(v.driverName) && v.driverIncluded).map(d -> d.driverName).distinct().collect(Collectors.toList());
+	}
+
+	public static List<String> excludedDriverNames() {
+		// return a list of unique names for drivers that are excluded from the distribution, without null values
+		return Stream.of(values()).filter(v -> StringUtils.isNotEmpty(v.driverName) && !v.driverIncluded).map(d -> d.driverName).distinct().collect(Collectors.toList());
 	}
 
 	public String label() {

@@ -66,7 +66,10 @@ public class DBConnector {
 		try {
 			Class.forName("com.teradata.jdbc.TeraDriver");
 		} catch(ClassNotFoundException e) {
-			throw new RuntimeException("Cannot find JDBC driver. Make sure the terajdbc.jar is in the path.");
+			throw new RuntimeException("Cannot find JDBC driver. Make sure the terajdbc.jar is in the path.\n" +
+					"It is not part of WhiteRabbit due to licensing restrictions. You need to install this yourself.\n" +
+					"Please see the information at \n" +
+					"<a href='https://ohdsi.github.io/WhiteRabbit/WhiteRabbit.html#teradata'>https://ohdsi.github.io/WhiteRabbit/WhiteRabbit.html#teradata</a>");
 		}
 		String url = "jdbc:teradata://" + server;
 		try {
@@ -254,7 +257,10 @@ public class DBConnector {
 		try {
 			Class.forName("com.simba.googlebigquery.jdbc42.Driver");
 		} catch (ClassNotFoundException e1) {
-			throw new RuntimeException("Cannot find Simba GoogleBigQuery JDBC Driver class");
+			throw new RuntimeException("Cannot find Simba GoogleBigQuery JDBC Driver class.\n" +
+					"It is not part of WhiteRabbit due to licensing restrictions. You need to install this yourself.\n" +
+					"Please find additional information at \n" +
+					"<a href='https://ohdsi.github.io/WhiteRabbit/WhiteRabbit.html#google%2Dbigquery'>https://ohdsi.github.io/WhiteRabbit/WhiteRabbit.html#google-bigquery</a>");
 		}
 		/* See http://howtodojava.com/regex/java-regex-validate-email.address/ */
 		String email_regex = "^[\\w!#$%&'*+/=?`{|}~^-]+(?:\\.[\\w!#$%&'*+/=?`{|}~^-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,6}$";
