@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,6 +47,7 @@ import javax.swing.border.TitledBorder;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
+import org.apache.commons.io.input.BOMInputStream;
 import org.ohdsi.rabbitInAHat.ETLMarkupDocumentGenerator.DocumentType;
 import org.ohdsi.rabbitInAHat.dataModel.Database;
 import org.ohdsi.rabbitInAHat.dataModel.Database.CDMVersion;
@@ -115,11 +117,11 @@ public class RabbitInAHatMain implements ResizeListener {
 	private JSplitPane				tableFieldSplitPane;
 	private JFileChooser			chooser;
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		new RabbitInAHatMain(args);
 	}
 
-	public RabbitInAHatMain(String[] args) {
+	public RabbitInAHatMain(String[] args) throws IOException {
 
 		// Set look and feel to the system look and feel
 		try {
@@ -277,7 +279,13 @@ public class RabbitInAHatMain implements ResizeListener {
 				targetCDM.setSelected(true);
 			}
 			targetGroup.add(targetCDM);
-			targetDatabaseMenu.add(targetCDM).addActionListener(evt -> this.doSetTargetCDM(cdmOptions.get(optionName)));
+			targetDatabaseMenu.add(targetCDM).addActionListener(evt -> {
+                try {
+                    this.doSetTargetCDM(cdmOptions.get(optionName));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
 		}
 
 		targetCDM = new JRadioButtonMenuItem(ACTION_SET_TARGET_CUSTOM);
@@ -499,7 +507,7 @@ public class RabbitInAHatMain implements ResizeListener {
 
 	}
 
-	private void doSetTargetCDM(CDMVersion cdmVersion) {
+	private void doSetTargetCDM(CDMVersion cdmVersion) throws IOException {
 		ETL etl = new ETL(ObjectExchange.etl.getSourceDatabase(), Database.generateCDMModel(cdmVersion));
 		etl.copyETLMappings(ObjectExchange.etl);
 		tableMappingPanel.setMapping(etl.getTableToTableMapping());
