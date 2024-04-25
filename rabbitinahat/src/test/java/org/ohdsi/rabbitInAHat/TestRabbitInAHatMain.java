@@ -24,10 +24,10 @@ import org.assertj.swing.edt.GuiActionRunner;
 import org.assertj.swing.finder.JFileChooserFinder;
 import org.assertj.swing.fixture.FrameFixture;
 import org.assertj.swing.fixture.JFileChooserFixture;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -55,12 +55,12 @@ public class TestRabbitInAHatMain {
 
     private final static int WIDTH = 1920;
     private final static int HEIGHT = 1080;
-    @BeforeClass
+    @BeforeAll
     public static void setupOnce() {
         System.setProperty("cacio.managed.screensize", String.format("%sx%s", WIDTH, HEIGHT));
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         String[] args = {};
         RabbitInAHatMain rabbitInAHatMain = GuiActionRunner.execute(() -> new RabbitInAHatMain(args));
@@ -69,7 +69,7 @@ public class TestRabbitInAHatMain {
         window.show(); // shows the frame to test
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         // uncertain if the assertions with isActive() are sufficient, but at least it's an indication the open window
         // did close

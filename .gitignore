@@ -26,3 +26,5 @@ data/
 snowflake.env
 # contains authentication data for a BigQuery instance
 bigquery.env
+
+*/failed-gui-tests/
