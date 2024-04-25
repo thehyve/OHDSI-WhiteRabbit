@@ -50,7 +50,7 @@ class SourceTableScanSqlServerIT {
         mssqlserver.start();
     }
 
-    @Test
+    //@Test // disabled due to problems with the SqlServer TestContainer
     void testGetTableNames() {
         DbSettings dbSettings = getTestDbSettings();
         List<String> tableNames = getTableNames(dbSettings);
