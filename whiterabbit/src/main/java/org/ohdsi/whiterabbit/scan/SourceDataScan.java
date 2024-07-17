@@ -568,7 +568,7 @@ public class SourceDataScan implements ScanParameters {
 				break;
 		}
 		for (FieldInfo fieldInfo : fieldInfos) {
-			fieldInfo.rowCount = lineNr;
+			fieldInfo.rowCount = lineNr - 1;
 			fieldInfo.trim();
 		}
 		return fieldInfos;
