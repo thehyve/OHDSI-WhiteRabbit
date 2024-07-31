@@ -17,7 +17,6 @@
  ******************************************************************************/
 package org.ohdsi.utilities;
 
-import org.ohdsi.utilities.collections.CountingSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +24,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
 import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.zip.DataFormatException;
@@ -862,7 +860,6 @@ public class StringUtilities {
 
 
 	public static boolean isDate(String string) {
-
 		for (String dateFormat : dateFormats){
 			DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(dateFormat);
 			try {
@@ -871,7 +868,6 @@ public class StringUtilities {
 			} catch (Exception ignored){}
 		}
 		return false;
-
 	}
 
 	public static int numericOptionToInt(String option) {
