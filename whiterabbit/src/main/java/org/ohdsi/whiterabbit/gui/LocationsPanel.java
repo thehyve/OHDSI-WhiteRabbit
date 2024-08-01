@@ -40,12 +40,17 @@ public class LocationsPanel extends JPanel {
     public static final String LABEL_LOCATIONS = "Locations";
     public static final String LABEL_SERVER_LOCATION = "Server location";
     public static final String NAME_SERVER_LOCATION = "ServerLocation";
+
     public static final String LABEL_USER_NAME = "User name";
     public static final String NAME_USER_NAME = "UserName";
+
     public static final String LABEL_PASSWORD = "Password";
     public static final String NAME_PASSWORD = "PasswordName";
+
+
     public static final String LABEL_DATABASE_NAME = "Database name";
     public static final String NAME_DATABASE_NAME = "DatabaseName";
+
     public static final String LABEL_DELIMITER = "Delimiter";
     public static final String NAME_DELIMITER = "DelimiterName";
 
@@ -62,6 +67,11 @@ public class LocationsPanel extends JPanel {
     private JTextField sourceDatabaseField;
     private DbType currentDbType = null;
 
+    private JLabel serverLocationLabel;
+    private JLabel userNameLabel;
+    private JLabel passwordLabel;
+    private JLabel databaseNameLabel;
+    private JLabel delimiterLabel;
 
     private SourcePanel sourcePanel;
     private boolean sourceIsFiles = true;
@@ -207,33 +217,42 @@ public class LocationsPanel extends JPanel {
         sourceIsSas = sourceIsSas(selectedSourceType);
         boolean sourceIsDatabase = sourceIsDatabase(selectedSourceType);
 
-        sourcePanel.addReplacable(new JLabel(LABEL_SERVER_LOCATION));
+        serverLocationLabel = new JLabel(LABEL_SERVER_LOCATION);
+        sourcePanel.addReplacable(serverLocationLabel);
         sourceServerField = new JTextField("127.0.0.1");
         sourceServerField.setName(LABEL_SERVER_LOCATION);
         sourceServerField.setEnabled(false);
         sourcePanel.addReplacable(sourceServerField);
-        sourcePanel.addReplacable(new JLabel(LABEL_USER_NAME));
+
+        userNameLabel = new JLabel(LABEL_USER_NAME);
+        sourcePanel.addReplacable(userNameLabel);
         sourceUserField = new JTextField("");
         sourceUserField.setName(LABEL_USER_NAME);
         sourceUserField.setEnabled(false);
         sourcePanel.addReplacable(sourceUserField);
-        sourcePanel.addReplacable(new JLabel(LABEL_PASSWORD));
+
+        passwordLabel = new JLabel(LABEL_PASSWORD);
+        sourcePanel.addReplacable(passwordLabel);
         sourcePasswordField = new JPasswordField("");
         sourcePasswordField.setName(LABEL_PASSWORD);
         sourcePasswordField.setEnabled(false);
         sourcePanel.addReplacable(sourcePasswordField);
-        sourcePanel.addReplacable(new JLabel(LABEL_DATABASE_NAME));
+
+        databaseNameLabel = new JLabel(LABEL_DATABASE_NAME);
+        sourcePanel.addReplacable(databaseNameLabel);
         sourceDatabaseField = new JTextField("");
         sourceDatabaseField.setName(LABEL_DATABASE_NAME);
         sourceDatabaseField.setEnabled(false);
         sourcePanel.addReplacable(sourceDatabaseField);
 
-        sourcePanel.addReplacable(new JLabel(LABEL_DELIMITER));
+        delimiterLabel = new JLabel(LABEL_DELIMITER);
+        sourcePanel.addReplacable(delimiterLabel);
         JTextField delimiterField = new JTextField(",");
         delimiterField.setName(NAME_DELIMITER);
         sourceDelimiterField = delimiterField;
         sourceDelimiterField.setToolTipText("The delimiter that separates values. Enter 'tab' for tab.");
         sourcePanel.addReplacable(sourceDelimiterField);
+
         sourceServerField.setEnabled(sourceIsDatabase);
         sourceUserField.setEnabled(sourceIsDatabase);
         sourcePasswordField.setEnabled(sourceIsDatabase);
@@ -245,19 +264,27 @@ public class LocationsPanel extends JPanel {
                 sourceServerField.setToolTipText("For Oracle servers this field contains the SID, servicename, and optionally the port: '<host>/<sid>', '<host>:<port>/<sid>', '<host>/<service name>', or '<host>:<port>/<service name>'");
                 sourceUserField.setToolTipText("For Oracle servers this field contains the name of the user used to log in");
                 sourcePasswordField.setToolTipText("For Oracle servers this field contains the password corresponding to the user");
+                databaseNameLabel.setText("Schema name");
                 sourceDatabaseField.setToolTipText("For Oracle servers this field contains the schema (i.e. 'user' in Oracle terms) containing the source tables");
             } else if (selectedSourceType.equals(DbType.POSTGRESQL.label())) {
+                serverLocationLabel.setText("Host name and database name");
                 sourceServerField.setToolTipText(TOOLTIP_POSTGRESQL_SERVER);
                 sourceUserField.setToolTipText("The user used to log in to the server");
                 sourcePasswordField.setToolTipText("The password used to log in to the server");
+                databaseNameLabel.setText("Schema name");
                 sourceDatabaseField.setToolTipText("For PostgreSQL servers this field contains the schema containing the source tables");
             } else if (selectedSourceType.equals(DbType.BIGQUERY.label())) {
+                serverLocationLabel.setText("ProjectID");
                 sourceServerField.setToolTipText("GBQ SA & UA:  ProjectID");
+                userNameLabel.setText("E-mail (SA only)");
                 sourceUserField.setToolTipText("GBQ SA only: OAuthServiceAccountEMAIL");
+                passwordLabel.setText("OAuthPvtKeyPath");
                 sourcePasswordField.setToolTipText("GBQ SA only: OAuthPvtKeyPath");
+                databaseNameLabel.setText("Data set");
                 sourceDatabaseField.setToolTipText("GBQ SA & UA: Data Set within ProjectID");
             } else {
                 if (selectedSourceType.equals(DbType.AZURE.label())) {
+                    serverLocationLabel.setText("Host name and database name");
                     sourceServerField.setToolTipText("For Azure, this field contains the host name and database name (<host>;database=<database>)");
                 } else {
                     sourceServerField.setToolTipText(TOOLTIP_DATABASE_SERVER);
