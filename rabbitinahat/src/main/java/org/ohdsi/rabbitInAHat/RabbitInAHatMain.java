@@ -628,7 +628,6 @@ public class RabbitInAHatMain implements ResizeListener {
 								oldField.setDescription(newField.getDescription());
 								oldField.setFractionEmpty(newField.getFractionEmpty());
 								oldField.setUniqueCount(newField.getUniqueCount());
-								oldField.setFractionUnique(newField.getFractionUnique());
 								oldField.setNullable(newField.isNullable());
 								oldField.setValueCounts(newField.getValueCounts());
 							} else {
