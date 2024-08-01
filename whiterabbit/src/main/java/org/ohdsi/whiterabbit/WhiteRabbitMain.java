@@ -423,6 +423,11 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 	private JPanel createFakeDataPanel() {
 		JPanel panel = new JPanel();
 
+		JLabel serverLocationLabel;
+		JLabel userNameLabel;
+		JLabel passwordLabel;
+		JLabel databaseNameLabel;
+
 		panel.setLayout(new GridBagLayout());
 		GridBagConstraints c = new GridBagConstraints();
 		c.fill = GridBagConstraints.BOTH;
@@ -455,6 +460,46 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 		targetPanel.add(new JLabel("Data type"));
 		targetType = new JComboBox<>(new String[] {DELIMITED_TEXT_FILES, "MySQL", "Oracle", "SQL Server", "PostgreSQL", "PDW"});
 		targetType.setToolTipText("Select the type of source data available");
+
+		targetPanel.add(targetType);
+
+		serverLocationLabel = new JLabel("Server location");
+		targetPanel.add(serverLocationLabel);
+		targetServerField = new JTextField("127.0.0.1");
+		targetServerField.setEnabled(false);
+		targetPanel.add(targetServerField);
+
+		userNameLabel = new JLabel("User name");
+		targetPanel.add(userNameLabel);
+		targetUserField = new JTextField("");
+		targetUserField.setEnabled(false);
+		targetPanel.add(targetUserField);
+
+		passwordLabel = new JLabel("Password");
+		targetPanel.add(passwordLabel);
+		targetPasswordField = new JPasswordField("");
+		targetPasswordField.setEnabled(false);
+		targetPanel.add(targetPasswordField);
+
+		databaseNameLabel = new JLabel("Database name");
+		targetPanel.add(databaseNameLabel);
+		targetDatabaseField = new JTextField("");
+		targetDatabaseField.setEnabled(false);
+		targetPanel.add(targetDatabaseField);
+
+		targetPanel.add(new JLabel("CSV Format"));
+		targetCSVFormat = new JComboBox<>(
+				new String[] { "Default (comma, CRLF)", "TDF (tab, CRLF)", "MySQL (tab, LF)", "RFC4180", "Excel CSV" });
+		targetCSVFormat.setToolTipText("The format of the output");
+		targetCSVFormat.setEnabled(true);
+		targetPanel.add(targetCSVFormat);
+
+		targetPanel.add(new JLabel(""));
+		doUniformSampling = new JCheckBox("Uniform Sampling", false);
+		doUniformSampling.setToolTipText("For all fields, choose every possible value with the same probability");
+		doUniformSampling.setEnabled(true);
+		targetPanel.add(doUniformSampling);
+
 		targetType.addItemListener(event -> {
 			targetIsFiles = event.getItem().toString().equals(DELIMITED_TEXT_FILES);
 			targetServerField.setEnabled(!targetIsFiles);
@@ -475,54 +520,36 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 			switch (event.getItem().toString()) {
 				case "Oracle":
 					targetServerField.setToolTipText("For Oracle servers this field contains the SID, servicename, and optionally the port: '<host>/<sid>', '<host>:<port>/<sid>', '<host>/<service name>', or '<host>:<port>/<service name>'");
+					databaseNameLabel.setText("Schema name");
 					targetDatabaseField.setToolTipText("For Oracle servers this field contains the schema (i.e. 'user' in Oracle terms) containing the source tables");
 					break;
 				case "PostgreSQL":
+					serverLocationLabel.setText("Host name and database name");
 					targetServerField.setToolTipText("For PostgreSQL servers this field contains the host name and database name (<host>/<database>)");
+					databaseNameLabel.setText("Schema name");
 					targetDatabaseField.setToolTipText("For PostgreSQL servers this field contains the *schema* containing the source tables");
 					break;
 				case "BigQuery":
+					serverLocationLabel.setText("ProjectID");
 					targetServerField.setToolTipText("GBQ ProjectID");
+					userNameLabel.setText("E-mail");
 					targetUserField.setToolTipText("GBQ OAuthServiceAccountEmail");
+					passwordLabel.setText("OAuthPvtKeyPath");
 					targetPasswordField.setToolTipText("GBQ OAuthPvtKeyPath");
+					databaseNameLabel.setText("Dataset name");
 					targetDatabaseField.setToolTipText("GBQ Data Set within ProjectID");
 					break;
 				case "SQL Server":
 					targetUserField.setToolTipText("The user used to log in to the server. Optionally, the domain can be specified as <domain>/<user> (e.g. 'MyDomain/Joe')");
 					break;
+				default:
+					serverLocationLabel.setText("Server location");
+					userNameLabel.setText("User name");
+					passwordLabel.setText("Password");
+					databaseNameLabel.setText("Database name");
 			}
 		});
-		targetPanel.add(targetType);
 
-		targetPanel.add(new JLabel("Server location"));
-		targetServerField = new JTextField("127.0.0.1");
-		targetServerField.setEnabled(false);
-		targetPanel.add(targetServerField);
-		targetPanel.add(new JLabel("User name"));
-		targetUserField = new JTextField("");
-		targetUserField.setEnabled(false);
-		targetPanel.add(targetUserField);
-		targetPanel.add(new JLabel("Password"));
-		targetPasswordField = new JPasswordField("");
-		targetPasswordField.setEnabled(false);
-		targetPanel.add(targetPasswordField);
-		targetPanel.add(new JLabel("Database name"));
-		targetDatabaseField = new JTextField("");
-		targetDatabaseField.setEnabled(false);
-		targetPanel.add(targetDatabaseField);
-
-		targetPanel.add(new JLabel("CSV Format"));
-		targetCSVFormat = new JComboBox<>(
-				new String[] { "Default (comma, CRLF)", "TDF (tab, CRLF)", "MySQL (tab, LF)", "RFC4180", "Excel CSV" });
-		targetCSVFormat.setToolTipText("The format of the output");
-		targetCSVFormat.setEnabled(true);
-		targetPanel.add(targetCSVFormat);
-
-		targetPanel.add(new JLabel(""));
-		doUniformSampling = new JCheckBox("Uniform Sampling", false);
-		doUniformSampling.setToolTipText("For all fields, choose every possible value with the same probability");
-		doUniformSampling.setEnabled(true);
-		targetPanel.add(doUniformSampling);
 
 		c.gridx = 0;
 		c.gridy = 1;
