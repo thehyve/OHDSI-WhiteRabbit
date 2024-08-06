@@ -576,9 +576,10 @@ public class SourceDataScan implements ScanParameters {
 			if (sampleSize != -1 && lineNr > sampleSize)
 				break;
 		}
-		for (FieldInfo fieldInfo : fieldInfos)
+		for (FieldInfo fieldInfo : fieldInfos) {
+			fieldInfo.rowCount = lineNr - 1;
 			fieldInfo.trim();
-
+		}
 		return fieldInfos;
 	}
 
