@@ -18,6 +18,7 @@
 package org.ohdsi.whiterabbit.scan;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -49,6 +50,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static java.lang.Long.max;
+import static java.lang.Math.round;
 
 public class SourceDataScan implements ScanParameters {
 	static Logger logger = LoggerFactory.getLogger(SourceDataScan.class);
@@ -538,8 +540,17 @@ public class SourceDataScan implements ScanParameters {
 		StringUtilities.outputWithTime("Scanning table " + filename);
 		List<FieldInfo> fieldInfos = new ArrayList<>();
 		int lineNr = 0;
-		for (String line : new ReadTextFile(filename)) {
+		long lineBytes = 0;
+		long totalFileSize;
+        try {
+            totalFileSize = Files.size(Paths.get(filename));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        for (String line : new ReadTextFile(filename)) {
 			lineNr++;
+			lineBytes += line.getBytes(StandardCharsets.UTF_8).length + 2;
 			List<String> row = StringUtilities.safeSplit(line, delimiter);
 			for (int i = 0; i < row.size(); i++) {
 				String column = row.get(i);
@@ -568,7 +579,11 @@ public class SourceDataScan implements ScanParameters {
 				break;
 		}
 		for (FieldInfo fieldInfo : fieldInfos) {
-			fieldInfo.rowCount = lineNr - 1;
+			if (sampleSize != -1) {
+				fieldInfo.rowCount = (int) (Math.round((((float) sampleSize /lineBytes) * totalFileSize)/10000.0)*10000);
+			} else {
+				fieldInfo.rowCount = lineNr - 1;
+			}
 			fieldInfo.trim();
 		}
 		return fieldInfos;
