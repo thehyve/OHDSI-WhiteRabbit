@@ -45,6 +45,7 @@ import org.ohdsi.databases.*;
 import org.ohdsi.rabbitInAHat.dataModel.Table;
 import org.ohdsi.utilities.*;
 import org.ohdsi.utilities.collections.Pair;
+import org.ohdsi.utilities.files.ReadCsvFile;
 import org.ohdsi.utilities.files.ReadTextFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +72,7 @@ public class SourceDataScan implements ScanParameters {
 	private DbType dbType;
 	private Map<Table, List<FieldInfo>> tableToFieldInfos;
 	private Map<String, String> indexedTableNameLookup;
+	private int splits;
 
 	private LocalDateTime startTimeStamp;
 
@@ -132,6 +134,8 @@ public class SourceDataScan implements ScanParameters {
 	public void setNumStatsSamplerSize(int numStatsSamplerSize) {
 		this.numStatsSamplerSize = numStatsSamplerSize;
 	}
+
+	public void setSplits(int splits) {this.splits = splits;}
 
 	public void process(DbSettings dbSettings, String outputFileName) throws IOException {
 		startTimeStamp = LocalDateTime.now();
@@ -345,14 +349,7 @@ public class SourceDataScan implements ScanParameters {
 			String tableNameIndexed = indexedTableNameLookup.get(tableName);
 
 			for (FieldInfo fieldInfo : tableToFieldInfos.get(table)) {
-				List<Object> values = new ArrayList<>(Arrays.asList(
-						tableNameIndexed,
-						fieldInfo.name,
-						fieldInfo.label,
-						fieldInfo.getTypeDescription(),
-						fieldInfo.maxLength,
-						fieldInfo.rowCount
-				));
+				List<Object> values = getValues(fieldInfo, tableNameIndexed);
 
 				if (scanValues) {
 					Long uniqueCount = fieldInfo.uniqueCount;
@@ -384,6 +381,30 @@ public class SourceDataScan implements ScanParameters {
 		}
 	}
 
+	private List<Object> getValues(FieldInfo fieldInfo, String tableNameIndexed) {
+		List<Object> values;
+		if (sourceType == DbSettings.SourceType.CSV_FILES && splits > 1) {
+			values = new ArrayList<>(Arrays.asList(
+					tableNameIndexed,
+					fieldInfo.name,
+					fieldInfo.label,
+					fieldInfo.getTypeDescription(),
+					fieldInfo.maxLength,
+					"~" + fieldInfo.rowCount
+			));
+		}else {
+			values = new ArrayList<>(Arrays.asList(
+					tableNameIndexed,
+					fieldInfo.name,
+					fieldInfo.label,
+					fieldInfo.getTypeDescription(),
+					fieldInfo.maxLength,
+					fieldInfo.rowCount
+			));
+		}
+		return values;
+	}
+
 	private void createTableOverviewSheet() {
 		Sheet tableOverviewSheet = workbook.createSheet(ScanSheetName.TABLE_OVERVIEW);
 
@@ -400,12 +421,15 @@ public class SourceDataScan implements ScanParameters {
 			String tableName = table.getName();
 			String tableNameIndexed = indexedTableNameLookup.get(tableName);
 			String description = table.getComment();
-			long rowCount = -1;
+			String rowCount = "-1";
 			long rowCheckedCount = -1;
 			long nFields = 0;
 			long nFieldsEmpty = 0;
 			for (FieldInfo fieldInfo : tableToFieldInfos.get(table)) {
-				rowCount = max(rowCount, fieldInfo.rowCount);
+				rowCount = String.valueOf(max(Long.parseLong(rowCount), fieldInfo.rowCount));
+				if (sourceType == DbSettings.SourceType.CSV_FILES && splits > 1) {
+					rowCount = "~"+rowCount;
+				}
 				rowCheckedCount = max(rowCheckedCount, fieldInfo.nProcessed);
 				nFields += 1;
 				if (scanValues) {
@@ -540,17 +564,15 @@ public class SourceDataScan implements ScanParameters {
 		StringUtilities.outputWithTime("Scanning table " + filename);
 		List<FieldInfo> fieldInfos = new ArrayList<>();
 		int lineNr = 0;
-		long lineBytes = 0;
-		long totalFileSize;
-        try {
-            totalFileSize = Files.size(Paths.get(filename));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+		ReadTextFile fileReader;
 
-        for (String line : new ReadTextFile(filename)) {
+		if(splits > 1) {
+			fileReader = new ReadCsvFile(filename, sampleSize, splits);
+		} else {
+			fileReader = new ReadTextFile(filename);
+		}
+        for (String line : fileReader) {
 			lineNr++;
-			lineBytes += line.getBytes(StandardCharsets.UTF_8).length + 2;
 			List<String> row = StringUtilities.safeSplit(line, delimiter);
 			for (int i = 0; i < row.size(); i++) {
 				String column = row.get(i);
@@ -559,7 +581,6 @@ public class SourceDataScan implements ScanParameters {
 				column = column.replace("\\\"", "\"");
 				row.set(i, column);
 			}
-
 			if (lineNr == 1) {
 				for (String cell : row) {
 					fieldInfos.add(new FieldInfo(this, cell));
@@ -579,9 +600,9 @@ public class SourceDataScan implements ScanParameters {
 				break;
 		}
 		for (FieldInfo fieldInfo : fieldInfos) {
-			if (sampleSize != -1) {
-				fieldInfo.rowCount = (int) (Math.round((((float) sampleSize /lineBytes) * totalFileSize)/10000.0)*10000);
-			} else {
+			if (sampleSize != -1 && splits > 1) {
+				fieldInfo.rowCount = (((ReadCsvFile) fileReader).getLineCountEstimate()/10000)*10000;
+			} else if (sampleSize == -1) {
 				fieldInfo.rowCount = lineNr - 1;
 			}
 			fieldInfo.trim();
