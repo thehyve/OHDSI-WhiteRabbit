@@ -349,8 +349,14 @@ public class SourceDataScan implements ScanParameters {
 			String tableNameIndexed = indexedTableNameLookup.get(tableName);
 
 			for (FieldInfo fieldInfo : tableToFieldInfos.get(table)) {
-				List<Object> values = getValues(fieldInfo, tableNameIndexed);
-
+				List<Object> values = new ArrayList<>(Arrays.asList(
+						tableNameIndexed,
+						fieldInfo.name,
+						fieldInfo.label,
+						fieldInfo.getTypeDescription(),
+						fieldInfo.maxLength,
+						fieldInfo.rowCount
+				));
 				if (scanValues) {
 					Long uniqueCount = fieldInfo.uniqueCount;
 					Double fractionUnique = fieldInfo.getFractionUnique();
@@ -381,30 +387,6 @@ public class SourceDataScan implements ScanParameters {
 		}
 	}
 
-	private List<Object> getValues(FieldInfo fieldInfo, String tableNameIndexed) {
-		List<Object> values;
-		if (sourceType == DbSettings.SourceType.CSV_FILES && splits > 1) {
-			values = new ArrayList<>(Arrays.asList(
-					tableNameIndexed,
-					fieldInfo.name,
-					fieldInfo.label,
-					fieldInfo.getTypeDescription(),
-					fieldInfo.maxLength,
-					"~" + fieldInfo.rowCount
-			));
-		}else {
-			values = new ArrayList<>(Arrays.asList(
-					tableNameIndexed,
-					fieldInfo.name,
-					fieldInfo.label,
-					fieldInfo.getTypeDescription(),
-					fieldInfo.maxLength,
-					fieldInfo.rowCount
-			));
-		}
-		return values;
-	}
-
 	private void createTableOverviewSheet() {
 		Sheet tableOverviewSheet = workbook.createSheet(ScanSheetName.TABLE_OVERVIEW);
 
@@ -421,16 +403,13 @@ public class SourceDataScan implements ScanParameters {
 			String tableName = table.getName();
 			String tableNameIndexed = indexedTableNameLookup.get(tableName);
 			String description = table.getComment();
-			String rowCount = "-1";
+			long rowCount = -1;
 			long rowCheckedCount = -1;
 			long nFields = 0;
 			long nFieldsEmpty = 0;
 			for (FieldInfo fieldInfo : tableToFieldInfos.get(table)) {
-				rowCount = String.valueOf(max(Long.parseLong(rowCount), fieldInfo.rowCount));
-				if (sourceType == DbSettings.SourceType.CSV_FILES && splits > 1) {
-					rowCount = "~"+rowCount;
-				}
-				rowCheckedCount = max(rowCheckedCount, fieldInfo.nProcessed);
+				rowCount = max(rowCount, fieldInfo.rowCount);
+					rowCheckedCount = max(rowCheckedCount, fieldInfo.nProcessed);
 				nFields += 1;
 				if (scanValues) {
 					nFieldsEmpty += fieldInfo.getFractionEmpty() == 1 ? 1 : 0;
