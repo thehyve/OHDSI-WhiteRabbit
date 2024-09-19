@@ -18,6 +18,7 @@
 package org.ohdsi.whiterabbit.scan;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -45,11 +46,13 @@ import org.ohdsi.databases.*;
 import org.ohdsi.rabbitInAHat.dataModel.Table;
 import org.ohdsi.utilities.*;
 import org.ohdsi.utilities.collections.Pair;
+import org.ohdsi.utilities.files.ReadCsvFile;
 import org.ohdsi.utilities.files.ReadTextFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static java.lang.Long.max;
+import static java.lang.Math.round;
 
 public class SourceDataScan implements ScanParameters {
 	static Logger logger = LoggerFactory.getLogger(SourceDataScan.class);
@@ -70,6 +73,7 @@ public class SourceDataScan implements ScanParameters {
 	private DbType dbType;
 	private Map<Table, List<FieldInfo>> tableToFieldInfos;
 	private Map<String, String> indexedTableNameLookup;
+	private int splits;
 
 	private LocalDateTime startTimeStamp;
 
@@ -137,6 +141,8 @@ public class SourceDataScan implements ScanParameters {
 	public void setNumStatsSamplerSize(int numStatsSamplerSize) {
 		this.numStatsSamplerSize = numStatsSamplerSize;
 	}
+
+	public void setSplits(int splits) {this.splits = splits;}
 
 	public void process(DbSettings dbSettings, String outputFileName) throws IOException {
 		startTimeStamp = LocalDateTime.now();
@@ -360,7 +366,6 @@ public class SourceDataScan implements ScanParameters {
 						fieldInfo.maxLength,
 						fieldInfo.rowCount
 				));
-
 				if (scanValues) {
 					Long uniqueCount = fieldInfo.uniqueCount;
 					Double fractionUnique = fieldInfo.getFractionUnique();
@@ -413,7 +418,7 @@ public class SourceDataScan implements ScanParameters {
 			long nFieldsEmpty = 0;
 			for (FieldInfo fieldInfo : tableToFieldInfos.get(table)) {
 				rowCount = max(rowCount, fieldInfo.rowCount);
-				rowCheckedCount = max(rowCheckedCount, fieldInfo.nProcessed);
+					rowCheckedCount = max(rowCheckedCount, fieldInfo.nProcessed);
 				nFields += 1;
 				if (scanValues) {
 					nFieldsEmpty += fieldInfo.getFractionEmpty() == 1 ? 1 : 0;
@@ -547,7 +552,14 @@ public class SourceDataScan implements ScanParameters {
 		StringUtilities.outputWithTime("Scanning table " + filename);
 		List<FieldInfo> fieldInfos = new ArrayList<>();
 		int lineNr = 0;
-		for (String line : new ReadTextFile(filename)) {
+		ReadTextFile fileReader;
+
+		if(splits > 1) {
+			fileReader = new ReadCsvFile(filename, sampleSize, splits);
+		} else {
+			fileReader = new ReadTextFile(filename);
+		}
+        for (String line : fileReader) {
 			lineNr++;
 			List<String> row = StringUtilities.safeSplit(line, delimiter);
 			for (int i = 0; i < row.size(); i++) {
@@ -557,7 +569,6 @@ public class SourceDataScan implements ScanParameters {
 				column = column.replace("\\\"", "\"");
 				row.set(i, column);
 			}
-
 			if (lineNr == 1) {
 				for (String cell : row) {
 					fieldInfos.add(new FieldInfo(this, cell));
@@ -576,9 +587,14 @@ public class SourceDataScan implements ScanParameters {
 			if (sampleSize != -1 && lineNr > sampleSize)
 				break;
 		}
-		for (FieldInfo fieldInfo : fieldInfos)
+		for (FieldInfo fieldInfo : fieldInfos) {
+			if (sampleSize != -1 && splits > 1) {
+				fieldInfo.rowCount = (((ReadCsvFile) fileReader).getLineCountEstimate()/10000)*10000;
+			} else if (sampleSize == -1) {
+				fieldInfo.rowCount = lineNr - 1;
+			}
 			fieldInfo.trim();
-
+		}
 		return fieldInfos;
 	}
 

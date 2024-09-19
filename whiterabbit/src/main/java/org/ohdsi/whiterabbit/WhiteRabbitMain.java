@@ -81,6 +81,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 	public static final String TITLE_WARNINGS_ABOUT_DATABASE_CONFIGURATION = "There are warnings about the database configuration";
 	public static final String NAME_CHECKBOX_CALC_NUMERIC_STATS = "CheckboxCalcNumericStats";
 	public static final String NAME_STATS_SAMPLE_SIZE = "StatsSampleSize";
+	public static final String SPLITS = "Splits";
 
 	private JFrame				frame;
 	private JTextField			scanReportFileField;
@@ -90,6 +91,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 	private JCheckBox			scanValueScan;
 	private JCheckBox 			calculateNumericStats;
 	private JComboBox<String>	numericStatsSampleSize;
+	private JSpinner			splits;
 	private JSpinner			scanMinCellCount;
 	private JSpinner			generateRowCount;
 	private JComboBox<String>	targetType;
@@ -354,6 +356,7 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 			scanValuesCount.setEnabled(((JCheckBox) event.getSource()).isSelected());
 			calculateNumericStats.setEnabled(((JCheckBox) event.getSource()).isSelected());
 			numericStatsSampleSize.setEnabled(((JCheckBox) event.getSource()).isSelected());
+			splits.setEnabled(((JCheckBox) event.getSource()).isSelected());
 		});
 		scanOptionsTopPanel.add(scanValueScan);
 		scanOptionsTopPanel.add(Box.createHorizontalGlue());
@@ -397,6 +400,17 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 		numericStatsSampleSize.setSelectedIndex(0);
 		numericStatsSampleSize.setToolTipText("Maximum number of rows used to calculate numeric statistics");
 		scanOptionsLowerPanel.add(numericStatsSampleSize);
+		scanOptionsLowerPanel.add(Box.createHorizontalGlue());
+
+		scanOptionsLowerPanel.add(new JLabel("Splits "));
+
+		splits = new JSpinner(new SpinnerNumberModel(1, 1, 100, 1));
+
+		splits.setName(SPLITS);
+		splits.setEnabled(false);
+		splits.setValue(1);
+		splits.setToolTipText("Number of splits sampled from, will take samples form different parts of the csv file.");
+		scanOptionsLowerPanel.add(splits);
 		scanOptionsLowerPanel.add(Box.createHorizontalGlue());
 
 		southPanel.add(scanOptionsLowerPanel);
@@ -985,8 +999,9 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 				scanValueScan.isSelected(),
 				Integer.parseInt(scanMinCellCount.getValue().toString()),
 				calculateNumericStats.isSelected(),
-				numStatsSamplerSize
-		);
+				numStatsSamplerSize,
+                (Integer) splits.getValue()
+        );
 		scanscanRunner.run();
 	}
 
@@ -1005,13 +1020,14 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 
 		SourceDataScan sourceDataScan = new SourceDataScan();
 
-		public ScanRunner(int maxRows, int maxValues, boolean scanValues, int minCellCount, boolean calculateNumericStats, int numericStatsSampleSize) {
+		public ScanRunner(int maxRows, int maxValues, boolean scanValues, int minCellCount, boolean calculateNumericStats, int numericStatsSampleSize, int splits) {
 			sourceDataScan.setSampleSize(maxRows);
 			sourceDataScan.setScanValues(scanValues);
 			sourceDataScan.setMinCellCount(minCellCount);
 			sourceDataScan.setMaxValues(maxValues);
 			sourceDataScan.setCalculateNumericStats(calculateNumericStats);
 			sourceDataScan.setNumStatsSamplerSize(numericStatsSampleSize);
+			sourceDataScan.setSplits(splits);
 		}
 
 		public void run() {
