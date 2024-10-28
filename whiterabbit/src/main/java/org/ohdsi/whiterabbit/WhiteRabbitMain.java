@@ -42,6 +42,7 @@ import javax.swing.border.TitledBorder;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
+import com.github.swingdpi.UiDefaultsScaler;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.io.output.TeeOutputStream;
 import org.ohdsi.databases.*;
@@ -122,6 +123,12 @@ public class WhiteRabbitMain implements ActionListener, PanelsManager {
 		if (args.length == 2 && (args[0].equalsIgnoreCase("-ini") || args[0].equalsIgnoreCase("--ini")))
 			launchCommandLine(args[1]);
 		else {
+			if (System.getenv("WR_USE_SCALER") != null) {
+				System.err.println("Using scaler");
+				UiDefaultsScaler.updateAndApplyGlobalScaling(Integer.valueOf(System.getenv("WR_USE_SCALER")), true);
+			} else {
+				System.err.println("Not using scaler");
+			}
 			frame = new JFrame("White Rabbit");
 
 			frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);

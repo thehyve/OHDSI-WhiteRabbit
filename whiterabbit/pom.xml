@@ -314,5 +314,11 @@
             <artifactId>log4j-core</artifactId>
             <version>2.21.1</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/com.github.lukeu/swing-dpi -->
+        <dependency>
+            <groupId>com.github.lukeu</groupId>
+            <artifactId>swing-dpi</artifactId>
+            <version>0.10</version>
+        </dependency>
     </dependencies>
 </project>

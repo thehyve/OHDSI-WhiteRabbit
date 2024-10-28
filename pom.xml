@@ -268,6 +268,9 @@
                             <name>The GNU General Public License, v2 with Universal FOSS Exception, v1.0</name>
                         </license>
                         <license>
+                            <name>GNU Lesser General Public License v2.1</name>
+                        </license>
+                        <license>
                             <name>Plexus</name>
                             <url>https://github.com/dom4j/dom4j/blob/master/LICENSE</url>
                         </license>
