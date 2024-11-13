@@ -286,6 +286,10 @@
                             <url>https://jdbc.postgresql.org/about/license.html</url>
                         </license>
                         <license>
+                            <name>BSD-3-Clause</name>
+                            <url>https://opensource.org/licenses/BSD-3-Clause</url>
+                        </license>
+                        <license>
                             <name>HSQLDB License, a BSD open source license</name>
                             <url>https://hsqldb.org/web/hsqlLicense.html</url>
                         </license>
