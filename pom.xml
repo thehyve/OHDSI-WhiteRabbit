@@ -262,6 +262,35 @@
                 </executions>
             </plugin>
             <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <version>11.1.0</version>
+                <configuration>
+                    <failBuildOnCVSS>8</failBuildOnCVSS>
+                    <suppressionFiles>
+                        <!--suppressionFile>http://example.org/suppression.xml</suppressionFile-->
+                        <suppressionFile>project-suppression.xml</suppressionFile>
+                    </suppressionFiles>
+                    <excludes>
+                        <!-- Motivation: comes as a transitive dependency of apache avro, which is version locked due to Java 8 compatibility
+                             The CVE states that external access is needed for an exploit (https://nvd.nist.gov/vuln/detail/cve-2023-35116),
+                             which is not possible according to the vendor, and in any case not an issue for the Rabbit tools, as these
+                             are assumed to be running in a safe environment
+                             PLEASE NOTE: this exclusion should be reassessed once apache avro is upgraded to a newer version than 1.11.4 -->
+                        <!-- exclude>com.fasterxml.jackson.core:jackson-databind</exclude-->
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <!-- Should only be run manually as it has a dependency on the .net sdk -->
+                        <phase>none</phase> <!-- only run on demand -->
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.honton.chas</groupId>
                 <artifactId>license-maven-plugin</artifactId>
                 <version>0.0.3</version>
