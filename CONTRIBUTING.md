@@ -35,6 +35,11 @@ When adding test, please follow these conventions:
 
 Also, GitHub actions have been configured to run the test suite automatically on Github for branches
 that have been configured for this (typically the master branch, and pull requests to the master branch).
+##### Checking for dependency updates
+
+Use the `versions-maven-plugin` to check for dependency updates. This can be done by running `mvn versions:display-dependency-updates`.
+Keep in mind that major version updates can break the build, so it is recommended to update dependencies one by one, and run the tests after each update.
+Also, consult the parent pom.xml for dependencies marked with comments that indicate that they should not be updated.
 
 ##### Checking for potential vulnerabilities
 
