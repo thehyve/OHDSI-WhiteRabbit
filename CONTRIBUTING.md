@@ -35,6 +35,25 @@ When adding test, please follow these conventions:
 
 Also, GitHub actions have been configured to run the test suite automatically on Github for branches
 that have been configured for this (typically the master branch, and pull requests to the master branch).
+##### Checking for dependency updates
+
+Use the `versions-maven-plugin` to check for dependency updates. This can be done by running `mvn versions:display-dependency-updates`.
+Keep in mind that major version updates can break the build, so it is recommended to update dependencies one by one, and run the tests after each update.
+Also, consult the parent pom.xml for dependencies marked with comments that indicate that they should not be updated.
+
+##### Checking for potential vulnerabilities
+
+The project uses the OWASP dependency-check plugin to check for potential vulnerabilities in the dependencies. Because this
+check can take a long time (for downloading/updating the vulnerabilities database), it is disabled by default, 
+but can be enabled by running `mvn dependency-check:check`. This will report vulnerabilities in the standard maven output,
+and write them to `target/dependency-check-report.html` for the parent project and each of the subprojects.
+
+##### Checking for compatible licenses
+
+Since the Rabbit tools are open source, it is important that the dependencies are also open source.
+The verification phase ('mvn verify') will also check for compatible licenses in the dependencies. This is done by the maven-license-plugin.
+When dependencies are updated, sometimes the license changes, and this can cause the verification build to fail. In that case, one can extend the
+list of allowed licenses in the `pom.xml` file.
 
 ### Example in- and output
 
