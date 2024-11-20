@@ -40,7 +40,8 @@ that have been configured for this (typically the master branch, and pull reques
 
 The project uses the OWASP dependency-check plugin to check for potential vulnerabilities in the dependencies. Because this
 check can take a long time (for downloading/updating the vulnerabilities database), it is disabled by default, 
-but can be enabled by running `mvn dependency-check:check`.
+but can be enabled by running `mvn dependency-check:check`. This will report vulnerabilities in the standard maven output,
+and write them to `target/dependency-check-report.html` for the parent project and each of the subprojects.
 
 ##### Checking for compatible licenses
 
