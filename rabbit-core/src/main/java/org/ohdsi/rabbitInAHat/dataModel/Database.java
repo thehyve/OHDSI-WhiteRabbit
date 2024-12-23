@@ -209,7 +209,6 @@ public class Database implements Serializable {
 				field.setDescription(row.getStringByHeaderName(ScanFieldName.DESCRIPTION));
 				field.setFractionEmpty(row.getDoubleByHeaderName(ScanFieldName.FRACTION_EMPTY));
 				field.setUniqueCount(row.getIntByHeaderName(ScanFieldName.UNIQUE_COUNT));
-				field.setFractionUnique(row.getDoubleByHeaderName(ScanFieldName.FRACTION_UNIQUE));
 				field.setValueCounts(getValueCounts(workbook, tableName, fieldName));
 
 				table.getFields().add(field);
