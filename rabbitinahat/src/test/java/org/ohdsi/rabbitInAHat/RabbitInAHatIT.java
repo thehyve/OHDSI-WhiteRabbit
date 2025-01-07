@@ -58,7 +58,7 @@ import static org.ohdsi.rabbitInAHat.RabbitInAHatMain.*;
  */
 @CacioTest
 
-public class TestRabbitInAHatMain {
+public class RabbitInAHatIT {
 
     private static FrameFixture window;
 
@@ -108,7 +108,7 @@ public class TestRabbitInAHatMain {
         window.menuItem(ACTION_OPEN_SCAN_REPORT).click();
         JFileChooserFixture fileChooser = JFileChooserFinder.findFileChooser().using(window.robot());
         assertEquals(TITLE_SELECT_FILE, fileChooser.target().getDialogTitle());
-        URL scanReportUrl = TestRabbitInAHatMain.class.getClassLoader().getResource("examples/test_scanreports/ScanReport_minimal.xlsx");
+        URL scanReportUrl = RabbitInAHatIT.class.getClassLoader().getResource("examples/test_scanreports/ScanReport_minimal.xlsx");
         fileChooser.selectFile(new File(Objects.requireNonNull(scanReportUrl).toURI())).approve();
     }
 
