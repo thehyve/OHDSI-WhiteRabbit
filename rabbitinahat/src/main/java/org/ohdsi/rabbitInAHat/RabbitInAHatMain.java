@@ -89,6 +89,7 @@ public class RabbitInAHatMain implements ResizeListener {
 
 	public final static String PANEL_TABLE_MAPPING = "Table Mapping";
 	public final static String PANEL_FIELD_MAPPING = "Field Mapping";
+	public final static String PANEL_DETAILS = "Details";
 	public final static String MASK_LIST_DIALOG = "Mask List Dialog";
 
 	public final static String DOCUMENTATION_URL = "http://ohdsi.github.io/WhiteRabbit/RabbitInAHat.html";
@@ -167,6 +168,7 @@ public class RabbitInAHatMain implements ResizeListener {
 		tableFieldSplitPane.setName("splitpane");
 
 		detailsPanel = new DetailsPanel();
+		detailsPanel.setName(PANEL_DETAILS);
 		detailsPanel.setBorder(new TitledBorder("Details"));
 		detailsPanel.setPreferredSize(new Dimension(200, 500));
 		detailsPanel.setMinimumSize(new Dimension(0, 0));
@@ -437,7 +439,7 @@ public class RabbitInAHatMain implements ResizeListener {
 		}
 
 		StemTableFactory.addStemTable(ObjectExchange.etl);
-		tableMappingPanel.setMapping(ObjectExchange.etl.getTableToTableMapping());
+		tableMappingPanel.setTableMapping(ObjectExchange.etl.getTableToTableMapping());
 	}
 
 	private void doRemoveStemTable() {
@@ -454,7 +456,7 @@ public class RabbitInAHatMain implements ResizeListener {
 
 		if (PromptResult==JOptionPane.YES_OPTION) {
 			StemTableFactory.removeStemTable(ObjectExchange.etl);
-			tableMappingPanel.setMapping(ObjectExchange.etl.getTableToTableMapping());
+			tableMappingPanel.setTableMapping(ObjectExchange.etl.getTableToTableMapping());
 		}
 	}
 
@@ -501,7 +503,7 @@ public class RabbitInAHatMain implements ResizeListener {
 				ETL etl = new ETL(ObjectExchange.etl.getSourceDatabase(), Database.generateModelFromCSV(stream, file.getName()));
 
 				etl.copyETLMappings(ObjectExchange.etl);
-				tableMappingPanel.setMapping(etl.getTableToTableMapping());
+				tableMappingPanel.setTableMapping(etl.getTableToTableMapping());
 				ObjectExchange.etl = etl;
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -518,7 +520,7 @@ public class RabbitInAHatMain implements ResizeListener {
 	private void doSetTargetCDM(CDMVersion cdmVersion) throws IOException {
 		ETL etl = new ETL(ObjectExchange.etl.getSourceDatabase(), Database.generateCDMModel(cdmVersion));
 		etl.copyETLMappings(ObjectExchange.etl);
-		tableMappingPanel.setMapping(etl.getTableToTableMapping());
+		tableMappingPanel.setTableMapping(etl.getTableToTableMapping());
 		ObjectExchange.etl = etl;
 	}
 
@@ -588,7 +590,7 @@ public class RabbitInAHatMain implements ResizeListener {
 					: filename.endsWith(".json") ? ETL.FileFormat.Json : ETL.FileFormat.Binary;
 			try {
 				ObjectExchange.etl = ETL.fromFile(filename, fileFormat);
-				tableMappingPanel.setMapping(ObjectExchange.etl.getTableToTableMapping());
+				tableMappingPanel.setTableMapping(ObjectExchange.etl.getTableToTableMapping());
 			} catch (Exception e) {
 				e.printStackTrace();
 				JOptionPane.showMessageDialog(null, "Invalid File Format", "Error", JOptionPane.ERROR_MESSAGE);
@@ -623,7 +625,7 @@ public class RabbitInAHatMain implements ResizeListener {
 				etl.setSourceDatabase(Database.generateModelFromScanReport(filename));
 				etl.setTargetDatabase(ObjectExchange.etl.getTargetDatabase());
 				ObjectExchange.etl = etl;
-				tableMappingPanel.setMapping(etl.getTableToTableMapping());
+				tableMappingPanel.setTableMapping(etl.getTableToTableMapping());
 				ObjectExchange.etl = etl;
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -658,7 +660,7 @@ public class RabbitInAHatMain implements ResizeListener {
 						oldData.addTable(newTable);
 					}
 				}
-				tableMappingPanel.setMapping(ObjectExchange.etl.getTableToTableMapping()); // Needed to render the model
+				tableMappingPanel.setTableMapping(ObjectExchange.etl.getTableToTableMapping()); // Needed to render the model
 			} catch (Exception e) {
 				e.printStackTrace();
 				JOptionPane.showMessageDialog(null, "Invalid File Format", "Error", JOptionPane.ERROR_MESSAGE);
