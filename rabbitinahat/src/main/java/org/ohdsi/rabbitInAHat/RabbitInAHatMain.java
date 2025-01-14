@@ -141,7 +141,7 @@ public class RabbitInAHatMain implements ResizeListener {
 
 		ObjectExchange.etl = etl;
 
-		tableMappingPanel = new MappingPanel(etl.getTableToTableMapping());
+		tableMappingPanel = new MappingPanel(etl.getTableToTableMapping(), MappingPanel.MappingType.TABLES);
 		tableMappingPanel.setName(PANEL_TABLE_MAPPING);
 		tableMappingPanel.addResizeListener(this);
 		scrollPane1 = new JScrollPane(tableMappingPanel);
@@ -152,7 +152,11 @@ public class RabbitInAHatMain implements ResizeListener {
 		scrollPane1.setOpaque(true);
 		scrollPane1.setBackground(Color.WHITE);
 
-		fieldMappingPanel = new MappingPanel(etl.getTableToTableMapping());
+		// the statement below does not make sense (inserts a table mapping in the field mapping panel), but there is no
+		// easy way to initialize the panel in a meaningful way, and it does prevent some things in the UI from being
+		// uninitialized, so leaving it as-is
+		fieldMappingPanel = new MappingPanel(etl.getTableToTableMapping(), MappingPanel.MappingType.TABLES);
+
 		fieldMappingPanel.setName(PANEL_FIELD_MAPPING);
 		tableMappingPanel.setSlaveMappingPanel(fieldMappingPanel);
 		fieldMappingPanel.addResizeListener(this);
