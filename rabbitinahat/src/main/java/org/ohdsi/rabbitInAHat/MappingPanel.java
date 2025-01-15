@@ -100,25 +100,6 @@ public class MappingPanel extends JPanel implements MouseListener, MouseMotionLi
 
 	@SuppressWarnings("serial")
 	private MappingPanel(Mapping<? extends MappableItem> mapping) {
-		super();
-		this.mapping = mapping;
-		this.setFocusable(true);
-		addMouseListener(this);
-		addMouseMotionListener(this);
-
-		// Add keybindings to delete arrows
-		this.getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0, false), "del pressed");
-		this.getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0, false), "del pressed");
-		this.getActionMap().put("del pressed", new AbstractAction() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				if (selectedArrow != null) {
-					removeArrow(selectedArrow);
-				}
-			}
-		});
-
-		renderModel();
 	}
 
 	public MappingPanel(Mapping<? extends MappableItem> mapping, MappingType mappingType) {
