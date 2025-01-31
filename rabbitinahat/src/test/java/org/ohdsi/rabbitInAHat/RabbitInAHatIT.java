@@ -55,6 +55,8 @@ import static org.ohdsi.rabbitInAHat.RabbitInAHatMain.*;
  * disrupted by unrelated user activity on workstations/laptops (any keyboard or mouse action).
  * For debugging purposes, you can disable the annotation below to have the tests run on your screen. Be aware that
  * any interaction with mouse or keyboard can (will) disrupt the tests if they run on your screen.
+ * Also keep in mind that the tests may fail if your screen has different dimensions than the virtual screen (as defined by
+ * VIRTUAL_SCREEN_WIDTH and VIRTUAL_SCREEN_HEIGHT below).
  */
 @CacioTest
 
@@ -62,11 +64,11 @@ public class RabbitInAHatIT {
 
     private static FrameFixture window;
 
-    private final static int WIDTH = 1920;
-    private final static int HEIGHT = 1080;
+    private final static int VIRTUAL_SCREEN_WIDTH = 1920;
+    private final static int VIRTUAL_SCREEN_HEIGHT = 1080;
     @BeforeAll
     public static void setupOnce() throws IOException {
-        System.setProperty("cacio.managed.screensize", String.format("%sx%s", WIDTH, HEIGHT));
+        System.setProperty("cacio.managed.screensize", String.format("%sx%s", VIRTUAL_SCREEN_WIDTH, VIRTUAL_SCREEN_HEIGHT));
         // unzip examples.zip into target resources
         Path examplesPath = Paths.get("examples.zip");
         if (!Files.exists(examplesPath)) {
@@ -80,7 +82,8 @@ public class RabbitInAHatIT {
         String[] args = {};
         RabbitInAHatMain rabbitInAHatMain = GuiActionRunner.execute(() -> new RabbitInAHatMain(args));
         window = new FrameFixture(rabbitInAHatMain.getFrame());
-        window.splitPane("splitpane").target().setDividerLocation(WIDTH / 2);
+        window.splitPane("splitpane").target().setDividerLocation(VIRTUAL_SCREEN_WIDTH / 2);
+        // window.robot().settings().delayBetweenEvents(150); // increase delay between events to make it easier to follow the tests
         window.show(); // shows the frame to test
     }
 
@@ -104,12 +107,19 @@ public class RabbitInAHatIT {
     }
 
     @Test
-    public void openReport() throws URISyntaxException {
-        window.menuItem(ACTION_OPEN_SCAN_REPORT).click();
-        JFileChooserFixture fileChooser = JFileChooserFinder.findFileChooser().using(window.robot());
-        assertEquals(TITLE_SELECT_FILE, fileChooser.target().getDialogTitle());
-        URL scanReportUrl = RabbitInAHatIT.class.getClassLoader().getResource("examples/test_scanreports/ScanReport_minimal.xlsx");
-        fileChooser.selectFile(new File(Objects.requireNonNull(scanReportUrl).toURI())).approve();
+    void openScanReportAndAddStemTable() throws URISyntaxException {
+        openScanReport("examples/test_scanreports/ScanReport_minimal.xlsx");
+        MappingPanel tablesPanel = getTablesPanel();
+
+        window.menuItem(ACTION_ADD_STEM_TABLE).click();
+
+        verifyMapping(tablesPanel, "stem_table", "condition_occurrence");
+        verifyMapping(tablesPanel, "stem_table", "drug_exposure");
+        verifyMapping(tablesPanel, "stem_table", "procedure_occurrence");
+        verifyMapping(tablesPanel, "stem_table", "device_exposure");
+        verifyMapping(tablesPanel, "stem_table", "measurement");
+        verifyMapping(tablesPanel, "stem_table", "observation");
+        // there are more mappings, but these may not be visible depending on the actual screen size
     }
 
     @Test
@@ -131,7 +141,7 @@ public class RabbitInAHatIT {
     }
 
     @Test
-    void openSavedETLSpecsAndSelectMapping() throws URISyntaxException {
+    void openSavedETLSpecsAndSelectMapping() throws URISyntaxException, InterruptedException {
         // open the test ETL specification
         openETLSpecs("scan/etl-specs.json.gz");
         MappingPanel tablesPanel = getTablesPanel();
@@ -148,7 +158,6 @@ public class RabbitInAHatIT {
         // double click the mapping (arrow)
         window.robot().click(tablesPanel, mapping.getPointInside(), MouseButton.LEFT_BUTTON, 2);
         MappingPanel fieldsPanel = getPanel(PANEL_FIELD_MAPPING);
-        //pause(10000);
         pause(new Condition("wait for source items to appear in the items panel") {
             public boolean test() {
                 return fieldsPanel.getVisibleSourceComponents().size() != 0 &&
@@ -228,6 +237,18 @@ public class RabbitInAHatIT {
         assertFalse("There should be source items", tablesPanel.getVisibleSourceComponents().isEmpty());
         assertFalse("There should be target items", tablesPanel.getVisibleTargetComponents().isEmpty());
     }
+
+    private void openScanReport(String reportPath) throws URISyntaxException {
+        window.menuItem(ACTION_OPEN_SCAN_REPORT).click();
+        JFileChooserFixture fileChooser = JFileChooserFinder.findFileChooser().using(window.robot());
+        assertEquals(TITLE_SELECT_FILE, fileChooser.target().getDialogTitle());
+        URL scanReportUrl = RabbitInAHatIT.class.getClassLoader().getResource(reportPath);
+        File scanReport = new File(Objects.requireNonNull(scanReportUrl).toURI());
+        fileChooser.setCurrentDirectory(scanReport.getParentFile());
+        fileChooser.selectFile(scanReport).approve();
+        //fileChooser.selectFile(new File(Objects.requireNonNull(scanReportUrl).toURI())).approve();
+    }
+
 
     private void verifyMapping(MappingPanel tablesPanel, String sourceName, String targetName, String... details) {
         LabeledRectangle sourceTable = findMappableItem(tablesPanel.getVisibleSourceComponents(), sourceName);

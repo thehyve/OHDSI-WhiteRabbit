@@ -255,8 +255,8 @@ public class RabbitInAHatMain implements ResizeListener {
 		menuBar.add(editMenu);
 		addMenuItem(editMenu, ACTION_DISCARD_COUNTS, evt -> this.doDiscardCounts());
 		addMenuItem(editMenu, ACTION_FILTER, evt -> this.doOpenFilterDialog(), KeyEvent.VK_F);
-		addMenuItem(editMenu, ACTION_ADD_STEM_TABLE, evt -> this.doAddStemTable());
-		addMenuItem(editMenu, ACTION_REMOVE_STEM_TABLE, evt -> this.doRemoveStemTable());
+		addMenuItem(editMenu, ACTION_ADD_STEM_TABLE, evt -> this.doAddStemTable()).setName(ACTION_ADD_STEM_TABLE);
+		addMenuItem(editMenu, ACTION_REMOVE_STEM_TABLE, evt -> this.doRemoveStemTable()).setName(ACTION_REMOVE_STEM_TABLE);
 		addMenuItem(editMenu, ACTION_HIDE_TABLES, evt -> this.doHideTables()).setName(ACTION_HIDE_TABLES);
 
 		JMenu targetDatabaseMenu = new JMenu("Set Target Database");

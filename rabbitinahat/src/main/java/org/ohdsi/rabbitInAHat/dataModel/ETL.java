@@ -249,6 +249,9 @@ public class ETL implements Serializable {
 	}
 
 	public boolean isSelectedTable(MappableItem item) {
+		if (item.isStem()) {
+			return true;
+		}
 		List<Integer> indices = sourceDb.getSelectedIndices();
 		for(int i : indices){
 			if(sourceDb.getUnmaskedTables().get(i) == item){

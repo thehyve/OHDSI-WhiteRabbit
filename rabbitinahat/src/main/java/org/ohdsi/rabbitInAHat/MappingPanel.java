@@ -930,6 +930,6 @@ public class MappingPanel extends JPanel implements MouseListener, MouseMotionLi
 	}
 
 	private boolean isTableAndSelected(MappableItem item) {
-		return mappingType == MappingType.FIELDS || ObjectExchange.etl.isSelectedTable(item);
+		return mappingType == MappingType.FIELDS || item.isStem() || ObjectExchange.etl.isSelectedTable(item);
 	}
 }
