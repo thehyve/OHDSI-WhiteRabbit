@@ -33,7 +33,7 @@ import org.ohdsi.utilities.collections.Pair;
 
 public class StemTableFactory {
 
-	private static final String STEM_TABLE_NAME = "stem_table";
+	public static final String STEM_TABLE_NAME = "stem_table";
 
 	public static void addStemTable(ETL etl) {
 		Database sourceDatabase = etl.getSourceDatabase();
@@ -76,10 +76,10 @@ public class StemTableFactory {
 				field.setStem(true);
 				sourceStemTable.getFields().add(field);
 			}
-			sourceDatabase.getTables().add(sourceStemTable);
+			sourceDatabase.addStemTable(sourceStemTable);
 			Table targetStemTable = new Table(sourceStemTable);
 			targetStemTable.setDb(targetDatabase);
-			targetDatabase.getTables().add(targetStemTable);
+			targetDatabase.addStemTable(targetStemTable);
 
 			Mapping<Table> mapping = etl.getTableToTableMapping();
 			Map<String, Table> nameToTable = new HashMap<>();
@@ -96,11 +96,9 @@ public class StemTableFactory {
 				Field targetField = targetTable.getFieldByName(row.get("TARGET_FIELD"));
 				fieldToFieldMapping.addSourceToTargetMap(sourceField, targetField);
 			}
-
 		} catch (IOException e) {
 			throw new RuntimeException(e.getMessage());
 		}
-
 	}
 
 	public static void removeStemTable(ETL etl) {
@@ -121,25 +119,8 @@ public class StemTableFactory {
 			mapping.removeSourceToTargetMap(tableTablePair.getItem1(), tableTablePair.getItem2());
 		}
 
-		// Remove stem source table
-		Database sourceDatabase = etl.getSourceDatabase();
-		List<Table> newSourceTables = new ArrayList<>();
-		for (Table table : sourceDatabase.getTables()) {
-			if (!table.isStem()) {
-				newSourceTables.add(table);
-			}
-		}
-		sourceDatabase.setTables(newSourceTables);
-
-		// Remove stem target table
-		Database targetDatabase = etl.getTargetDatabase();
-		List<Table> newTargetTables = new ArrayList<>();
-		for (Table table : targetDatabase.getTables()) {
-			if (!table.isStem()) {
-				newTargetTables.add(table);
-			}
-		}
-		targetDatabase.setTables(newTargetTables);
+		etl.getSourceDatabase().removeStemTable();
+		etl.getTargetDatabase().removeStemTable();
 	}
 
 }
