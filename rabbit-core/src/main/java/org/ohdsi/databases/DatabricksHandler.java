@@ -81,7 +81,7 @@ public enum DatabricksHandler implements JdbcStorageHandler {
     public static String getRowSampleQueryStaticForResolvedTableName(String tableName, long rowCount, long sampleSize) {
         // sample query example: SELECT * FROM test TABLESAMPLE (30 PERCENT) REPEATABLE (123);
         int percentage = (int) Math.min(Math.max(Math.ceil((double) sampleSize / rowCount * 100), 1), 100);
-        String query = String.format("SELECT * FROM %s TABLESAMPLE (%d PERCENT) REPEATABLE (20250318)", tableName, percentage);
+        String query = String.format("SELECT * FROM %s TABLESAMPLE (%d PERCENT) REPEATABLE (20250318) LIMIT %d", tableName, percentage, sampleSize);
         logger.info("DatabricksHandler sample query: {}", query);
         return query;
     }
@@ -115,6 +115,13 @@ public enum DatabricksHandler implements JdbcStorageHandler {
         return 1;
     }
 
+    @Override
+    public boolean columnIsComment(String columnName) {
+        // in DataBricks, columns can appear having their name start with a hash (#)
+        // these are not part of the proper table schema.
+        return columnName.startsWith("#");
+    }
+
     /**
      * Implementation of the parameters required to connect to a Databricks instance
      */
@@ -146,10 +153,6 @@ public enum DatabricksHandler implements JdbcStorageHandler {
                                     "HTTP path for the Databricks instance")
                             .required(),
                     ConfigurationField.create(
-                            DATABRICKS_PERSONAL_ACCESS_TOKEN,
-                            "Personal Access Token",
-                            "Personal Access Token for the Databricks instance"),
-                    ConfigurationField.create(
                                     DATABRICKS_CATALOG,
                                     "Catalog",
                                     "Catalog for the Databricks instance")
@@ -165,7 +168,7 @@ public enum DatabricksHandler implements JdbcStorageHandler {
                      */
                     ConfigurationField.create(
                                     DATABRICKS_AUTHENTICATION_METHOD,
-                                    "Authenticator method",
+                                    "Authentication method",
                                     "Databricks JDBC authentication method (only 'browser' is currently supported)")
                             .addValidator(new FieldValidator() {
                                 private final List<String> allowedValues = Arrays.asList("browser");
@@ -182,8 +185,11 @@ public enum DatabricksHandler implements JdbcStorageHandler {
                                     }
                                     return feedback;
                                 }
-                            })
-            );
+                            }),
+                    ConfigurationField.create(
+                            DATABRICKS_PERSONAL_ACCESS_TOKEN,
+                            "Personal Access Token",
+                            "Personal Access Token for the Databricks instance"));
             this.configurationFields.addValidator(new PersonalAccessTokenXORAuthenticationFlowValidator());
         }
 
