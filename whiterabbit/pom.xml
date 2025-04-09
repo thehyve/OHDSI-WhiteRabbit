@@ -44,6 +44,7 @@
                     <reuseForks>false</reuseForks>
                     <skipTests>${skipUnitTests}</skipTests>
                     <systemPropertyVariables>
+                        <projectBuildDirectory>${project.build.directory}</projectBuildDirectory>
                         <java.awt.headless>false</java.awt.headless>
                         <awt.toolkit>com.github.caciocavallosilano.cacio.ctc.CTCToolkit</awt.toolkit>
                         <java.awt.graphicsenv>com.github.caciocavallosilano.cacio.ctc.CTCGraphicsEnvironment</java.awt.graphicsenv>
@@ -55,6 +56,8 @@
                              This is considered an acceptable hack since it only affects test code -->
                         --add-exports=java.base/java.util=ALL-UNNAMED
                         --add-opens=java.base/java.util=ALL-UNNAMED
+		        <!-- required by Databricks JDBC -->
+		        --add-opens=java.base/java.nio=ALL-UNNAMED
                         <!-- suppress exceptions from cacio-tta, see https://github.com/CaciocavalloSilano/caciocavallo -->
                         --add-opens java.base/java.lang.reflect=ALL-UNNAMED
                         --add-exports java.base/java.lang.reflect=ALL-UNNAMED
@@ -296,6 +299,7 @@
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
+            <version>2.24.3</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-api -->
         <dependency>

@@ -264,7 +264,7 @@
             <plugin>
                 <groupId>org.owasp</groupId>
                 <artifactId>dependency-check-maven</artifactId>
-                <version>11.1.0</version>
+                <version>12.1.0</version>
                 <configuration>
                     <failBuildOnCVSS>8</failBuildOnCVSS>
                     <suppressionFiles>
@@ -277,7 +277,7 @@
                              which is not possible according to the vendor, and in any case not an issue for the Rabbit tools, as these
                              are assumed to be running in a safe environment
                              PLEASE NOTE: this exclusion should be reassessed once apache avro is upgraded to a newer version than 1.11.4 -->
-                        <!-- exclude>com.fasterxml.jackson.core:jackson-databind</exclude-->
+                        <exclude>com.fasterxml.jackson.core:jackson-databind</exclude>
                     </excludes>
                 </configuration>
                 <executions>
@@ -309,6 +309,10 @@
                         <license>
                             <name>(The )?Apache( )?(Software )?(License)?(,)? (Version )?(2.0|v2)</name>
                             <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+                        </license>
+                        <license>
+                            <name>Apache-2.0</name>
+                            <url>http://www.apache.org/licenses/LICENSE-2.0.html</url>
                         </license>
                         <license>
                             <name>BSD-2-Clause</name>
@@ -345,6 +349,10 @@
                         <license>
                             <name>Teradata Generic Download License</name>
                             <url>https://downloads.teradata.com/download/license/generic-download-license</url>
+                        </license>
+            			<license>
+                            <name>Databricks JDBC Driver License</name>
+                            <url>https://databricks.com/jdbc-odbc-driver-license</url>
                         </license>
                     </acceptableLicenses>
                     <excludes>
@@ -518,7 +526,7 @@
             <dependency>
                 <groupId>net.snowflake</groupId>
                 <artifactId>snowflake-jdbc</artifactId>
-                <version>3.20.0</version>
+                <version>3.23.1</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
