@@ -76,10 +76,14 @@ public class UniformSamplingReservoir {
             currentSampleLength++;
         }
 
-        populationSum = populationSum.add(new BigDecimal(value));
-        populationMinimum = Math.min(value, populationMinimum);
-        populationMaximum = Math.max(value, populationMaximum);
-        populationCount++;
+        try {
+            populationSum = populationSum.add(new BigDecimal(value));
+            populationMinimum = Math.min(value, populationMinimum);
+            populationMaximum = Math.max(value, populationMaximum);
+            populationCount++;
+        } catch (Exception e) {
+            logger.error("Error adding value '{}' to reservoir due to {}: {} (skipped)", value, e.getClass(), e.getMessage());
+        }
     }
 
     private void removeAndAdd(int removeIndex, double value) {
