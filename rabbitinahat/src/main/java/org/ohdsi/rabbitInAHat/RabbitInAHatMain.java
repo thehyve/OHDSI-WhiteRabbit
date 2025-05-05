@@ -89,6 +89,7 @@ public class RabbitInAHatMain implements ResizeListener {
 
 	public final static String PANEL_TABLE_MAPPING = "Table Mapping";
 	public final static String PANEL_FIELD_MAPPING = "Field Mapping";
+	public final static String PANEL_DETAILS = "Details";
 	public final static String MASK_LIST_DIALOG = "Mask List Dialog";
 
 	public final static String DOCUMENTATION_URL = "http://ohdsi.github.io/WhiteRabbit/RabbitInAHat.html";
@@ -140,7 +141,7 @@ public class RabbitInAHatMain implements ResizeListener {
 
 		ObjectExchange.etl = etl;
 
-		tableMappingPanel = new MappingPanel(etl.getTableToTableMapping());
+		tableMappingPanel = new MappingPanel(etl.getTableToTableMapping(), MappingPanel.MappingType.TABLES);
 		tableMappingPanel.setName(PANEL_TABLE_MAPPING);
 		tableMappingPanel.addResizeListener(this);
 		scrollPane1 = new JScrollPane(tableMappingPanel);
@@ -151,7 +152,11 @@ public class RabbitInAHatMain implements ResizeListener {
 		scrollPane1.setOpaque(true);
 		scrollPane1.setBackground(Color.WHITE);
 
-		fieldMappingPanel = new MappingPanel(etl.getTableToTableMapping());
+		// the statement below does not make sense (inserts a table mapping in the field mapping panel), but there is no
+		// easy way to initialize the panel in a meaningful way, and it does prevent some things in the UI from being
+		// uninitialized, so leaving it as-is
+		fieldMappingPanel = new MappingPanel(etl.getTableToTableMapping(), MappingPanel.MappingType.TABLES);
+
 		fieldMappingPanel.setName(PANEL_FIELD_MAPPING);
 		tableMappingPanel.setSlaveMappingPanel(fieldMappingPanel);
 		fieldMappingPanel.addResizeListener(this);
@@ -167,6 +172,7 @@ public class RabbitInAHatMain implements ResizeListener {
 		tableFieldSplitPane.setName("splitpane");
 
 		detailsPanel = new DetailsPanel();
+		detailsPanel.setName(PANEL_DETAILS);
 		detailsPanel.setBorder(new TitledBorder("Details"));
 		detailsPanel.setPreferredSize(new Dimension(200, 500));
 		detailsPanel.setMinimumSize(new Dimension(0, 0));
@@ -249,8 +255,8 @@ public class RabbitInAHatMain implements ResizeListener {
 		menuBar.add(editMenu);
 		addMenuItem(editMenu, ACTION_DISCARD_COUNTS, evt -> this.doDiscardCounts());
 		addMenuItem(editMenu, ACTION_FILTER, evt -> this.doOpenFilterDialog(), KeyEvent.VK_F);
-		addMenuItem(editMenu, ACTION_ADD_STEM_TABLE, evt -> this.doAddStemTable());
-		addMenuItem(editMenu, ACTION_REMOVE_STEM_TABLE, evt -> this.doRemoveStemTable());
+		addMenuItem(editMenu, ACTION_ADD_STEM_TABLE, evt -> this.doAddStemTable()).setName(ACTION_ADD_STEM_TABLE);
+		addMenuItem(editMenu, ACTION_REMOVE_STEM_TABLE, evt -> this.doRemoveStemTable()).setName(ACTION_REMOVE_STEM_TABLE);
 		addMenuItem(editMenu, ACTION_HIDE_TABLES, evt -> this.doHideTables()).setName(ACTION_HIDE_TABLES);
 
 		JMenu targetDatabaseMenu = new JMenu("Set Target Database");
@@ -437,7 +443,7 @@ public class RabbitInAHatMain implements ResizeListener {
 		}
 
 		StemTableFactory.addStemTable(ObjectExchange.etl);
-		tableMappingPanel.setMapping(ObjectExchange.etl.getTableToTableMapping());
+		tableMappingPanel.setTableMapping(ObjectExchange.etl.getTableToTableMapping());
 	}
 
 	private void doRemoveStemTable() {
@@ -454,7 +460,7 @@ public class RabbitInAHatMain implements ResizeListener {
 
 		if (PromptResult==JOptionPane.YES_OPTION) {
 			StemTableFactory.removeStemTable(ObjectExchange.etl);
-			tableMappingPanel.setMapping(ObjectExchange.etl.getTableToTableMapping());
+			tableMappingPanel.setTableMapping(ObjectExchange.etl.getTableToTableMapping());
 		}
 	}
 
@@ -501,7 +507,7 @@ public class RabbitInAHatMain implements ResizeListener {
 				ETL etl = new ETL(ObjectExchange.etl.getSourceDatabase(), Database.generateModelFromCSV(stream, file.getName()));
 
 				etl.copyETLMappings(ObjectExchange.etl);
-				tableMappingPanel.setMapping(etl.getTableToTableMapping());
+				tableMappingPanel.setTableMapping(etl.getTableToTableMapping());
 				ObjectExchange.etl = etl;
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -518,7 +524,7 @@ public class RabbitInAHatMain implements ResizeListener {
 	private void doSetTargetCDM(CDMVersion cdmVersion) throws IOException {
 		ETL etl = new ETL(ObjectExchange.etl.getSourceDatabase(), Database.generateCDMModel(cdmVersion));
 		etl.copyETLMappings(ObjectExchange.etl);
-		tableMappingPanel.setMapping(etl.getTableToTableMapping());
+		tableMappingPanel.setTableMapping(etl.getTableToTableMapping());
 		ObjectExchange.etl = etl;
 	}
 
@@ -588,7 +594,7 @@ public class RabbitInAHatMain implements ResizeListener {
 					: filename.endsWith(".json") ? ETL.FileFormat.Json : ETL.FileFormat.Binary;
 			try {
 				ObjectExchange.etl = ETL.fromFile(filename, fileFormat);
-				tableMappingPanel.setMapping(ObjectExchange.etl.getTableToTableMapping());
+				tableMappingPanel.setTableMapping(ObjectExchange.etl.getTableToTableMapping());
 			} catch (Exception e) {
 				e.printStackTrace();
 				JOptionPane.showMessageDialog(null, "Invalid File Format", "Error", JOptionPane.ERROR_MESSAGE);
@@ -623,7 +629,7 @@ public class RabbitInAHatMain implements ResizeListener {
 				etl.setSourceDatabase(Database.generateModelFromScanReport(filename));
 				etl.setTargetDatabase(ObjectExchange.etl.getTargetDatabase());
 				ObjectExchange.etl = etl;
-				tableMappingPanel.setMapping(etl.getTableToTableMapping());
+				tableMappingPanel.setTableMapping(etl.getTableToTableMapping());
 				ObjectExchange.etl = etl;
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -658,7 +664,7 @@ public class RabbitInAHatMain implements ResizeListener {
 						oldData.addTable(newTable);
 					}
 				}
-				tableMappingPanel.setMapping(ObjectExchange.etl.getTableToTableMapping()); // Needed to render the model
+				tableMappingPanel.setTableMapping(ObjectExchange.etl.getTableToTableMapping()); // Needed to render the model
 			} catch (Exception e) {
 				e.printStackTrace();
 				JOptionPane.showMessageDialog(null, "Invalid File Format", "Error", JOptionPane.ERROR_MESSAGE);

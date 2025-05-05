@@ -90,7 +90,7 @@ public class ETLMarkupDocumentGenerator {
 	}
 
 	private void addTableLevelSection() {
-		MappingPanel mappingPanel = new MappingPanel(etl.getTableToTableMapping());
+		MappingPanel mappingPanel = new MappingPanel(etl.getTableToTableMapping(), MappingPanel.MappingType.TABLES);
 		mappingPanel.setShowOnlyConnectedItems(true);
 		int height = mappingPanel.getMinimumSize().height;
 		mappingPanel.setSize(800, height);
@@ -130,7 +130,7 @@ public class ETLMarkupDocumentGenerator {
 				}
 
 				// Add image of field to field mapping
-				MappingPanel mappingPanel = new MappingPanel(fieldtoFieldMapping);
+				MappingPanel mappingPanel = new MappingPanel(fieldtoFieldMapping, MappingPanel.MappingType.FIELDS);
 				mappingPanel.setShowOnlyConnectedItems(true);
 				int height = mappingPanel.getMinimumSize().height;
 				mappingPanel.setSize(800, height);

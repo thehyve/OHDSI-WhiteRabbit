@@ -258,4 +258,8 @@ public class Arrow implements MappingComponent {
 	public boolean isConnected(){
 		return source != null && target != null;
 	}
+
+	public Point getPointInside() {
+		return new Point((x1 + x2) / 2, (y1 + y2) / 2);
+	}
 }
