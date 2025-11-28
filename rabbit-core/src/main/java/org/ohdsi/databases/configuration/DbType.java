@@ -19,6 +19,7 @@ package org.ohdsi.databases.configuration;
 
 import org.apache.commons.lang.StringUtils;
 import org.ohdsi.databases.DatabricksHandler;
+import org.ohdsi.databases.AzureSqlEntraHandler;
 import org.ohdsi.databases.JdbcStorageHandler;
 import org.ohdsi.databases.SnowflakeHandler;
 
@@ -28,6 +29,7 @@ import java.util.stream.Stream;
 
 public enum DbType {
 	/*
+	 *
 	 * Please note: the names and strings and the Type enum below must match when String.toUpperCase().replace(" ", "_")
 	 * is applied (see constructor and the normalizedName() method). This is enforced when the enum values are constructed,
 	 * and a violation of this rule will result in a ScanConfigurationException being thrown.
@@ -42,8 +44,9 @@ public enum DbType {
 	REDSHIFT("Redshift", "com.amazon.redshift.jdbc42.Driver"),
 	TERADATA("Teradata", "com.teradata.jdbc.TeraDriver", null, false),
 	BIGQUERY("BigQuery", "com.simba.googlebigquery.jdbc42.Driver", null, false),	// license does not allow inclusion with the distribution
-	AZURE("Azure", "com.microsoft.sqlserver.jdbc.SQLServerDriver"),
-	SNOWFLAKE("Snowflake", "net.snowflake.client.jdbc.SnowflakeDriver", SnowflakeHandler.INSTANCE),
+    AZURE("Azure", "com.microsoft.sqlserver.jdbc.SQLServerDriver"),
+    AZURE_ENTRA("Azure Entra", "com.microsoft.sqlserver.jdbc.SQLServerDriver", AzureSqlEntraHandler.INSTANCE),
+    SNOWFLAKE("Snowflake", "net.snowflake.client.jdbc.SnowflakeDriver", SnowflakeHandler.INSTANCE),
 	SAS7BDAT("Sas7bdat", null),
 	DATABRICKS("Databricks", DatabricksHandler.DATABRICKS_JDBC_CLASSNAME, DatabricksHandler.INSTANCE);
 
@@ -104,7 +107,7 @@ public enum DbType {
 	 * @return Array of labels for the supported database, intended for use in a selector (like a Swing JComboBox)
 	 */
 	public static String[] pickList() {
-		return Stream.of(DELIMITED_TEXT_FILES, SAS7BDAT, MYSQL, ORACLE, SQL_SERVER, POSTGRESQL, MS_ACCESS, PDW, REDSHIFT, TERADATA, BIGQUERY, AZURE, SNOWFLAKE, DATABRICKS)
+		return Stream.of(DELIMITED_TEXT_FILES, SAS7BDAT, MYSQL, ORACLE, SQL_SERVER, POSTGRESQL, MS_ACCESS, PDW, REDSHIFT, TERADATA, BIGQUERY, AZURE, AZURE_ENTRA, SNOWFLAKE, DATABRICKS)
 				.map(DbType::label).toArray(String[]::new);
 	}
 
