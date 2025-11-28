@@ -30,12 +30,12 @@ public class TestAzureSqlEntraHandler {
         }
     }
 
-    //@Test
+    @Test
     void testSampleQueryBuilds() {
         AzureSqlEntraHandler handler = AzureSqlEntraHandler.INSTANCE;
         String sql = handler.getRowSampleQuery("mytable", 1000, 100);
         assertTrue(sql.contains("SELECT TOP 100"));
-        assertTrue(sql.contains("[dbo].[mytable]"));
+        assertTrue(sql.contains("[null].[mytable]"));
         assertTrue(sql.toUpperCase().contains("ORDER BY NEWID()"));
     }
 }

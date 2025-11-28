@@ -89,16 +89,20 @@ public class ScanTestUtils {
 
         List<String> tabNames = new ArrayList<>(referenceSheets.keySet());
         for (String tabName: tabNames) {
-            if (scanSheets.containsKey(tabName)) {
-                List<List<String>> scanSheet = scanSheets.get(tabName);
-                List<List<String>> referenceSheet = referenceSheets.get(tabName);
-                assertEquals(scanSheet.size(), referenceSheet.size(), String.format("Number of rows in sheet %s does not match.", tabName));
+            if (dbType == AZURE_ENTRA && tabName.startsWith("dbo.")) {
+                tabName = tabName.replace("dbo.", "");
+            }
+            final String strippedTabName = tabName;
+            if (scanSheets.containsKey(strippedTabName)) {
+                List<List<String>> scanSheet = scanSheets.get(strippedTabName);
+                List<List<String>> referenceSheet = referenceSheets.get(strippedTabName);
+                assertEquals(scanSheet.size(), referenceSheet.size(), String.format("Number of rows in sheet %s does not match.", strippedTabName));
                 // in WhiteRabbit v0.10.7 and earlier, the order of tables is not defined, so this can result in differences due to the rows
                 // being in a different order. By sorting the rows in both sheets, these kind of differences should not play a role.
-                if (tabName.equalsIgnoreCase("Field Overview") || tabName.equalsIgnoreCase("Table Overview")) {
+                if (strippedTabName.equalsIgnoreCase("Field Overview") || strippedTabName.equalsIgnoreCase("Table Overview")) {
                     scanSheet.sort(new ColumnValueComparator());
                     referenceSheet.sort(new ColumnValueComparator());
-                } else if (!tabName.equals("_")) {
+                } else if (!strippedTabName.equals("_")) {
                     scanSheet = transposeAndSort(scanSheet);
                     referenceSheet = transposeAndSort(referenceSheet);
                 }
@@ -114,8 +118,8 @@ public class ScanTestUtils {
                             .forEach(j -> {
                                 final String scanValue = scannedData.get(fi).get(j);
                                 final String referenceValue = referenceData.get(fi).get(j);
-                                if (!isExcludedFromMatching(tabName, fi, scanValue, referenceValue, dbType)) {
-                                    if (tabName.equals("Field Overview") && j == 3 && !scanValue.equalsIgnoreCase(referenceValue)) {
+                                if (!isExcludedFromMatching(strippedTabName, fi, scanValue, referenceValue, dbType)) {
+                                    if (strippedTabName.equals("Field Overview") && j == 3 && !scanValue.equalsIgnoreCase(referenceValue)) {
                                         if (!matchTypeName(scanValue, referenceValue, dbType)) {
                                             mismatches.incrementAndGet();
                                             logger.error(String.format("Field type '%s' cannot be matched with reference type '%s' for DbType %s",
@@ -128,7 +132,7 @@ public class ScanTestUtils {
                                             logger.error(
                                                     String.format("In sheet %s, value '%s' in scan results does not match '%s' in reference " +
                                                                     "(row %s, column %s, data col0='%s', data col1='%s', ref col0='%s', ref col1='%s')",
-                                                            tabName, scanValue, referenceValue, fi, j,
+                                                            strippedTabName, scanValue, referenceValue, fi, j,
                                                             scannedData.get(fi).get(0), scannedData.get(fi).get(1),
                                                             referenceData.get(fi).get(0), referenceData.get(fi).get(1)));
                                         }
@@ -168,6 +172,11 @@ public class ScanTestUtils {
             ) {
                 // this is a known difference that will not show up in a dev environment, but it
                 // does show up in Github actions
+                return true;
+            }
+        }
+        if (dbType == AZURE_ENTRA) {
+            if (scannedData.get(row).get(0).replace("dbo.", "").equalsIgnoreCase(referenceData.get(row).get(0))) {
                 return true;
             }
         }
@@ -231,6 +240,14 @@ public class ScanTestUtils {
                     case "decimal": return reference.equals("integer") || reference.equals("numeric");
                     case "varchar": return reference.equals("character varying");
                     case "timestamp": return reference.equals("timestamp without time zone");
+                    default: throw new RuntimeException(String.format("Unsupported column type '%s' for DbType %s ", type, dbType.name()));
+                }
+            case AZURE_ENTRA:
+                switch (type) {
+                    case "int":
+                    case "decimal": return reference.equals("integer") || reference.equals("numeric");
+                    case "varchar": return reference.equals("character varying");
+                    case "datetime2": return reference.equals("timestamp without time zone");
                     default: throw new RuntimeException(String.format("Unsupported column type '%s' for DbType %s ", type, dbType.name()));
                 }
             case SAS7BDAT:

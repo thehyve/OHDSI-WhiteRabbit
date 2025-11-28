@@ -331,6 +331,10 @@
                             <url>https://www.opensource.org/licenses/mit-license.php</url>
                         </license>
                         <license>
+                            <name>The MIT License (MIT)</name>
+                            <url>http://opensource.org/licenses/MIT</url>
+                        </license>
+                        <license>
                             <name>MIT</name>
                             <url>https://opensource.org/licenses/MIT</url>
                         </license>
