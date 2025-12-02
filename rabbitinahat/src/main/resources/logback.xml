@@ -1,0 +1,25 @@
+<configuration>
+
+    <!-- This defines a console appender that writes to System.out -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <!-- This pattern defines the format of your log messages -->
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 
+      THIS IS THE SOLUTION TO YOUR ORIGINAL PROBLEM
+      Set the logging level for the noisy Azure class to WARN, which suppresses its INFO messages.
+    -->
+    <logger name="com.azure.core.http.netty.implementation.Utility" level="ERROR"/>
+
+    <!-- 
+      This is the root logger. It applies to all other classes in your application.
+      It's set to INFO level and will send its output to the STDOUT appender defined above.
+    -->
+    <root level="info">
+        <appender-ref ref="STDOUT" />
+    </root>
+
+</configuration>

@@ -126,9 +126,6 @@ public enum AzureSqlEntraHandler implements JdbcStorageHandler {
             Connection c = DriverManager.getConnection(url, props);
             return new DBConnection(c, DbType.AZURE_ENTRA, true);
         } catch (SQLException e) {
-            if (e.getMessage().toLowerCase().contains("is not currently available.  please retry the connection later.")) {
-                logger.warn("Please note that the exception thrown may be due to the database having been paused. Repeating this test a few seconds or minutes later may succeed.");
-            }
             throw new RuntimeException("Cannot connect to Azure SQL server: " + e.getMessage());
         }
     }

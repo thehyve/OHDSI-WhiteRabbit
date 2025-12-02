@@ -6,18 +6,16 @@ import org.junit.jupiter.api.io.TempDir;
 import org.ohdsi.databases.AzureSqlEntraHandler;
 import org.ohdsi.databases.configuration.DbType;
 import org.ohdsi.whiterabbit.WhiteRabbitMain;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -26,22 +24,33 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * Credentials are provided via sqlserver-azure-entra.env which is loaded by ScanTestUtils.PropertiesFileChecker.
  */
-public class SourceDataScanAzureEntraIT {
+public class SourceDataScanAzureEntraClientSecretMethodIT {
+
+    Logger logger = LoggerFactory.getLogger(SourceDataScanAzureEntraClientSecretMethodIT.class);
 
     @Test
-    void testProcessAzureEntraFromIni(@TempDir Path tempDir) throws URISyntaxException, IOException {
-        Assumptions.assumeTrue(new ScanTestUtils.PropertiesFileChecker("sqlserver-azure-entra.env"),
-                "Azure Entra system properties file not available");
+    void testProcessAzureEntraClientSecretMethodFromIni(@TempDir Path tempDir) throws URISyntaxException, IOException {
+        Assumptions.assumeTrue(new ScanTestUtils.PropertiesFileChecker("sqlserver-azure-entra-clientsecret.env"),
+                "Azure Entra system client secret method properties file not available");
+
+        logger.info("Attempting Azure Entra ID based authentication with explicitly provided credentials");
 
         // Build an ini file for WhiteRabbit to run the scan
         Path iniFile = tempDir.resolve("azure-entra.ini");
         String content = buildAzureEntraIniContent(tempDir);
         Files.write(iniFile, content.getBytes(StandardCharsets.UTF_8));
 
-        // Execute WhiteRabbit with the INI and compare result with reference
-        new WhiteRabbitMain(true, new String[]{"-ini", iniFile.toAbsolutePath().toString()});
+        // Execute WhiteRabbit with the INI and compare results with reference
+        try {
+            new WhiteRabbitMain(true, new String[]{"-ini", iniFile.toAbsolutePath().toString()});
+        } catch (RuntimeException r) {
+            if (r.getMessage().contains("is not currently available.  Please retry the connection later.")) {
+                logger.warn("Please note that the exception thrown may be due to the database having been paused. Repeating this test a few seconds or minutes later may succeed.");
+            }
+            throw r;
+        }
 
-        URL referenceScanReport = SourceDataScanAzureEntraIT.class.getClassLoader()
+        URL referenceScanReport = SourceDataScanAzureEntraClientSecretMethodIT.class.getClassLoader()
                 .getResource("scan_data/ScanReport-reference-v0.10.7-sql.xlsx");
         assert referenceScanReport != null;
         assertTrue(ScanTestUtils.scanResultsSheetMatchesReference(
@@ -75,6 +84,8 @@ public class SourceDataScanAzureEntraIT {
         String authMethod = ScanTestUtils.getPropertyOrFail("ENTRA_WR_TEST_AUTHENTICATION_METHOD");
         sb.append(AzureSqlEntraHandler.AzureSqlConfiguration.AZURE_SQL_AUTH_METHOD).append(" = ")
                 .append(authMethod).append('\n');
+
+        // secrets are only added explicitly for the "client_secret" method
         if ("client_secret".equalsIgnoreCase(authMethod)) {
             sb.append(AzureSqlEntraHandler.AzureSqlConfiguration.AZURE_SQL_TENANT_ID).append(" = ")
                     .append(ScanTestUtils.getPropertyOrFail("ENTRA_WR_TEST_TENANT_ID")).append('\n');

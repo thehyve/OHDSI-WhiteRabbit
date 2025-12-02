@@ -158,13 +158,11 @@ public interface JdbcStorageHandler {
         long rowCount = getTableSize(table);
         String fieldInfoQuery = getFieldsInformationQuery(table);
         if (fieldInfoQuery != null) {
-            logger.warn("Obtaining field metadata through SQL query: {}", fieldInfoQuery);
             QueryResult queryResult = getDBConnection().query(fieldInfoQuery);
             for (Row row : queryResult) {
                 addFieldInfo(fieldInfos, scanParameters, row.getCells().get(0), row.getCells().get(1), rowCount);
             }
         } else {
-            logger.warn("Obtaining field metadata through JDBC");
             ResultSet rs = getFieldsInformation(table);
             try {
                 while (rs.next()) {
