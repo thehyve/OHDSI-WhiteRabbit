@@ -201,7 +201,7 @@ public class RabbitInAHatMain implements ResizeListener {
 				null,
 				"Do you want to exit?\nPlease make sure that any work is saved",
 				"Rabbit In A Hat", JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE,
-				null, objButtons, objButtons[1]
+				UIManager.getIcon("OptionPane.questionIcon"), objButtons, objButtons[1]
 		);
 		if (PromptResult == JOptionPane.YES_OPTION) {
 			frame.dispose();
@@ -449,7 +449,7 @@ public class RabbitInAHatMain implements ResizeListener {
 		int PromptResult = JOptionPane.showOptionDialog(
 				null,"Any mappings to/from the stem table will be lost. Are you sure?",
 				"Rabbit In A Hat", JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE,
-				null, ObjButtons, ObjButtons[1]
+				UIManager.getIcon("OptionPane.questionIcon"), ObjButtons, ObjButtons[1]
 		);
 
 		if (PromptResult==JOptionPane.YES_OPTION) {
@@ -609,7 +609,7 @@ public class RabbitInAHatMain implements ResizeListener {
 		if (ObjectExchange.etl.getSourceDatabase().getTables().size() != 0) {
 			Object[] options = { "Replace current data", "Update tables and fields"};
 			int result = JOptionPane.showOptionDialog(frame, "You already have source data loaded. Do you want to", "Replace source data?",
-					JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+					JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, UIManager.getIcon("OptionPane.questionIcon"), options, options[0]);
 			if (result == -1)
 				return;
 			if (result == 1)
