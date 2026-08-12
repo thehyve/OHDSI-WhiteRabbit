@@ -38,6 +38,9 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import javax.swing.filechooser.FileFilter;
@@ -110,17 +113,25 @@ public class RabbitInAHatMain implements ResizeListener {
 	private JSplitPane				tableFieldSplitPane;
 	private JFileChooser			chooser;
 
+	Logger logger = LoggerFactory.getLogger(RabbitInAHatMain.class);
+
 	public static void main(String[] args) throws IOException {
 		new RabbitInAHatMain(args);
 	}
 
 	public RabbitInAHatMain(String[] args) throws IOException {
 
-		// Set look and feel to the system look and feel
-		try {
-			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-		} catch (Exception ex) {
-			ex.printStackTrace();
+		// avoid setting look and feel to system if testing and windows
+		// reason: for some reason, problems with icons being null may occur if testing with cacio and windows
+		if ((System.getProperty("test.donotsetsystemlookandfeel") == null)) {
+			// Set look and feel to the system look and feel
+			try {
+				UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+			} catch (Exception ex) {
+				ex.printStackTrace();
+			}
+		} else {
+			logger.info("Not setting look and feel to system look and feel (because Windows and cacio test)");
 		}
 
 		frame = new JFrame("Rabbit in a Hat");
@@ -228,8 +239,10 @@ public class RabbitInAHatMain implements ResizeListener {
 			mediaTracker.waitForID(0);
 			return icon;
 		} catch (Exception e1) {
+			System.err.println("Error loading icon: " + name);
 			e1.printStackTrace();
 		}
+		System.err.println("Error loading icon: " + name);
 		return null;
 	}
 
