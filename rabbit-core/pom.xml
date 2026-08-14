@@ -203,6 +203,12 @@
 	    <groupId>org.apache.spark</groupId>
 	    <artifactId>spark-core_2.13</artifactId>
 	    <version>3.5.9</version>
+	    <exclusions>
+	        <exclusion>
+	            <groupId>org.apache.logging.log4j</groupId>
+	            <artifactId>log4j-slf4j2-impl</artifactId>
+	        </exclusion>
+	    </exclusions>
 	</dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
