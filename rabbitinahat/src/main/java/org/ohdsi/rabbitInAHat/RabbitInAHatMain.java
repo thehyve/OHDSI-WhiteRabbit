@@ -113,7 +113,7 @@ public class RabbitInAHatMain implements ResizeListener {
 	private JSplitPane				tableFieldSplitPane;
 	private JFileChooser			chooser;
 
-	Logger logger = LoggerFactory.getLogger(RabbitInAHatMain.class);
+	private static final Logger logger = LoggerFactory.getLogger(RabbitInAHatMain.class);
 
 	public static void main(String[] args) throws IOException {
 		new RabbitInAHatMain(args);
@@ -121,17 +121,17 @@ public class RabbitInAHatMain implements ResizeListener {
 
 	public RabbitInAHatMain(String[] args) throws IOException {
 
-		// avoid setting look and feel to system if testing and windows
+		// avoid setting look and feel to system if property is set (should only be set from test code)
 		// reason: for some reason, problems with icons being null may occur if testing with cacio and windows
 		if ((System.getProperty("test.donotsetsystemlookandfeel") == null)) {
 			// Set look and feel to the system look and feel
 			try {
 				UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 			} catch (Exception ex) {
-				ex.printStackTrace();
+				logger.error("Error setting look and feel to system look and feel", ex);
 			}
 		} else {
-			logger.info("Not setting look and feel to system look and feel (because Windows and cacio test)");
+			logger.info("Not setting look and feel to system look and feel (to avoid issues for Windows + cacio test)");
 		}
 
 		frame = new JFrame("Rabbit in a Hat");
@@ -211,7 +211,7 @@ public class RabbitInAHatMain implements ResizeListener {
 		int PromptResult = JOptionPane.showOptionDialog(
 				null,
 				"Do you want to exit?\nPlease make sure that any work is saved",
-				"Rabbit In A Hat", JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE,
+				"Rabbit In A Hat", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
 				UIManager.getIcon("OptionPane.questionIcon"), objButtons, objButtons[1]
 		);
 		if (PromptResult == JOptionPane.YES_OPTION) {
@@ -239,11 +239,9 @@ public class RabbitInAHatMain implements ResizeListener {
 			mediaTracker.waitForID(0);
 			return icon;
 		} catch (Exception e1) {
-			System.err.println("Error loading icon: " + name);
-			e1.printStackTrace();
+            logger.error("Error loading icon: {}", name, e1);
+			return null;
 		}
-		System.err.println("Error loading icon: " + name);
-		return null;
 	}
 
 	private JMenuBar createMenuBar() {
@@ -461,7 +459,7 @@ public class RabbitInAHatMain implements ResizeListener {
 		String[] ObjButtons = {"Yes","No"};
 		int PromptResult = JOptionPane.showOptionDialog(
 				null,"Any mappings to/from the stem table will be lost. Are you sure?",
-				"Rabbit In A Hat", JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE,
+				"Rabbit In A Hat", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
 				UIManager.getIcon("OptionPane.questionIcon"), ObjButtons, ObjButtons[1]
 		);
 
