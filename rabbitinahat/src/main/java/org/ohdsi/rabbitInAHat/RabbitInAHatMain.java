@@ -38,6 +38,9 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import javax.swing.filechooser.FileFilter;
@@ -110,17 +113,25 @@ public class RabbitInAHatMain implements ResizeListener {
 	private JSplitPane				tableFieldSplitPane;
 	private JFileChooser			chooser;
 
+	private static final Logger logger = LoggerFactory.getLogger(RabbitInAHatMain.class);
+
 	public static void main(String[] args) throws IOException {
 		new RabbitInAHatMain(args);
 	}
 
 	public RabbitInAHatMain(String[] args) throws IOException {
 
-		// Set look and feel to the system look and feel
-		try {
-			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-		} catch (Exception ex) {
-			ex.printStackTrace();
+		// avoid setting look and feel to system if property is set (should only be set from test code)
+		// reason: for some reason, problems with icons being null may occur if testing with cacio and windows
+		if ((System.getProperty("test.donotsetsystemlookandfeel") == null)) {
+			// Set look and feel to the system look and feel
+			try {
+				UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+			} catch (Exception ex) {
+				logger.error("Error setting look and feel to system look and feel", ex);
+			}
+		} else {
+			logger.info("Not setting look and feel to system look and feel (to avoid issues for Windows + cacio test)");
 		}
 
 		frame = new JFrame("Rabbit in a Hat");
@@ -200,8 +211,8 @@ public class RabbitInAHatMain implements ResizeListener {
 		int PromptResult = JOptionPane.showOptionDialog(
 				null,
 				"Do you want to exit?\nPlease make sure that any work is saved",
-				"Rabbit In A Hat", JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE,
-				null, objButtons, objButtons[1]
+				"Rabbit In A Hat", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+				UIManager.getIcon("OptionPane.questionIcon"), objButtons, objButtons[1]
 		);
 		if (PromptResult == JOptionPane.YES_OPTION) {
 			frame.dispose();
@@ -228,9 +239,9 @@ public class RabbitInAHatMain implements ResizeListener {
 			mediaTracker.waitForID(0);
 			return icon;
 		} catch (Exception e1) {
-			e1.printStackTrace();
+            logger.error("Error loading icon: {}", name, e1);
+			return null;
 		}
-		return null;
 	}
 
 	private JMenuBar createMenuBar() {
@@ -448,8 +459,8 @@ public class RabbitInAHatMain implements ResizeListener {
 		String[] ObjButtons = {"Yes","No"};
 		int PromptResult = JOptionPane.showOptionDialog(
 				null,"Any mappings to/from the stem table will be lost. Are you sure?",
-				"Rabbit In A Hat", JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE,
-				null, ObjButtons, ObjButtons[1]
+				"Rabbit In A Hat", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+				UIManager.getIcon("OptionPane.questionIcon"), ObjButtons, ObjButtons[1]
 		);
 
 		if (PromptResult==JOptionPane.YES_OPTION) {
@@ -609,7 +620,7 @@ public class RabbitInAHatMain implements ResizeListener {
 		if (ObjectExchange.etl.getSourceDatabase().getTables().size() != 0) {
 			Object[] options = { "Replace current data", "Update tables and fields"};
 			int result = JOptionPane.showOptionDialog(frame, "You already have source data loaded. Do you want to", "Replace source data?",
-					JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+					JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, UIManager.getIcon("OptionPane.questionIcon"), options, options[0]);
 			if (result == -1)
 				return;
 			if (result == 1)
