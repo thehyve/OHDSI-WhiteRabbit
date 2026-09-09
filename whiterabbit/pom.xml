@@ -44,6 +44,7 @@
                     <reuseForks>false</reuseForks>
                     <skipTests>${skipUnitTests}</skipTests>
                     <systemPropertyVariables>
+                        <projectBuildDirectory>${project.build.directory}</projectBuildDirectory>
                         <java.awt.headless>false</java.awt.headless>
                         <awt.toolkit>com.github.caciocavallosilano.cacio.ctc.CTCToolkit</awt.toolkit>
                         <java.awt.graphicsenv>com.github.caciocavallosilano.cacio.ctc.CTCGraphicsEnvironment</java.awt.graphicsenv>
@@ -55,6 +56,8 @@
                              This is considered an acceptable hack since it only affects test code -->
                         --add-exports=java.base/java.util=ALL-UNNAMED
                         --add-opens=java.base/java.util=ALL-UNNAMED
+		        <!-- required by Databricks JDBC -->
+		        --add-opens=java.base/java.nio=ALL-UNNAMED
                         <!-- suppress exceptions from cacio-tta, see https://github.com/CaciocavalloSilano/caciocavallo -->
                         --add-opens java.base/java.lang.reflect=ALL-UNNAMED
                         --add-exports java.base/java.lang.reflect=ALL-UNNAMED
@@ -78,7 +81,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
-		<version>3.2.2</version>
+		<version>3.5.6</version>
                 <configuration>
                     <systemPropertyVariables>
                         <propertyName>propertyValue</propertyName>
@@ -168,7 +171,7 @@
                     <dependency>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>extra-enforcer-rules</artifactId>
-                        <version>1.9.0</version>
+                        <version>1.12.0</version>
                     </dependency>
                 </dependencies>
             </plugin>
@@ -183,6 +186,11 @@
     <dependencyManagement>
         <dependencies>
             <!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>2.22.0</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -196,11 +204,11 @@
             <artifactId>slf4j-simple</artifactId>
         </dependency>
         <!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
-        <dependency>
+        <!--dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
-        </dependency>
-
+            <version>2.15.1</version>
+        </dependency-->
 
         <!-- https://mvnrepository.com/artifact/org.testcontainers/testcontainers -->
         <dependency>
@@ -296,6 +304,7 @@
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
+            <version>2.26.1</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-api -->
         <dependency>
