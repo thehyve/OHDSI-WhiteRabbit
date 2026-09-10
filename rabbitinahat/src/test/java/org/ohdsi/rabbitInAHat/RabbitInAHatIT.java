@@ -59,7 +59,7 @@ import static org.ohdsi.rabbitInAHat.dataModel.StemTableFactory.STEM_TABLE_NAME;
  * Also keep in mind that the tests may fail if your screen has different dimensions than the virtual screen (as defined by
  * VIRTUAL_SCREEN_WIDTH and VIRTUAL_SCREEN_HEIGHT below).
  */
-//@CacioTest
+@CacioTest
 
 public class RabbitInAHatIT {
 
