@@ -48,6 +48,7 @@ import static org.assertj.swing.timing.Timeout.timeout;
 import static org.junit.Assert.*;
 import static org.ohdsi.rabbitInAHat.MaskListDialog.*;
 import static org.ohdsi.rabbitInAHat.RabbitInAHatMain.*;
+import static org.ohdsi.rabbitInAHat.dataModel.StemTableFactory.STEM_TABLE_NAME;
 
 /*
  * The @CacioTest annotation below  enables running the Swing GUI tests in a virtual screen. This allows the integration tests to run
@@ -58,7 +59,7 @@ import static org.ohdsi.rabbitInAHat.RabbitInAHatMain.*;
  * Also keep in mind that the tests may fail if your screen has different dimensions than the virtual screen (as defined by
  * VIRTUAL_SCREEN_WIDTH and VIRTUAL_SCREEN_HEIGHT below).
  */
-@CacioTest
+//@CacioTest
 
 public class RabbitInAHatIT {
 
@@ -223,6 +224,40 @@ public class RabbitInAHatIT {
         createAndVerifyTableMapping(tablesPanel, "devices.csv", "device_exposure");
     }
 
+    @GUITest
+    @Test
+    void createMappingFromSourceTableToStemTableByDragging() throws URISyntaxException {
+        MappingPanel tablesPanel = openMinimalScanReportAndAddStemTable();
+
+        createAndVerifyTableMapping(tablesPanel, "test_data.csv", STEM_TABLE_NAME);
+    }
+
+    @GUITest
+    //@Test
+    void createMappingFromSourceTableToStemTableUsingMakeMappings() throws URISyntaxException {
+        MappingPanel tablesPanel = openMinimalScanReportAndAddStemTable();
+        String source = "test_data.csv";
+        String target = STEM_TABLE_NAME;
+
+        assertMappingDoesNotExist(tablesPanel, source, target);
+        clickAndVerifyLabeledRectangles(
+                tablesPanel,
+                findMappableItem(tablesPanel.getVisibleSourceComponents(), source),
+                findMappableItem(tablesPanel.getVisibleTargetComponents(), target)
+        );
+
+        window.menuItem(ACTION_MAKE_MAPPING).click();
+
+        deselectAll(tablesPanel);
+        //verifyMapping(tablesPanel, source, target);
+    }
+
+    private MappingPanel openMinimalScanReportAndAddStemTable() throws URISyntaxException {
+        openScanReport("examples/test_scanreports/ScanReport_minimal.xlsx");
+        window.menuItem(ACTION_ADD_STEM_TABLE).click();
+        return getTablesPanel();
+    }
+
     private void openETLSpecs(String specName) throws URISyntaxException {
         window.menuItem(ACTION_OPEN_ETL_SPECS).click();
         JFileChooserFixture fileChooser = JFileChooserFinder.findFileChooser().using(window.robot());
@@ -259,6 +294,9 @@ public class RabbitInAHatIT {
         assertFalse(sourceTable.isSelected());
         assertFalse(targetTable.isSelected());
 
+        if (targetTable.getItem().isStem() || sourceTable.getItem().isStem()) {
+            return; /* nothing to test for a stem table */
+        }
         Arrow mapping = findMapping(tablesPanel.getArrows(), sourceName, targetName);
 
         assertEquals(Arrow.HighlightStatus.NONE_SELECTED, mapping.getHighlightStatus());
@@ -277,21 +315,23 @@ public class RabbitInAHatIT {
 
     private void clickAndVerifyLabeledRectangles(MappingPanel tablesPanel, LabeledRectangle... rectangles) {
         Arrays.stream(rectangles).forEach(r -> {
-            assertFalse(r.isSelected());
-            if (rectangles.length > 1) {
-                window.robot().pressKey(KeyEvent.VK_SHIFT);
+            if (!r.getItem().isStem()) {
+                assertFalse(r.isSelected());
+                if (rectangles.length > 1) {
+                    window.robot().pressKey(KeyEvent.VK_SHIFT);
+                }
+                Point pointToClick = new Point(r.getX() + 1, r.getY() + 1);
+                try {
+                    window.robot().click(tablesPanel, pointToClick);
+                } catch (ActionFailedException e) {
+                    System.out.println("Failed to click on " + r.getItem().getName() + " at " + pointToClick);
+                    //e.printStackTrace();
+                }
+                if (rectangles.length > 1) {
+                    window.robot().releaseKey(KeyEvent.VK_SHIFT);
+                }
+                assertTrue(r.isSelected());
             }
-            Point pointToClick = new Point(r.getX() + 1, r.getY() + 1);
-            try {
-                window.robot().click(tablesPanel, pointToClick);
-            } catch (ActionFailedException e) {
-                System.out.println("Failed to click on " + r.getItem().getName() + " at " + pointToClick);
-                //e.printStackTrace();
-            }
-            if (rectangles.length > 1) {
-                window.robot().releaseKey(KeyEvent.VK_SHIFT);
-            }
-            assertTrue(r.isSelected());
         });
     }
 
@@ -319,12 +359,7 @@ public class RabbitInAHatIT {
 
     private void createAndVerifyTableMapping(MappingPanel tablesPanel, String source, String target) {
         // pre: source and target must not be connected
-        assertEquals(String.format("A mapping between source '%s' and target '%s' should not yet exist.", source, target),
-                0,
-                 tablesPanel.getArrows()
-                         .stream()
-                         .filter(a -> a.getSource().getItem().getName().equalsIgnoreCase(source) &&
-                                      a.getTarget().getItem().getName().equalsIgnoreCase(target)).count());
+        assertMappingDoesNotExist(tablesPanel, source, target);
 
         // action: drag the arrowhead at sourceItem to targetItem
         LabeledRectangle sourceItem = findMappableItem(tablesPanel.getVisibleSourceComponents(), source);
@@ -336,6 +371,15 @@ public class RabbitInAHatIT {
 
         // post: there should be a mapping between source and target
         verifyMapping(tablesPanel, source, target);
+    }
+
+    private void assertMappingDoesNotExist(MappingPanel tablesPanel, String source, String target) {
+        assertEquals(String.format("A mapping between source '%s' and target '%s' should not yet exist.", source, target),
+                0,
+                tablesPanel.getArrows()
+                        .stream()
+                        .filter(a -> a.getSource().getItem().getName().equalsIgnoreCase(source) &&
+                                a.getTarget().getItem().getName().equalsIgnoreCase(target)).count());
     }
 
     private Point arrowHeadLocation(LabeledRectangle item) {

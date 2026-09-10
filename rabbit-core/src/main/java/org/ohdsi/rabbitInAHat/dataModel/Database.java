@@ -60,7 +60,7 @@ public class Database implements Serializable {
 	private Table 				stemTable;
 
 	public List<Table> getTables() {
-		if(selectedIndices != null){
+		if (selectedIndices != null) {
 			List<Table> maskedTables = new ArrayList<>();
             for (Integer selectedIndex : selectedIndices) {
                 maskedTables.add(tables.get(selectedIndex));
@@ -70,7 +70,15 @@ public class Database implements Serializable {
 			}
 			return maskedTables;
 		} else {
-			return tables;
+			if (!tables.isEmpty()) {
+				List<Table> maskedTables = new ArrayList<>(tables);
+				if (hasStemTable) {
+					maskedTables.add(stemTable);
+				}
+				return maskedTables;
+			} else {
+				return tables;
+			}
 		}
 	}
 
