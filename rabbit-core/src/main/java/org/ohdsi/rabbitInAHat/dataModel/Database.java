@@ -56,16 +56,30 @@ public class Database implements Serializable {
 	private static final String	CONCEPT_ID_HINTS_FILE_NAME = "CDMConceptIDHints.csv";
 	public String 				conceptIdHintsVocabularyVersion;
 	private List<Integer>		selectedIndices;
+	private boolean 			hasStemTable = false;
+	private Table 				stemTable;
 
 	public List<Table> getTables() {
-		if(selectedIndices != null){
+		if (selectedIndices != null) {
 			List<Table> maskedTables = new ArrayList<>();
             for (Integer selectedIndex : selectedIndices) {
                 maskedTables.add(tables.get(selectedIndex));
             }
+			if (hasStemTable) {
+				maskedTables.add(stemTable);
+			}
 			return maskedTables;
+		} else {
+			if (!tables.isEmpty()) {
+				List<Table> maskedTables = new ArrayList<>(tables);
+				if (hasStemTable) {
+					maskedTables.add(stemTable);
+				}
+				return maskedTables;
+			} else {
+				return tables;
+			}
 		}
-		return tables;
 	}
 
 	public List<Table> getUnmaskedTables() {
@@ -85,6 +99,16 @@ public class Database implements Serializable {
 
 	public void addTable(Table table) {
 		this.tables.add(table);
+	}
+
+	public void addStemTable(Table stemTable) {
+		this.stemTable = stemTable;
+		this.hasStemTable = true;
+	}
+
+	public void removeStemTable() {
+		this.hasStemTable = false;
+		this.stemTable = null;
 	}
 
 	public String getDbName() {

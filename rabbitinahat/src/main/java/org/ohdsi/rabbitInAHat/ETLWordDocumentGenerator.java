@@ -111,33 +111,34 @@ public class ETLWordDocumentGenerator {
 		run.setFontSize(18);
 		
 		createDocumentParagraph(document, targetTable.getComment());
-		
-		for (ItemToItemMap tableToTableMap : etl.getTableToTableMapping().getSourceToTargetMaps())
-			if (tableToTableMap.getTargetItem() == targetTable && etl.isSelectedTable(tableToTableMap.getSourceItem())) {
+
+		for (ItemToItemMap tableToTableMap : etl.getTableToTableMapping().getSourceToTargetMaps()) {
+			MappableItem item = tableToTableMap.getSourceItem();
+			if (tableToTableMap.getTargetItem() == targetTable && (item.getClass().isInstance(Field.class) || etl.isSelectedTable(tableToTableMap.getSourceItem()))) {
 				Table sourceTable = (Table) tableToTableMap.getSourceItem();
 				Mapping<Field> fieldtoFieldMapping = etl.getFieldToFieldMapping(sourceTable, targetTable);
-				
+
 				paragraph = document.createParagraph();
 				run = paragraph.createRun();
 				run.setText("Reading from " + tableToTableMap.getSourceItem());
 				run.setFontSize(14);
-				
+
 				createDocumentParagraph(document, tableToTableMap.getLogic());
-				
+
 				createDocumentParagraph(document, tableToTableMap.getComment());
-				
+
 				// Add picture of field to field mapping
-				MappingPanel mappingPanel = new MappingPanel(fieldtoFieldMapping);
+				MappingPanel mappingPanel = new MappingPanel(fieldtoFieldMapping, MappingPanel.MappingType.FIELDS);
 				mappingPanel.setShowOnlyConnectedItems(true);
 				int height = mappingPanel.getMinimumSize().height;
 				mappingPanel.setSize(800, height);
-				
+
 				BufferedImage im = new BufferedImage(800, height, BufferedImage.TYPE_INT_ARGB);
 				im.getGraphics().setColor(Color.WHITE);
 				im.getGraphics().fillRect(0, 0, im.getWidth(), im.getHeight());
 				mappingPanel.paint(im.getGraphics());
 				document.addPicture(im, 600, height * 6 / 8);
-				
+
 				// Add table of field to field mapping
 				XWPFTable table = document.createTable(fieldtoFieldMapping.getTargetItems().size() + 1, 4);
 				// table.setWidth(2000);
@@ -158,7 +159,7 @@ public class ETLWordDocumentGenerator {
 							break;
 						}
 					}
-					
+
 					StringBuilder source = new StringBuilder();
 					StringBuilder logic = new StringBuilder();
 					StringBuilder comment = new StringBuilder();
@@ -167,17 +168,17 @@ public class ETLWordDocumentGenerator {
 							if (source.length() != 0)
 								source.append("\n");
 							source.append(fieldToFieldMap.getSourceItem().getName().trim());
-							
+
 							if (logic.length() != 0)
 								logic.append("\n");
 							logic.append(fieldToFieldMap.getLogic().trim());
-							
+
 							if (comment.length() != 0)
 								comment.append("\n");
 							comment.append(fieldToFieldMap.getComment().trim());
 						}
 					}
-					
+
 					for (Field field : targetTable.getFields()) {
 						if (field.getName().equals(targetField.getName())) {
 							if (comment.length() != 0)
@@ -194,13 +195,13 @@ public class ETLWordDocumentGenerator {
 					} else {
 						row.getCell(0).setText(fieldName);
 					}
-					
+
 					createCellParagraph(row.getCell(1), source.toString());
 					createCellParagraph(row.getCell(2), logic.toString());
 					createCellParagraph(row.getCell(3), comment.toString());
 				}
 			}
-		
+		}
 	}
 	
 	private static void setTextAndHeaderShading(XWPFTableCell cell, String text) {
@@ -218,7 +219,7 @@ public class ETLWordDocumentGenerator {
 		XWPFParagraph tmpParagraph = document.createParagraph();
 		XWPFRun tmpRun = tmpParagraph.createRun();
 		
-		MappingPanel mappingPanel = new MappingPanel(etl.getTableToTableMapping());
+		MappingPanel mappingPanel = new MappingPanel(etl.getTableToTableMapping(), MappingPanel.MappingType.TABLES);
 		mappingPanel.setShowOnlyConnectedItems(true);
 		int height = mappingPanel.getMinimumSize().height;
 		mappingPanel.setSize(800, height);

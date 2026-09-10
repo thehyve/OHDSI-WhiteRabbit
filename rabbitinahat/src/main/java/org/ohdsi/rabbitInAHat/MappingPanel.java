@@ -64,12 +64,16 @@ public class MappingPanel extends JPanel implements MouseListener, MouseMotionLi
 	public static final int				BORDER_HEIGHT				= 25;
 	// Extra margin between header and first item when using stem table
 	public static final int				STEM_HEIGHT_MARGIN			= ITEM_HEIGHT / 2;
+	public static enum MappingType {
+		TABLES, FIELDS
+	}
+	private MappingType				mappingType					= MappingType.TABLES;
 
 	private int						sourceX;
 	private int						cdmX;
 	private int						stemX;
 
-	private Mapping<?>				mapping;
+	private Mapping<? extends MappableItem>				mapping;
 	private List<LabeledRectangle>	sourceComponents			= new ArrayList<LabeledRectangle>();
 	private List<LabeledRectangle>	cdmComponents				= new ArrayList<LabeledRectangle>();
 	private List<Arrow>				arrows						= new ArrayList<Arrow>();
@@ -95,8 +99,12 @@ public class MappingPanel extends JPanel implements MouseListener, MouseMotionLi
 	private DetailsListener			detailsListener;
 
 	@SuppressWarnings("serial")
-	public MappingPanel(Mapping<?> mapping) {
+	private MappingPanel(Mapping<? extends MappableItem> mapping) {
+	}
+
+	public MappingPanel(Mapping<? extends MappableItem> mapping, MappingType mappingType) {
 		super();
+		this.mappingType = mappingType;
 		this.mapping = mapping;
 		this.setFocusable(true);
 		addMouseListener(this);
@@ -129,7 +137,17 @@ public class MappingPanel extends JPanel implements MouseListener, MouseMotionLi
 		return minimized;
 	}
 
-	public void setMapping(Mapping<?> mapping) {
+	public void setFieldMapping(Mapping<? extends MappableItem> mapping) {
+		mappingType = MappingType.FIELDS;
+		setMapping(mapping);
+	}
+
+	public void setTableMapping(Mapping<? extends MappableItem> mapping) {
+		mappingType = MappingType.TABLES;
+		setMapping(mapping);
+	}
+
+	private void setMapping(Mapping<? extends MappableItem> mapping) {
 		maximize();
 		this.mapping = mapping;
 		renderModel();
@@ -166,7 +184,7 @@ public class MappingPanel extends JPanel implements MouseListener, MouseMotionLi
 		cdmComponents.clear();
 		arrows.clear();
 		for (MappableItem item : mapping.getSourceItems()) {
-			if (ObjectExchange.etl.isSelectedTable(item)) {
+			if (isTableAndSelected(item)) {
 				if (!showOnlyConnectedItems || isConnected(item)) {
 					if (item.isStem())
 						sourceComponents.add(new LabeledRectangle(0, 400, ITEM_WIDTH, ITEM_HEIGHT, item, new Color(160, 0, 160)));
@@ -184,7 +202,7 @@ public class MappingPanel extends JPanel implements MouseListener, MouseMotionLi
 			}
 		}
 		for (ItemToItemMap map : mapping.getSourceToTargetMaps()) {
-			if (ObjectExchange.etl.isSelectedTable(map.getSourceItem())) {
+			if (isTableAndSelected(map.getSourceItem())) {
 				Arrow component = new Arrow(getComponentWithItem(map.getSourceItem(), sourceComponents), getComponentWithItem(map.getTargetItem(), cdmComponents),
 						map);
 				arrows.add(component);
@@ -436,7 +454,7 @@ public class MappingPanel extends JPanel implements MouseListener, MouseMotionLi
 				if (event.getClickCount() == 2) { // double click
 					zoomArrow = clickedArrow;
 					if (slaveMappingPanel != null) {
-						slaveMappingPanel.setMapping(ObjectExchange.etl.getFieldToFieldMapping((Table) zoomArrow.getSource().getItem(), (Table) zoomArrow
+						slaveMappingPanel.setFieldMapping(ObjectExchange.etl.getFieldToFieldMapping((Table) zoomArrow.getSource().getItem(), (Table) zoomArrow
 								.getTarget().getItem()));
 						new AnimateThread(true).start();
 
@@ -779,7 +797,7 @@ public class MappingPanel extends JPanel implements MouseListener, MouseMotionLi
 				if (event.getClickCount() == 2 && isSourceComponent && !component.getItem().isStem()) {
 					if (slaveMappingPanel != null) {
 						// Create dummy mapping
-						slaveMappingPanel.setMapping(
+						slaveMappingPanel.setFieldMapping(
 								new Mapping<>(((Table) component.getItem()).getFields(), new ArrayList<>(), new ArrayList<>())
 						);
 						// Zoom arrow has to be set, but will not be shown
@@ -909,5 +927,9 @@ public class MappingPanel extends JPanel implements MouseListener, MouseMotionLi
 
 	public boolean isBeingFiltered() {
 		return lastSourceFilter != "" || lastTargetFilter != "";
+	}
+
+	private boolean isTableAndSelected(MappableItem item) {
+		return mappingType == MappingType.FIELDS || item.isStem() || ObjectExchange.etl.isSelectedTable(item);
 	}
 }

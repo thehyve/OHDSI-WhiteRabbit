@@ -20,7 +20,9 @@ package org.ohdsi.rabbitInAHat;
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import org.assertj.swing.annotation.GUITest;
 import org.assertj.swing.core.ComponentDragAndDrop;
+import org.assertj.swing.core.MouseButton;
 import org.assertj.swing.edt.GuiActionRunner;
+import org.assertj.swing.exception.ActionFailedException;
 import org.assertj.swing.finder.JFileChooserFinder;
 import org.assertj.swing.fixture.DialogFixture;
 import org.assertj.swing.fixture.FrameFixture;
@@ -31,8 +33,12 @@ import org.junit.jupiter.api.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.io.File;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -42,6 +48,7 @@ import static org.assertj.swing.timing.Timeout.timeout;
 import static org.junit.Assert.*;
 import static org.ohdsi.rabbitInAHat.MaskListDialog.*;
 import static org.ohdsi.rabbitInAHat.RabbitInAHatMain.*;
+import static org.ohdsi.rabbitInAHat.dataModel.StemTableFactory.STEM_TABLE_NAME;
 
 /*
  * The @CacioTest annotation below  enables running the Swing GUI tests in a virtual screen. This allows the integration tests to run
@@ -49,26 +56,38 @@ import static org.ohdsi.rabbitInAHat.RabbitInAHatMain.*;
  * disrupted by unrelated user activity on workstations/laptops (any keyboard or mouse action).
  * For debugging purposes, you can disable the annotation below to have the tests run on your screen. Be aware that
  * any interaction with mouse or keyboard can (will) disrupt the tests if they run on your screen.
+ * Also keep in mind that the tests may fail if your screen has different dimensions than the virtual screen (as defined by
+ * VIRTUAL_SCREEN_WIDTH and VIRTUAL_SCREEN_HEIGHT below).
  */
-
 @CacioTest
-public class TestRabbitInAHatMain {
+
+public class RabbitInAHatIT {
 
     private static FrameFixture window;
 
-    private final static int WIDTH = 1920;
-    private final static int HEIGHT = 1080;
+    private final static int VIRTUAL_SCREEN_WIDTH = 1920;
+    private final static int VIRTUAL_SCREEN_HEIGHT = 1080;
     @BeforeAll
-    public static void setupOnce() {
-        System.setProperty("cacio.managed.screensize", String.format("%sx%s", WIDTH, HEIGHT));
+    public static void setupOnce() throws IOException {
+        System.setProperty("cacio.managed.screensize", String.format("%sx%s", VIRTUAL_SCREEN_WIDTH, VIRTUAL_SCREEN_HEIGHT));
+        // unzip examples.zip into target resources
+        Path examplesPath = Paths.get("examples.zip");
+        if (!Files.exists(examplesPath)) {
+            examplesPath = Paths.get("../examples.zip");
+        }
+        RiahTestUtils.unzip(examplesPath, Paths.get("target/test-classes").toAbsolutePath());
     }
 
     @BeforeEach
     public void setUp() {
         String[] args = {};
+        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+            System.setProperty("test.donotsetsystemlookandfeel", "true");
+        }
         RabbitInAHatMain rabbitInAHatMain = GuiActionRunner.execute(() -> new RabbitInAHatMain(args));
         window = new FrameFixture(rabbitInAHatMain.getFrame());
-        window.splitPane("splitpane").target().setDividerLocation(WIDTH / 2);
+        window.splitPane("splitpane").target().setDividerLocation(VIRTUAL_SCREEN_WIDTH / 2);
+        // window.robot().settings().delayBetweenEvents(150); // increase delay between events to make it easier to follow the tests
         window.show(); // shows the frame to test
     }
 
@@ -92,12 +111,19 @@ public class TestRabbitInAHatMain {
     }
 
     @Test
-    public void openReport() throws URISyntaxException {
-        window.menuItem(ACTION_OPEN_SCAN_REPORT).click();
-        JFileChooserFixture fileChooser = JFileChooserFinder.findFileChooser().using(window.robot());
-        assertEquals(TITLE_SELECT_FILE, fileChooser.target().getDialogTitle());
-        URL scanReportUrl = this.getClass().getClassLoader().getResource("examples/test_scanreports/ScanReport_minimal.xlsx");
-        fileChooser.selectFile(new File(Objects.requireNonNull(scanReportUrl).toURI())).approve();
+    void openScanReportAndAddStemTable() throws URISyntaxException {
+        openScanReport("examples/test_scanreports/ScanReport_minimal.xlsx");
+        MappingPanel tablesPanel = getTablesPanel();
+
+        window.menuItem(ACTION_ADD_STEM_TABLE).click();
+
+        verifyMapping(tablesPanel, "stem_table", "condition_occurrence");
+        verifyMapping(tablesPanel, "stem_table", "drug_exposure");
+        verifyMapping(tablesPanel, "stem_table", "procedure_occurrence");
+        verifyMapping(tablesPanel, "stem_table", "device_exposure");
+        verifyMapping(tablesPanel, "stem_table", "measurement");
+        verifyMapping(tablesPanel, "stem_table", "observation");
+        // there are more mappings, but these may not be visible depending on the actual screen size
     }
 
     @Test
@@ -109,13 +135,54 @@ public class TestRabbitInAHatMain {
         assertEquals("7 mappings are expected", 7, tablesPanel.getArrows().size());
 
         // verify the mappings
-        verifyTableMapping(tablesPanel, "patients.csv", "person");
-        verifyTableMapping(tablesPanel, "claims.csv", "person");
-        verifyTableMapping(tablesPanel, "conditions.csv", "observation");
-        verifyTableMapping(tablesPanel, "conditions.csv", "condition_occurrence");
-        verifyTableMapping(tablesPanel, "medications.csv", "drug_exposure");
-        verifyTableMapping(tablesPanel, "encounters.csv", "observation_period");
-        verifyTableMapping(tablesPanel, "encounters.csv", "visit_occurrence");
+        verifyMapping(tablesPanel, "patients.csv", "person");
+        verifyMapping(tablesPanel, "claims.csv", "person");
+        verifyMapping(tablesPanel, "conditions.csv", "observation");
+        verifyMapping(tablesPanel, "conditions.csv", "condition_occurrence");
+        verifyMapping(tablesPanel, "medications.csv", "drug_exposure");
+        verifyMapping(tablesPanel, "encounters.csv", "observation_period");
+        verifyMapping(tablesPanel, "encounters.csv", "visit_occurrence");
+    }
+
+    @Test
+    void openSavedETLSpecsAndSelectMapping() throws URISyntaxException, InterruptedException {
+        // open the test ETL specification
+        openETLSpecs("scan/etl-specs.json.gz");
+        MappingPanel tablesPanel = getTablesPanel();
+
+        final String sourceName = "patients.csv";
+        final String targetName = "person";
+        LabeledRectangle sourceTable = findMappableItem(tablesPanel.getVisibleSourceComponents(), sourceName);
+        LabeledRectangle targetTable = findMappableItem(tablesPanel.getVisibleTargetComponents(), targetName);
+        assertFalse(sourceTable.isSelected());
+        assertFalse(targetTable.isSelected());
+
+        Arrow mapping = findMapping(tablesPanel.getArrows(), sourceName, targetName);
+
+        // double click the mapping (arrow)
+        window.robot().click(tablesPanel, mapping.getPointInside(), MouseButton.LEFT_BUTTON, 2);
+        MappingPanel fieldsPanel = getPanel(PANEL_FIELD_MAPPING);
+        pause(new Condition("wait for source items to appear in the items panel") {
+            public boolean test() {
+                return fieldsPanel.getVisibleSourceComponents().size() != 0 &&
+                        fieldsPanel.getVisibleSourceComponents().get(0).getItem().getName().equals("id");
+            }
+        }, timeout(10000));
+
+        // verify the mappings
+        assertEquals("incorrect numbers of mappings", 11, fieldsPanel.getArrows().size());
+        verifyMapping(fieldsPanel, "id", "person_source_value");
+        verifyMapping(fieldsPanel, "birthdate", "year_of_birth");
+        verifyMapping(fieldsPanel, "birthdate", "month_of_birth");
+        verifyMapping(fieldsPanel, "birthdate", "day_of_birth");
+        verifyMapping(fieldsPanel, "birthdate", "birth_datetime");
+        verifyMapping(fieldsPanel, "race", "race_concept_id");
+        verifyMapping(fieldsPanel, "race", "race_source_value");
+        /* more could be verified but these fall outside the "visible" screen when running with @CacioTest
+        verifyMapping(fieldsPanel, "ethnicity", "ethnicity_concept_id");
+        verifyMapping(fieldsPanel, "ethnicity", "ethnicity_source_value");
+        verifyMapping(fieldsPanel, "gender", "gender_concept_id");
+        verifyMapping(fieldsPanel, "gender", "gender_source_value"); */
     }
 
     @GUITest
@@ -130,10 +197,10 @@ public class TestRabbitInAHatMain {
         assertEquals("4 mappings are expected", 4, tablesPanel.getArrows().size());
 
         // verify the mappings
-        verifyTableMapping(tablesPanel, "conditions.csv", "observation");
-        verifyTableMapping(tablesPanel, "conditions.csv", "condition_occurrence");
-        verifyTableMapping(tablesPanel, "encounters.csv", "observation_period");
-        verifyTableMapping(tablesPanel, "encounters.csv", "visit_occurrence");
+        verifyMapping(tablesPanel, "conditions.csv", "observation");
+        verifyMapping(tablesPanel, "conditions.csv", "condition_occurrence");
+        verifyMapping(tablesPanel, "encounters.csv", "observation_period");
+        verifyMapping(tablesPanel, "encounters.csv", "visit_occurrence");
     }
 
     private void hideTables() throws URISyntaxException {
@@ -157,6 +224,40 @@ public class TestRabbitInAHatMain {
         createAndVerifyTableMapping(tablesPanel, "devices.csv", "device_exposure");
     }
 
+    @GUITest
+    @Test
+    void createMappingFromSourceTableToStemTableByDragging() throws URISyntaxException {
+        MappingPanel tablesPanel = openMinimalScanReportAndAddStemTable();
+
+        createAndVerifyTableMapping(tablesPanel, "test_data.csv", STEM_TABLE_NAME);
+    }
+
+    @GUITest
+    //@Test
+    void createMappingFromSourceTableToStemTableUsingMakeMappings() throws URISyntaxException {
+        MappingPanel tablesPanel = openMinimalScanReportAndAddStemTable();
+        String source = "test_data.csv";
+        String target = STEM_TABLE_NAME;
+
+        assertMappingDoesNotExist(tablesPanel, source, target);
+        clickAndVerifyLabeledRectangles(
+                tablesPanel,
+                findMappableItem(tablesPanel.getVisibleSourceComponents(), source),
+                findMappableItem(tablesPanel.getVisibleTargetComponents(), target)
+        );
+
+        window.menuItem(ACTION_MAKE_MAPPING).click();
+
+        deselectAll(tablesPanel);
+        //verifyMapping(tablesPanel, source, target);
+    }
+
+    private MappingPanel openMinimalScanReportAndAddStemTable() throws URISyntaxException {
+        openScanReport("examples/test_scanreports/ScanReport_minimal.xlsx");
+        window.menuItem(ACTION_ADD_STEM_TABLE).click();
+        return getTablesPanel();
+    }
+
     private void openETLSpecs(String specName) throws URISyntaxException {
         window.menuItem(ACTION_OPEN_ETL_SPECS).click();
         JFileChooserFixture fileChooser = JFileChooserFinder.findFileChooser().using(window.robot());
@@ -170,18 +271,32 @@ public class TestRabbitInAHatMain {
             public boolean test() {
                 return !tablesPanel.getVisibleSourceComponents().isEmpty();
             }
-
         }, timeout(10000));
         assertFalse("There should be source items", tablesPanel.getVisibleSourceComponents().isEmpty());
         assertFalse("There should be target items", tablesPanel.getVisibleTargetComponents().isEmpty());
     }
 
-    private void verifyTableMapping(MappingPanel tablesPanel, String sourceName, String targetName) {
+    private void openScanReport(String reportPath) throws URISyntaxException {
+        window.menuItem(ACTION_OPEN_SCAN_REPORT).click();
+        JFileChooserFixture fileChooser = JFileChooserFinder.findFileChooser().using(window.robot());
+        assertEquals(TITLE_SELECT_FILE, fileChooser.target().getDialogTitle());
+        URL scanReportUrl = RabbitInAHatIT.class.getClassLoader().getResource(reportPath);
+        File scanReport = new File(Objects.requireNonNull(scanReportUrl).toURI());
+        fileChooser.setCurrentDirectory(scanReport.getParentFile());
+        fileChooser.selectFile(scanReport).approve();
+        //fileChooser.selectFile(new File(Objects.requireNonNull(scanReportUrl).toURI())).approve();
+    }
+
+
+    private void verifyMapping(MappingPanel tablesPanel, String sourceName, String targetName, String... details) {
         LabeledRectangle sourceTable = findMappableItem(tablesPanel.getVisibleSourceComponents(), sourceName);
         LabeledRectangle targetTable = findMappableItem(tablesPanel.getVisibleTargetComponents(), targetName);
         assertFalse(sourceTable.isSelected());
         assertFalse(targetTable.isSelected());
 
+        if (targetTable.getItem().isStem() || sourceTable.getItem().isStem()) {
+            return; /* nothing to test for a stem table */
+        }
         Arrow mapping = findMapping(tablesPanel.getArrows(), sourceName, targetName);
 
         assertEquals(Arrow.HighlightStatus.NONE_SELECTED, mapping.getHighlightStatus());
@@ -200,15 +315,23 @@ public class TestRabbitInAHatMain {
 
     private void clickAndVerifyLabeledRectangles(MappingPanel tablesPanel, LabeledRectangle... rectangles) {
         Arrays.stream(rectangles).forEach(r -> {
-            assertFalse(r.isSelected());
-            if (rectangles.length > 1) {
-                window.robot().pressKey(KeyEvent.VK_SHIFT);
+            if (!r.getItem().isStem()) {
+                assertFalse(r.isSelected());
+                if (rectangles.length > 1) {
+                    window.robot().pressKey(KeyEvent.VK_SHIFT);
+                }
+                Point pointToClick = new Point(r.getX() + 1, r.getY() + 1);
+                try {
+                    window.robot().click(tablesPanel, pointToClick);
+                } catch (ActionFailedException e) {
+                    System.out.println("Failed to click on " + r.getItem().getName() + " at " + pointToClick);
+                    //e.printStackTrace();
+                }
+                if (rectangles.length > 1) {
+                    window.robot().releaseKey(KeyEvent.VK_SHIFT);
+                }
+                assertTrue(r.isSelected());
             }
-            window.robot().click(tablesPanel, new Point(r.getX() + 1, r.getY() + 1));
-            if (rectangles.length > 1) {
-                window.robot().releaseKey(KeyEvent.VK_SHIFT);
-            }
-            assertTrue(r.isSelected());
         });
     }
 
@@ -236,12 +359,7 @@ public class TestRabbitInAHatMain {
 
     private void createAndVerifyTableMapping(MappingPanel tablesPanel, String source, String target) {
         // pre: source and target must not be connected
-        assertEquals(String.format("A mapping between source '%s' and target '%s' should not yet exist.", source, target),
-                0,
-                 tablesPanel.getArrows()
-                         .stream()
-                         .filter(a -> a.getSource().getItem().getName().equalsIgnoreCase(source) &&
-                                      a.getTarget().getItem().getName().equalsIgnoreCase(target)).count());
+        assertMappingDoesNotExist(tablesPanel, source, target);
 
         // action: drag the arrowhead at sourceItem to targetItem
         LabeledRectangle sourceItem = findMappableItem(tablesPanel.getVisibleSourceComponents(), source);
@@ -252,14 +370,28 @@ public class TestRabbitInAHatMain {
         dragAndDrop.drop(tablesPanel, new Point(targetItem.getX(), targetItem.getY()));
 
         // post: there should be a mapping between source and target
-        verifyTableMapping(tablesPanel, source, target);
+        verifyMapping(tablesPanel, source, target);
+    }
+
+    private void assertMappingDoesNotExist(MappingPanel tablesPanel, String source, String target) {
+        assertEquals(String.format("A mapping between source '%s' and target '%s' should not yet exist.", source, target),
+                0,
+                tablesPanel.getArrows()
+                        .stream()
+                        .filter(a -> a.getSource().getItem().getName().equalsIgnoreCase(source) &&
+                                a.getTarget().getItem().getName().equalsIgnoreCase(target)).count());
     }
 
     private Point arrowHeadLocation(LabeledRectangle item) {
         return new Point(item.getX() + item.getWidth() + (Arrow.headThickness / 2), item.getY() + item.getHeight() / 2);
     }
 
+    private MappingPanel getPanel(String name) {
+        return window.panel(name).targetCastedTo(MappingPanel.class);
+    }
+
     private MappingPanel getTablesPanel() {
         return window.panel(PANEL_TABLE_MAPPING).targetCastedTo(MappingPanel.class);
     }
+
 }

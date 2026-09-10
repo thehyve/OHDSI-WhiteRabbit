@@ -283,7 +283,7 @@ public class MaskListDialog extends JDialog implements ActionListener, ResizeLis
 
     private void updateIndices(){
         ObjectExchange.etl.getSourceDatabase().setSelectedIndices(getSelectedIndices());
-        mappingPanel.setMapping(ObjectExchange.etl.getTableToTableMapping());
+        mappingPanel.setTableMapping(ObjectExchange.etl.getTableToTableMapping());
     }
 
     public List<Integer> getSelectedIndices(){
